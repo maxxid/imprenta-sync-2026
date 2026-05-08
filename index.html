@@ -2187,8 +2187,9 @@ Color: no`;
         setLoading(false);
 
         const libroPrincipal = carrito[0]?.titulo || '';
+        const esExpress = carrito[0]?.express;
         const tipoPago = form.pago === 'sena' ? 'Transferí la seña del 50%.' : 'Realicé el pago total.';
-        const msj = `Hola Pau! Soy ${form.nombre}.\n\nYa realicé la transferencia correspondiente al pedido ${order.id} ("${libroPrincipal}").\n\n${tipoPago}\n\nSi necesitás el comprobante, te lo envío.\n\nGracias 😊`;
+        const msj = `Hola Pau! Soy ${form.nombre}.\n\nYa realicé la transferencia correspondiente al pedido ${esExpress ? '⚡ EXPRESS ' : ''}${order.id} ("${libroPrincipal}").\n\n${tipoPago}\n\nSi necesitás el comprobante, te lo envío.\n\nGracias 😊`;
         window.open(`https://wa.me/${pagosConfig.whatsapp_admin || '5493885888949'}?text=${encodeURIComponent(msj)}`, '_blank');
         goToStep(4);
       }
