@@ -3358,7 +3358,7 @@ Color: no`;
       const [sortConfig, setSortConfig] = React.useState({ key: null, direction: 'asc' });
       const [resizing, setResizing] = React.useState(null);
       const [newHoliday, setNewHoliday] = React.useState({ fecha: '', motivo: '', universidad: '' });
-      const [configDraft, setConfigDraft] = React.useState(null);
+      const [configDraft, setConfigDraft] = React.useState(() => JSON.parse(JSON.stringify(config)));
       const [catSortConfig, setCatSortConfig] = React.useState({ key: null, direction: 'asc' });
       const [catColumnVisibility, setCatColumnVisibility] = React.useState({
         libro: true, carrera: true, paginas: true, a4bn: true, a4color: true,
