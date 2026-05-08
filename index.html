@@ -1764,10 +1764,10 @@ Color: no`;
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className={`badge text-xs ${careerColor(workingBook.id_carrera || '')}`}>
+                  <span className="badge text-xs bg-ink-100 text-ink-500">
                     <Icon.Book /> {workingBook.carrera || 'Sin carrera'}
                   </span>
-                  <span className="badge text-xs bg-ink-100 text-ink-500">{workingBook.paginas} pags · {formatPages(workingBook.paginas)} hojas</span>
+                  <span className="badge text-xs bg-ink-100 text-ink-500">{workingBook.paginas} pags · {HOJAS(workingBook.paginas, workingBook.paginas_por_hoja)} hojas</span>
                 </div>
                 <h1 className="text-xl font-800 text-ink-900 dark:text-white mb-1 leading-tight">{workingBook.titulo}</h1>
                 <p className="text-sm text-ink-500 mb-2">{workingBook.materia || 'Sin materia'}</p>
