@@ -1288,6 +1288,30 @@ Color: no`;
       return saveOrderToSupabase(order, config);
     }
 
+    async function fetchConfigFromSupabase(config) {
+      try {
+        const sb = getSupabase(config);
+        const { data, error } = await sb.from('config').select('data').eq('id', 1).single();
+        if (error) throw error;
+        return data?.data || null;
+      } catch (err) {
+        console.warn('Config no encontrada en Supabase, usando valores locales:', err.message);
+        return null;
+      }
+    }
+
+    async function saveConfigToSupabase(configData, config) {
+      try {
+        const sb = getSupabase(config);
+        const { error } = await sb.from('config').upsert({ id: 1, data: configData, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+        if (error) throw error;
+        return true;
+      } catch (err) {
+        console.error('Error guardando config en Supabase:', err);
+        return false;
+      }
+    }
+
     function getNextBusinessDay(fechaStr) {
       const date = new Date(`${fechaStr}T12:00:00`);
       date.setDate(date.getDate() + 1);
@@ -4785,7 +4809,7 @@ Responde ÚNICAMENTE un Array JSON:
                 <div className="text-sm text-ink-400">Editando en borrador. Guardá para aplicar los cambios.</div>
                 <div className="flex gap-2">
                   <button className="btn-secondary text-xs px-3 py-2" onClick={() => setConfigDraft(JSON.parse(JSON.stringify(config)))} disabled={savingConfig}>Descartar</button>
-                  <button className="btn-primary text-xs px-3 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); try { saveLocal(STORAGE.config, finalConfig); const verify = localStorage.getItem(STORAGE.config); console.log('SAVED config pagos:', finalConfig.pagos, '| verify:', verify ? 'OK (' + verify.length + ' chars)' : 'FAILED'); } catch(e) { console.error('SAVE ERROR:', e); alert('Error al guardar: ' + e.message); } setConfig(finalConfig); setSavingConfig(false); alert('Configuración guardada. Recargá la página para verificar que persiste.'); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
+                  <button className="btn-primary text-xs px-3 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); let saved = false; try { saveLocal(STORAGE.config, finalConfig); saved = await saveConfigToSupabase(finalConfig, finalConfig); console.log('SAVED config pagos:', finalConfig.pagos, '| Supabase:', saved ? 'OK' : 'FAIL'); } catch(e) { console.error('SAVE ERROR:', e); } setConfig(finalConfig); setSavingConfig(false); alert('Configuración guardada' + (saved ? ' en la nube.' : ' solo localmente.')); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
                 </div>
               </div>
 
@@ -4973,7 +4997,7 @@ Responde ÚNICAMENTE un Array JSON:
               <div className="flex items-center justify-end gap-3 sticky bottom-4 bg-surface-hover/80 backdrop-blur-sm p-3 rounded-xl border border-ink-100 shadow-sm z-10">
                 <span className="text-xs text-ink-400 mr-auto">{JSON.stringify(config) !== JSON.stringify(configDraft) ? 'Hay cambios sin guardar' : 'Sin cambios'}</span>
                 <button className="btn-secondary text-sm px-4 py-2" onClick={() => setConfigDraft(JSON.parse(JSON.stringify(config)))} disabled={savingConfig}>Descartar</button>
-                <button className="btn-primary text-sm px-4 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); try { saveLocal(STORAGE.config, finalConfig); const verify = localStorage.getItem(STORAGE.config); console.log('SAVED config pagos:', finalConfig.pagos, '| verify:', verify ? 'OK (' + verify.length + ' chars)' : 'FAILED'); } catch(e) { console.error('SAVE ERROR:', e); alert('Error al guardar: ' + e.message); } setConfig(finalConfig); setSavingConfig(false); alert('Configuración guardada. Recargá la página para verificar que persiste.'); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
+                <button className="btn-primary text-sm px-4 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); let saved = false; try { saveLocal(STORAGE.config, finalConfig); saved = await saveConfigToSupabase(finalConfig, finalConfig); console.log('SAVED config pagos:', finalConfig.pagos, '| Supabase:', saved ? 'OK' : 'FAIL'); } catch(e) { console.error('SAVE ERROR:', e); } setConfig(finalConfig); setSavingConfig(false); alert('Configuración guardada' + (saved ? ' en la nube.' : ' solo localmente.')); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
               </div>
             </div>
           )}
@@ -5068,10 +5092,11 @@ Responde ÚNICAMENTE un Array JSON:
       React.useEffect(() => {
         async function init() {
           const savedConfig = loadLocal(STORAGE.config, null);
-          console.log('LOADED from localStorage:', savedConfig?.pagos, '| key:', STORAGE.config);
           const loadedConfig = await loadJson('./config.json', FALLBACK_CONFIG);
-          console.log('LOADED from config.json:', loadedConfig?.pagos);
-          const mergedConfig = normalizeConfig(savedConfig ? deepMerge(loadedConfig, savedConfig) : loadedConfig);
+          const supabaseConfig = await fetchConfigFromSupabase(loadedConfig);
+          console.log('LOADED from Supabase:', supabaseConfig?.pagos);
+          const baseConfig = supabaseConfig ? deepMerge(loadedConfig, supabaseConfig) : loadedConfig;
+          const mergedConfig = normalizeConfig(savedConfig ? deepMerge(baseConfig, savedConfig) : baseConfig);
           console.log('MERGED config pagos:', mergedConfig.pagos);
           const savedCarrito = loadLocal(STORAGE.carrito, []);
           const savedForm = loadLocal(STORAGE.checkoutForm, null);
