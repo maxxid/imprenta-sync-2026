@@ -2515,7 +2515,6 @@ Color: no`;
       const phoneMatch = text.match(/(\+?54\s*9\s*)?(\d[\d\s-]{7,})/);
       const namedMatch = text.match(/nombre\s*:\s*(.+)/i);
       const firstTextLine = text.split('\n').map(line => line.trim()).find(line => /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{5,}$/.test(line));
-      const senaMatch = text.match(/50\s*%|seña/i);
       const colorMatch = text.match(/\bcolor\b/i);
       const expressMatch = text.match(/urgente|express/i);
       const entregaMatch = text.match(/(\d{4}-\d{2}-\d{2})\s*(manana|tarde)?/i);
@@ -2525,7 +2524,7 @@ Color: no`;
       const total = matchedBooks.length > 0
         ? roundTotal(matchedBooks.reduce((acc, book) => acc + calcPrecioItem(book, formato, 'basica', config, Boolean(colorMatch) && Number(book.precio_color) > 0, Boolean(expressMatch)).total, 0), config)
         : (previewCalc ? previewCalc.total : 0);
-      const montoPagado = amountMatch ? roundTotal(Number(amountMatch[1].replace(/\./g, '')), config) : senaMatch ? roundTotal(total * 0.5, config) : 0;
+      const montoPagado = amountMatch ? roundTotal(Number(amountMatch[1].replace(/\./g, '')), config) : 0;
       return {
         nombre: (namedMatch?.[1] || firstTextLine || 'Alumno sin identificar').trim(),
         whatsapp: normalizePhone(phoneMatch?.[2] || ''),
