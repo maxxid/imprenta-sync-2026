@@ -1432,7 +1432,11 @@ Color: no`;
     }
 
     function saveLocal(key, value) {
-      localStorage.setItem(key, JSON.stringify(value));
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (error) {
+        console.error('saveLocal failed:', key, error.message);
+      }
     }
 
     function loadLocal(key, fallback) {
@@ -3154,7 +3158,7 @@ Color: no`;
             setLoading(false);
             return;
           }
-          saveLocal(STORAGE.admin, { email: data.user.email, token: data.session.access_token });
+          saveLocal(STORAGE.admin, { email: data.user.email, token: data.session.access_token, refresh_token: data.session.refresh_token });
           onSuccess(true);
         } catch (e) {
           setError(e.message || 'Error al conectar con Supabase.');
@@ -5100,6 +5104,22 @@ Responde ÚNICAMENTE un Array JSON:
           const savedForm = loadLocal(STORAGE.checkoutForm, null);
           const savedCliente = loadLocal(STORAGE.cliente, null);
           setConfig(mergedConfig);
+
+          // Restaurar sesión de admin si hay token guardado
+          const savedAdmin = loadLocal(STORAGE.admin, null);
+          if (savedAdmin?.token) {
+            try {
+              const sb = getSupabase(mergedConfig);
+              const { error } = await sb.auth.setSession({ access_token: savedAdmin.token, refresh_token: savedAdmin.refresh_token || '' });
+              if (error) {
+                console.warn('Sesión admin expirada, requiriendo login:', error.message);
+                saveLocal(STORAGE.admin, false);
+                setAdminAuthed(false);
+              }
+            } catch (e) {
+              console.warn('Error restaurando sesión admin:', e.message);
+            }
+          }
 
           // Cargar libros desde Supabase (fuente única de verdad)
           let booksData = await fetchBooksFromSupabase(mergedConfig);
