@@ -655,6 +655,12 @@
     .bg-surface { background: var(--surface); }
     .bg-surface-hover { background: var(--surface-hover); }
     .border-surface { border-color: var(--border); }
+    .switch-sm { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .switch-sm input { opacity: 0; width: 0; height: 0; }
+    .switch-sm span { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--ink-200); border-radius: 20px; transition: .2s; }
+    .switch-sm span:before { content: ""; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .2s; }
+    .switch-sm input:checked + span { background: var(--brand, #0066FF); }
+    .switch-sm input:checked + span:before { transform: translateX(16px); }
   </style>
 </head>
 
@@ -3458,6 +3464,20 @@ Responde ÚNICAMENTE un Array JSON:
         }));
       }
 
+      function updateParserField(field, value) {
+        if (!parserPreview) return;
+        setParserPreview(prev => {
+          const updated = { ...prev, [field]: value };
+          if (field === 'montoPagado') {
+            updated.saldo = Math.max(0, updated.total - value);
+          }
+          if (field === 'entregaFecha') {
+            updated.entrega = { ...prev.entrega, fecha: value };
+          }
+          return updated;
+        });
+      }
+
       async function importParserPreview() {
         if (!parserPreview || !parserPreview.libros.length) return;
         setParserImporting(true);
@@ -4491,8 +4511,8 @@ Responde ÚNICAMENTE un Array JSON:
                 ) : (
                   <>
                     <div className="space-y-3 text-sm">
-                      <div className="flex justify-between"><span className="text-ink-500">Nombre</span><span className="font-700 text-right ml-4">{parserPreview.nombre}</span></div>
-                      <div className="flex justify-between"><span className="text-ink-500">Telefono</span><span className="font-700">{parserPreview.whatsapp || '-'}</span></div>
+                      <div className="flex justify-between items-center"><span className="text-ink-500">Nombre</span><input className="input-field text-xs py-1.5 w-[180px] text-right font-700" value={parserPreview.nombre || ''} onChange={e => updateParserField('nombre', e.target.value)} /></div>
+                      <div className="flex justify-between items-center"><span className="text-ink-500">Telefono</span><input className="input-field text-xs py-1.5 w-[160px] text-right font-700" value={parserPreview.whatsapp || ''} onChange={e => updateParserField('whatsapp', e.target.value)} placeholder="Sin +54" /></div>
                       <div>
                         <span className="text-ink-500 text-xs block mb-2">Libros</span>
                         <div className="space-y-2">
@@ -4547,13 +4567,13 @@ Responde ÚNICAMENTE un Array JSON:
                           <button onClick={addParserLibro} className="text-xs text-brand-DEFAULT hover:text-brand-dark font-700 flex items-center gap-1 mt-1">+ Agregar otro libro</button>
                         </div>
                       </div>
-                      <div className="flex justify-between"><span className="text-ink-500">Formato</span><span className="font-700">{parserPreview.formato}</span></div>
-                      <div className="flex justify-between"><span className="text-ink-500">Seña / pago</span><span className="font-700">{fmt(parserPreview.montoPagado)}</span></div>
+                      <div className="flex justify-between items-center"><span className="text-ink-500">Formato</span><select className="input-field text-xs py-1.5 w-[80px] text-right font-700" value={parserPreview.formato} onChange={e => updateParserField('formato', e.target.value)}><option value="A4">A4</option><option value="A5">A5</option></select></div>
+                      <div className="flex justify-between items-center"><span className="text-ink-500">Seña / pago</span><input className="input-field text-xs py-1.5 w-[130px] text-right font-700" type="number" value={parserPreview.montoPagado || 0} onChange={e => updateParserField('montoPagado', Number(e.target.value) || 0)} /></div>
                       <div className="flex justify-between"><span className="text-ink-500">Saldo</span><span className="font-700">{fmt(parserPreview.saldo)}</span></div>
                       <div className="flex justify-between"><span className="text-ink-500">Total</span><span className="font-700">{fmt(parserPreview.total)}</span></div>
-                      <div className="flex justify-between"><span className="text-ink-500">Color</span><span className="font-700">{parserPreview.color ? 'Si' : 'No'}</span></div>
-                      <div className="flex justify-between"><span className="text-ink-500">Express</span><span className="font-700">{parserPreview.express ? 'Si' : 'No'}</span></div>
-                      {parserPreview.entrega?.fecha && <div className="flex justify-between"><span className="text-ink-500">Fecha entrega</span><span className="font-700">{parserPreview.entrega.fecha}</span></div>}
+                      <div className="flex justify-between items-center"><span className="text-ink-500">Color</span><label className="switch-sm"><input type="checkbox" checked={parserPreview.color} onChange={e => updateParserField('color', e.target.checked)} /><span /></label></div>
+                      <div className="flex justify-between items-center"><span className="text-ink-500">Express</span><label className="switch-sm"><input type="checkbox" checked={parserPreview.express} onChange={e => updateParserField('express', e.target.checked)} /><span /></label></div>
+                      <div className="flex justify-between items-center"><span className="text-ink-500">Fecha entrega</span><input className="input-field text-xs py-1.5 w-[150px] text-right font-700" type="date" value={parserPreview.entrega?.fecha || ''} onChange={e => updateParserField('entregaFecha', e.target.value)} /></div>
                     </div>
                     {parserPreview.aiMsjWs && (
                       <div className="mt-4 p-3 bg-ink-50 rounded-lg">
