@@ -3388,10 +3388,10 @@ Color: no`;
       }
 
       React.useEffect(() => {
-        if (tab === 'config' && !configDraft) {
+        if (tab === 'config') {
           setConfigDraft(JSON.parse(JSON.stringify(config)));
         }
-      }, [tab, config]);
+      }, [tab]);
 
       async function parseWithGemini(mensaje) {
         if (!mensaje.trim()) {
