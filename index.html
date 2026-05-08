@@ -4785,7 +4785,7 @@ Responde ÚNICAMENTE un Array JSON:
                 <div className="text-sm text-ink-400">Editando en borrador. Guardá para aplicar los cambios.</div>
                 <div className="flex gap-2">
                   <button className="btn-secondary text-xs px-3 py-2" onClick={() => setConfigDraft(JSON.parse(JSON.stringify(config)))} disabled={savingConfig}>Descartar</button>
-                  <button className="btn-primary text-xs px-3 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); saveLocal(STORAGE.config, configDraft); setConfig(configDraft); setSavingConfig(false); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
+                  <button className="btn-primary text-xs px-3 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); saveLocal(STORAGE.config, finalConfig); setConfig(finalConfig); setSavingConfig(false); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
                 </div>
               </div>
 
@@ -4973,7 +4973,7 @@ Responde ÚNICAMENTE un Array JSON:
               <div className="flex items-center justify-end gap-3 sticky bottom-4 bg-surface-hover/80 backdrop-blur-sm p-3 rounded-xl border border-ink-100 shadow-sm z-10">
                 <span className="text-xs text-ink-400 mr-auto">{JSON.stringify(config) !== JSON.stringify(configDraft) ? 'Hay cambios sin guardar' : 'Sin cambios'}</span>
                 <button className="btn-secondary text-sm px-4 py-2" onClick={() => setConfigDraft(JSON.parse(JSON.stringify(config)))} disabled={savingConfig}>Descartar</button>
-                <button className="btn-primary text-sm px-4 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); saveLocal(STORAGE.config, configDraft); setConfig(configDraft); setSavingConfig(false); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
+                <button className="btn-primary text-sm px-4 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); saveLocal(STORAGE.config, finalConfig); setConfig(finalConfig); setSavingConfig(false); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
               </div>
             </div>
           )}
