@@ -904,8 +904,8 @@ Color: no`;
       const a5s = calcSugerido(book.paginas, 'A5', config, pph);
       return {
         ...book,
-        a4_bn_sugerido: a4s, a4_bn_final: a4s + Number(book.a4_bn_ajuste || 0),
-        a5_bn_sugerido: a5s, a5_bn_final: a5s + Number(book.a5_bn_ajuste || 0)
+        a4_bn_sugerido: a4s,
+        a5_bn_sugerido: a5s
       };
     }
 
@@ -4183,7 +4183,7 @@ Responde ÚNICAMENTE un Array JSON:
                                     setBulkChanges(prev => {
                                       const existing = prev[b.id] || {};
                                       const updated = recalcBookSugeridos({ ...b, ...existing, paginas: p }, config);
-                                      return { ...prev, [b.id]: { ...existing, paginas: p, a4_bn_sugerido: updated.a4_bn_sugerido, a4_bn_final: updated.a4_bn_final + Number(existing.a4_bn_ajuste || b.a4_bn_ajuste || 0), a5_bn_sugerido: updated.a5_bn_sugerido, a5_bn_final: updated.a5_bn_final + Number(existing.a5_bn_ajuste || b.a5_bn_ajuste || 0), paginas_por_hoja: existing.paginas_por_hoja || b.paginas_por_hoja } };
+                                      return { ...prev, [b.id]: { ...existing, paginas: p, a4_bn_sugerido: updated.a4_bn_sugerido, a5_bn_sugerido: updated.a5_bn_sugerido, paginas_por_hoja: existing.paginas_por_hoja || b.paginas_por_hoja } };
                                     });
                                   }} /></td>
                                   <td>
@@ -4192,7 +4192,7 @@ Responde ÚNICAMENTE un Array JSON:
                                       setBulkChanges(prev => {
                                         const existing = prev[b.id] || {};
                                         const updated = recalcBookSugeridos({ ...b, ...existing, paginas_por_hoja: pp }, config);
-                                        return { ...prev, [b.id]: { ...existing, paginas_por_hoja: pp, a4_bn_sugerido: updated.a4_bn_sugerido, a4_bn_final: updated.a4_bn_final + Number(existing.a4_bn_ajuste || b.a4_bn_ajuste || 0), a5_bn_sugerido: updated.a5_bn_sugerido, a5_bn_final: updated.a5_bn_final + Number(existing.a5_bn_ajuste || b.a5_bn_ajuste || 0) } };
+                                        return { ...prev, [b.id]: { ...existing, paginas_por_hoja: pp, a4_bn_sugerido: updated.a4_bn_sugerido, a5_bn_sugerido: updated.a5_bn_sugerido } };
                                       });
                                     }}>
                                       <option value={2}>2</option>
