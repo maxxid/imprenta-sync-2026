@@ -1200,11 +1200,15 @@ Color: no`;
       return window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
     }
 
-    function getSupabaseAuth(config) {
+    async function getSupabaseAuth(config) {
       const sb = window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
       const savedAdmin = loadLocal(STORAGE.admin, null);
       if (savedAdmin?.token) {
-        sb.auth.setSession({ access_token: savedAdmin.token, refresh_token: savedAdmin.refresh_token || '' }).catch(() => {});
+        try {
+          await sb.auth.setSession({ access_token: savedAdmin.token, refresh_token: savedAdmin.refresh_token || '' });
+        } catch (e) {
+          console.warn('No se pudo restaurar sesión admin para upload:', e.message);
+        }
       }
       return sb;
     }
@@ -1260,7 +1264,7 @@ Color: no`;
     }
 
     async function uploadPdfToStorage(file, bookId, config) {
-      const sb = getSupabaseAuth(config);
+      const sb = await getSupabaseAuth(config);
       const path = `pdfs/${bookId}.pdf`;
       const { data, error } = await sb.storage.from('pdfs').upload(path, file, { contentType: 'application/pdf', upsert: true });
       if (error) throw error;
@@ -1269,7 +1273,7 @@ Color: no`;
     }
 
     async function subirPortada(file, bookId, config) {
-      const sb = getSupabaseAuth(config);
+      const sb = await getSupabaseAuth(config);
       const ext = file.name.split('.').pop() || 'jpg';
       const path = `portadas/${bookId}-${Date.now()}.${ext}`;
       const { data, error } = await sb.storage.from('pdfs').upload(path, file, { contentType: file.type || 'image/jpeg', upsert: true });
@@ -1313,7 +1317,7 @@ Color: no`;
 
     async function fetchConfigFromSupabase(config) {
       try {
-        const sb = getSupabaseAuth(config);
+        const sb = await getSupabaseAuth(config);
         const { data, error } = await sb.from('config').select('data').eq('id', 1).single();
         if (error) throw error;
         return data?.data || null;
@@ -1325,7 +1329,7 @@ Color: no`;
 
     async function saveConfigToSupabase(configData, config) {
       try {
-        const sb = getSupabaseAuth(config);
+        const sb = await getSupabaseAuth(config);
         const { error } = await sb.from('config').upsert({ id: 1, data: configData, updated_at: new Date().toISOString() }, { onConflict: 'id' });
         if (error) throw error;
         return true;
