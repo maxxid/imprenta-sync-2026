@@ -1884,17 +1884,19 @@
                   </div>
                 )}
 
-                <div className={`rounded-2xl p-4 mb-4 ${pricing.tipo === 'anillado' ? 'bg-blue-50 border border-blue-100' : 'bg-emerald-50 border border-emerald-100'}`}>
+                <div className={`rounded-2xl p-4 mb-4 ${(workingBook.encuadernacion || pricing.tipo) === 'anillado' ? 'bg-blue-50 border border-blue-100' : 'bg-emerald-50 border border-emerald-100'}`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{pricing.tipo === 'anillado' ? '🪢' : '📎'}</span>
-                    <span className={`font-700 text-base ${pricing.tipo === 'anillado' ? 'text-blue-800' : 'text-emerald-800'}`}>
-                      {pricing.tipo === 'anillado' ? 'Anillado' : 'Abrochado'}
+                    <span className="text-lg">{(workingBook.encuadernacion || pricing.tipo) === 'anillado' ? '🪢' : '📎'}</span>
+                    <span className={`font-700 text-base ${(workingBook.encuadernacion || pricing.tipo) === 'anillado' ? 'text-blue-800' : 'text-emerald-800'}`}>
+                      {(workingBook.encuadernacion || pricing.tipo) === 'anillado' ? 'Anillado' : 'Abrochado'}
                     </span>
                   </div>
-                  <div className={`text-sm ${pricing.tipo === 'anillado' ? 'text-blue-700' : 'text-emerald-700'}`}>
-                    {pricing.tipo === 'anillado'
-                      ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
-                      : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
+                  <div className={`text-sm ${(workingBook.encuadernacion || pricing.tipo) === 'anillado' ? 'text-blue-700' : 'text-emerald-700'}`}>
+                    {workingBook.encuadernacion
+                      ? `Configurado como ${workingBook.encuadernacion === 'anillado' ? 'anillado' : 'abrochado'} por el administrador.`
+                      : pricing.tipo === 'anillado'
+                        ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
+                        : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
                   </div>
                 </div>
 
