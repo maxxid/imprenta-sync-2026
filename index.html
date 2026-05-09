@@ -471,17 +471,21 @@
     }
 
     .resize-handle {
-      position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      width: 5px;
+
       cursor: col-resize;
-      z-index: 10;
     }
 
     .resize-handle:hover {
       background: #0066FF;
+    }
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
     }
 
     .table-shell td {
@@ -4092,7 +4096,7 @@ Responde ÚNICAMENTE un Array JSON:
                     </div>
                   </div>
 
-                  <div className="table-shell" style={{overflowX: 'auto'}}>
+                  <div className="table-shell" style={{overflowX: 'auto'}} onMouseMove={handleResizeMove} onMouseUp={handleResizeEnd} onMouseLeave={handleResizeEnd}>
                     <table style={{minWidth: bulkEdit ? '1100px' : 'auto'}}>
                       <thead>
                         <tr>
@@ -4120,8 +4124,8 @@ Responde ÚNICAMENTE un Array JSON:
                               { key: 'a5color', label: 'A5 Color' },
                               { key: 'estado', label: 'Estado' },
                               { key: 'acciones', label: 'Acciones' }
-                            ].map(col => (
-                              <th key={col.key} style={!catColumnVisibility[col.key] ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
+                            ].map((col, idx) => (
+                              <th key={col.key} style={{...(!catColumnVisibility[col.key] ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}), position: 'relative'}}>
                                 {catColumnVisibility[col.key] ? (
                                   <button className="flex items-center gap-1 w-full text-left hover:text-ink-900 transition-colors" onClick={() => handleCatSort(col.key)}>
                                     {col.label}
@@ -4132,6 +4136,7 @@ Responde ÚNICAMENTE un Array JSON:
                                 ) : (
                                   <span className="text-xs opacity-50">{col.label.charAt(0)}</span>
                                 )}
+                                {catColumnVisibility[col.key] && <div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, idx); }} />}
                               </th>
                             ))
                           )}
