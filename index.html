@@ -720,7 +720,15 @@
       encuadernacion: {
         abrochado: 0,
         basica: 600,
-        umbral_anillado_hojas: 40
+        umbral_anillado_hojas: 40,
+        espirales: [
+          { hasta: 70, size: '9 mm' },
+          { hasta: 100, size: '12 mm' },
+          { hasta: 120, size: '14 mm' },
+          { hasta: 150, size: '17 mm' },
+          { hasta: 220, size: '25 mm' },
+          { hasta: 999, size: '40 mm' }
+        ]
       },
       redondeo: {
         multiplo: 200
@@ -921,6 +929,21 @@
       }));
       const byId = new Map([...fromBooks, ...configured].map(career => [career.id_carrera || slug(career.nombre), career]));
       return [...byId.values()].filter(career => career.nombre).sort((a, b) => careerLabel(a).localeCompare(careerLabel(b)));
+    }
+
+    function getEspiralSize(hojas, config) {
+      const espirales = config?.encuadernacion?.espirales || [
+        { hasta: 70, size: '9 mm' },
+        { hasta: 100, size: '12 mm' },
+        { hasta: 120, size: '14 mm' },
+        { hasta: 150, size: '17 mm' },
+        { hasta: 220, size: '25 mm' },
+        { hasta: 999, size: '40 mm' }
+      ];
+      for (const e of espirales) {
+        if (hojas <= e.hasta) return e.size;
+      }
+      return 'N/A';
     }
 
     function getCareer(config, books, id) {
@@ -4719,7 +4742,7 @@ Responde ÚNICAMENTE un Array JSON:
                                 <div className="text-xs text-ink-400">
                                   {order.excede_capacidad
                                     ? `${order.hojas_primera_entrega} + ${order.hojas_segunda_entrega} = ${order.hojas} hojas`
-                                    : `${item.hojas || order.hojas} hojas`}
+                                    : `${item.hojas || order.hojas} hojas - ${getEspiralSize(item.hojas || order.hojas, config)}`}
                                 </div>
                               </>
                             ) : (
@@ -5070,6 +5093,32 @@ Responde ÚNICAMENTE un Array JSON:
                     <div key={label}>
                       <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">{label}</label>
                       <input className="input-field" type="number" value={value} onChange={event => setConfigDraft(current => ({ ...current, ...builder(Number(event.target.value || 0)) }))} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card p-5">
+                <div className="font-700 text-sm text-ink-800 mb-4">Espirales (umbral en hojas)</div>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                  {((configDraft.encuadernacion?.espirales) || [
+                    { hasta: 70, size: '9 mm' },
+                    { hasta: 100, size: '12 mm' },
+                    { hasta: 120, size: '14 mm' },
+                    { hasta: 150, size: '17 mm' },
+                    { hasta: 220, size: '25 mm' },
+                    { hasta: 999, size: '40 mm' }
+                  ]).map((e, idx) => (
+                    <div key={idx}>
+                      <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Hasta {e.hasta} hojas</label>
+                      <input className="input-field" value={e.size} onChange={event => {
+                        const espirales = [...(configDraft.encuadernacion?.espirales || [
+                          { hasta: 70, size: '9 mm' }, { hasta: 100, size: '12 mm' }, { hasta: 120, size: '14 mm' },
+                          { hasta: 150, size: '17 mm' }, { hasta: 220, size: '25 mm' }, { hasta: 999, size: '40 mm' }
+                        ])];
+                        espirales[idx] = { ...espirales[idx], size: event.target.value };
+                        setConfigDraft(current => ({ ...current, encuadernacion: { ...current.encuadernacion, espirales } }));
+                      }} />
                     </div>
                   ))}
                 </div>
