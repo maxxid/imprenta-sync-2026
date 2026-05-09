@@ -1730,7 +1730,7 @@
                       <div className="text-xs text-ink-400 mb-1">{book.materia}</div>
                       <div className="text-xs text-ink-400 mb-3">{book.autor}</div>
                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <span className={`badge ${tipo === 'anillado' ? 'tag-link' : 'tag-staple'}`}>{tipo === 'anillado' ? '🪢 Anillado' : '📎 Abrochado'}{book.encuadernacion ? ' ✎' : ''}</span>
+                          <span className={`badge ${tipo === 'anillado' ? 'tag-link' : 'tag-staple'}`}>{tipo === 'anillado' ? '🪢 Anillado' : '📎 Abrochado'}</span>
                          <span className="badge bg-ink-100 text-ink-500">{book.paginas} pags · {hojas} hojas · {book.paginas_por_hoja === 4 ? '4' : '2'} pág/hoja</span>
                          {combos.map(c => <span key={c.key} className={`badge ${c.color ? 'bg-accent-muted text-accent' : 'bg-brand-muted text-brand-dark'}`}>{c.label}</span>)}
                        </div>
