@@ -959,7 +959,7 @@
       if ('a4_bn_habilitado' in libro) {
         const comboKey = `${formato.toLowerCase()}_${color ? 'color' : 'bn'}`;
         const precioFinal = Number(libro[`${comboKey}_final`] || 0);
-      const tipo = form.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
+        const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
         // NO rounding here — rounding only at cart total
         return { hojas, subtotal: precioFinal, total: precioFinal, tipo };
       }
