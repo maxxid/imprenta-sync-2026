@@ -1200,17 +1200,16 @@ Color: no`;
       return window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
     }
 
-    async function getSupabaseAuth(config) {
-      const sb = window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
+    function getSupabaseAuth(config) {
       const savedAdmin = loadLocal(STORAGE.admin, null);
-      if (savedAdmin?.token) {
-        try {
-          await sb.auth.setSession({ access_token: savedAdmin.token, refresh_token: savedAdmin.refresh_token || '' });
-        } catch (e) {
-          console.warn('No se pudo restaurar sesión admin para upload:', e.message);
-        }
+      const token = savedAdmin?.token;
+      if (token) {
+        return window.supabase.createClient(config.supabase.url, config.supabase.anon_key, {
+          auth: { autoRefreshToken: false, persistSession: false },
+          global: { headers: { Authorization: `Bearer ${token}` } }
+        });
       }
-      return sb;
+      return window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
     }
 
     async function fetchBooksFromSupabase(config) {
