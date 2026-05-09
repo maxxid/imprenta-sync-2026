@@ -1347,7 +1347,7 @@
 
     async function fetchConfigFromSupabase(config) {
       try {
-        const sb = await getSupabaseAuth(config);
+        const sb = getSupabase(config);
         const { data, error } = await sb.from('config').select('data').eq('id', 1).single();
         if (error) throw error;
         return data?.data || null;
