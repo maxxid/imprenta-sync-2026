@@ -959,7 +959,7 @@
       if ('a4_bn_habilitado' in libro) {
         const comboKey = `${formato.toLowerCase()}_${color ? 'color' : 'bn'}`;
         const precioFinal = Number(libro[`${comboKey}_final`] || 0);
-        const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
+      const tipo = form.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
         // NO rounding here — rounding only at cart total
         return { hojas, subtotal: precioFinal, total: precioFinal, tipo };
       }
@@ -1719,7 +1719,7 @@
               const combos = getBookCombinations(book);
               const minPrice = getMinPrice(book);
                const hojas = HOJAS(book.paginas, book.paginas_por_hoja || 2);
-               const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
+               const tipo = book.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
               return (
                 <button key={book.id} onClick={() => onSelectLibro(book)} className="card p-4 text-left hover:shadow-md hover:border-brand transition-all btn-press">
                   <div className="grid grid-cols-[88px_1fr] gap-4 items-start">
@@ -1730,7 +1730,7 @@
                       <div className="text-xs text-ink-400 mb-1">{book.materia}</div>
                       <div className="text-xs text-ink-400 mb-3">{book.autor}</div>
                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                         <span className={`badge ${tipo === 'anillado' ? 'tag-link' : 'tag-staple'}`}>{tipo === 'anillado' ? 'Anillado' : 'Abrochado'}</span>
+                          <span className={`badge ${tipo === 'anillado' ? 'tag-link' : 'tag-staple'}`}>{tipo === 'anillado' ? 'Anillado' : 'Abrochado'}{book.encuadernacion ? ' ✎' : ''}</span>
                          <span className="badge bg-ink-100 text-ink-500">{book.paginas} pags · {hojas} hojas · {book.paginas_por_hoja === 4 ? '4' : '2'} pág/hoja</span>
                          {combos.map(c => <span key={c.key} className={`badge ${c.color ? 'bg-accent-muted text-accent' : 'bg-brand-muted text-brand-dark'}`}>{c.label}</span>)}
                        </div>
@@ -1866,9 +1866,11 @@
                     {pricing.tipo === 'anillado' ? 'Encuadernacion automatica' : 'Abrochado sin costo'}
                   </div>
                   <div className={`text-sm ${pricing.tipo === 'anillado' ? 'text-blue-700' : 'text-emerald-700'}`}>
-                    {pricing.tipo === 'anillado'
-                      ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
-                      : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
+                    {workingBook.encuadernacion
+                      ? `El administrador configuró este libro como ${workingBook.encuadernacion === 'anillado' ? 'anillado' : 'abrochado'}.`
+                      : pricing.tipo === 'anillado'
+                        ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
+                        : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
                   </div>
                 </div>
 
