@@ -857,7 +857,7 @@
       return combos.length ? Math.min(...combos.map(c => c.precio)) : 0;
     }
 
-    function calcSugerido(paginas, formato, config, paginasPorHoja = 2, encuadernacionOverride = null) {
+    function calcSugerido(paginas, formato, config, paginasPorHoja = 2) {
       const hojas = HOJAS(paginas, paginasPorHoja);
       let sub = 0;
       if (formato === 'A5') {
@@ -865,8 +865,7 @@
       } else {
         sub = hojas * Number(hojas >= 50 ? config.precios?.A4?.mas_50 || 70 : config.precios?.A4?.menos_50 || 90);
       }
-      const tipo = encuadernacionOverride || (hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado');
-      if (tipo === 'anillado') {
+      if (hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40)) {
         sub += Number(config.encuadernacion?.basica || 600);
       }
       return sub;
@@ -898,8 +897,8 @@
 
     function recalcBookSugeridos(book, config) {
       const pph = Number(book.paginas_por_hoja) || 2;
-      const a4s = calcSugerido(book.paginas, 'A4', config, pph, book.encuadernacion);
-      const a5s = calcSugerido(book.paginas, 'A5', config, pph, book.encuadernacion);
+      const a4s = calcSugerido(book.paginas, 'A4', config, pph);
+      const a5s = calcSugerido(book.paginas, 'A5', config, pph);
       return {
         ...book,
         a4_bn_sugerido: a4s,
@@ -960,7 +959,7 @@
       if ('a4_bn_habilitado' in libro) {
         const comboKey = `${formato.toLowerCase()}_${color ? 'color' : 'bn'}`;
         const precioFinal = Number(libro[`${comboKey}_final`] || 0);
-        const tipo = libro.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
+        const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
         // NO rounding here — rounding only at cart total
         return { hojas, subtotal: precioFinal, total: precioFinal, tipo };
       }
@@ -974,7 +973,7 @@
         const key = hojas >= 50 ? 'mas_50' : 'menos_50';
         subtotal = hojas * Number(config.precios?.A4?.[key] || 0);
       }
-      const tipo = libro.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
+      const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
       if (tipo === 'anillado') {
         subtotal += Number(config.encuadernacion.basica || 0);
       }
@@ -1759,11 +1758,6 @@
       const [showExpressModal, setShowExpressModal] = React.useState(false);
       const [expressSlotSel, setExpressSlotSel] = React.useState(null);
       const [expressCartWarn, setExpressCartWarn] = React.useState(false);
-      const [encuadernacionSel, setEncuadernacionSel] = React.useState('abrochado');
-
-      React.useEffect(() => {
-        setEncuadernacionSel(workingBook?.encuadernacion || pricing.tipo);
-      }, [workingBook?.encuadernacion, pricing.tipo]);
 
       function handleAgregar(item, isExpress) {
         setToast({ msg: isExpress ? '⚡ Libro express agregado al pedido!' : '📚 Libro agregado al pedido!', type: 'ok' });
@@ -1782,7 +1776,7 @@
           paginas: workingBook.paginas,
           hojas: pricing.hojas,
           formato,
-          encuadernacion: encuadernacionSel,
+          encuadernacion: 'basica',
           color,
           express: false,
           precio: pricing.total,
@@ -1801,8 +1795,7 @@
       const combo = combos.find(c => c.key === selectedCombo) || combos[0];
       const formato = combo ? combo.formato : (selectedCombo.startsWith('a5') ? 'A5' : 'A4');
       const color = combo ? combo.color : selectedCombo.endsWith('color');
-      const pricingBook = React.useMemo(() => ({ ...workingBook, encuadernacion: encuadernacionSel }), [workingBook, encuadernacionSel]);
-      const pricing = calcPrecioItem(pricingBook, formato, 'basica', config, color);
+      const pricing = calcPrecioItem(workingBook, formato, 'basica', config, color);
 
       async function handlePdfFile(event) {
         const file = event.target.files?.[0];
@@ -1868,18 +1861,14 @@
                   </div>
                 )}
 
-                <div className="rounded-2xl p-4 mb-4 bg-ink-50 border border-ink-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-700 text-sm text-ink-800">Encuadernación</span>
-                    <label className="switch-sm">
-                      <input type="checkbox" checked={encuadernacionSel === 'anillado'} onChange={e => setEncuadernacionSel(e.target.checked ? 'anillado' : 'abrochado')} />
-                      <span />
-                    </label>
+                <div className={`rounded-2xl p-4 mb-4 ${pricing.tipo === 'anillado' ? 'bg-blue-50 border border-blue-100' : 'bg-emerald-50 border border-emerald-100'}`}>
+                  <div className={`font-700 text-base mb-1 ${pricing.tipo === 'anillado' ? 'text-blue-800' : 'text-emerald-800'}`}>
+                    {pricing.tipo === 'anillado' ? 'Encuadernacion automatica' : 'Abrochado sin costo'}
                   </div>
-                  <div className="text-xs text-ink-500">
-                    {encuadernacionSel === 'anillado'
-                      ? `${workingBook?.encuadernacion ? 'Anillado (manual)' : 'Anillado automático'} · ${pricing.hojas} hojas, supera el umbral de ${config.encuadernacion.umbral_anillado_hojas}`
-                      : `${workingBook?.encuadernacion ? 'Abrochado (manual)' : 'Abrochado'} · ${pricing.hojas} hojas`}
+                  <div className={`text-sm ${pricing.tipo === 'anillado' ? 'text-blue-700' : 'text-emerald-700'}`}>
+                    {pricing.tipo === 'anillado'
+                      ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
+                      : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
                   </div>
                   </div>
                 </div>
@@ -1936,7 +1925,7 @@
                       paginas: workingBook.paginas,
                       hojas: pricing.hojas,
                       formato,
-                      encuadernacion: encuadernacionSel,
+                      encuadernacion: 'basica',
                       color,
                       express: false,
                       precio: pricing.total,
@@ -2073,7 +2062,7 @@
                                       paginas: workingBook.paginas,
                                       hojas: pricing.hojas,
                                       formato,
-                                      encuadernacion: encuadernacionSel,
+                                      encuadernacion: 'basica',
                                       color,
                                       express: true,
                                       precio: precioExpress,
