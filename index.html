@@ -1265,8 +1265,7 @@ Color: no`;
     async function uploadPdfToStorage(file, bookId, config) {
       const savedAdmin = loadLocal(STORAGE.admin, null);
       const token = savedAdmin?.token || config.supabase.anon_key;
-      const path = `pdfs/${bookId}.pdf`;
-      const url = `${config.supabase.url}/storage/v1/object/${path}`;
+      const url = `${config.supabase.url}/storage/v1/object/pdfs/${bookId}.pdf`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -1276,7 +1275,7 @@ Color: no`;
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || err.error || `HTTP ${res.status}`);
       }
-      return `${config.supabase.url}/storage/v1/object/public/${path}`;
+      return `${config.supabase.url}/storage/v1/object/public/pdfs/${bookId}.pdf`;
     }
 
     async function subirPortada(file, bookId, config) {
@@ -1284,7 +1283,7 @@ Color: no`;
       const token = savedAdmin?.token || config.supabase.anon_key;
       const ext = file.name.split('.').pop() || 'jpg';
       const path = `portadas/${bookId}-${Date.now()}.${ext}`;
-      const url = `${config.supabase.url}/storage/v1/object/${path}`;
+      const url = `${config.supabase.url}/storage/v1/object/pdfs/${path}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -1294,7 +1293,7 @@ Color: no`;
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || err.error || `HTTP ${res.status}`);
       }
-      return `${config.supabase.url}/storage/v1/object/public/${path}`;
+      return `${config.supabase.url}/storage/v1/object/public/pdfs/${path}`;
     }
 
     async function fetchOrdersFromSupabase(config) {
