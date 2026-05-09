@@ -3683,11 +3683,29 @@ Responde ÚNICAMENTE un Array JSON:
       }
 
       const today = new Date().toISOString().split('T')[0];
+      const tomorrowDate = new Date(Date.now() + 86400000);
+      const tomorrow = tomorrowDate.toISOString().split('T')[0];
       const activePages = orders.filter(order => order.fecha === today).reduce((acc, order) => acc + orderPagesForCapacity(order), 0);
+      const tomorrowPages = orders.filter(order => order.fecha === tomorrow).reduce((acc, order) => acc + orderPagesForCapacity(order), 0);
       const pct = Math.min(100, Math.round((activePages / config.produccion.capacidad_diaria_paginas) * 100));
+      const tomorrowPct = Math.min(100, Math.round((tomorrowPages / config.produccion.capacidad_diaria_paginas) * 100));
       const pendingCount = orders.filter(order => order.estado === 'Pendiente de pago' || order.estado === 'Pendiente de impresión').length;
       const saldoCount = orders.filter(order => Number(order.saldo_pendiente) > 0).length;
       const cupoDisponible = Math.max(0, (config.produccion.capacidad_diaria_paginas - activePages) * (config.produccion.precio_promedio_hoja || 70));
+      const tomorrowCupo = Math.max(0, (config.produccion.capacidad_diaria_paginas - tomorrowPages) * (config.produccion.precio_promedio_hoja || 70));
+      const todayOrders = orders.filter(order => order.fecha === today);
+      const todayHojas = todayOrders.reduce((acc, o) => acc + (o.hojas || 0), 0);
+      const weekData = [];
+      const weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(Date.now() + i * 86400000);
+        const fecha = d.toISOString().split('T')[0];
+        const paginas = orders.filter(o => o.fecha === fecha).reduce((acc, o) => acc + orderPagesForCapacity(o), 0);
+        const hojas = orders.filter(o => o.fecha === fecha).reduce((acc, o) => acc + (o.hojas || 0), 0);
+        const wpct = Math.min(100, Math.round((paginas / config.produccion.capacidad_diaria_paginas) * 100));
+        const cupo = Math.max(0, (config.produccion.capacidad_diaria_paginas - paginas) * (config.produccion.precio_promedio_hoja || 70));
+        weekData.push({ fecha, label: weekDays[d.getDay()], paginas, hojas, pct: wpct, cupo, esHoy: i === 0 });
+      }
       const tabs = [
         { id: 'dashboard', label: 'Dashboard', icon: <Icon.Home /> },
         { id: 'catalogo', label: 'Catálogo', icon: <Icon.Book /> },
@@ -3902,9 +3920,7 @@ Responde ÚNICAMENTE un Array JSON:
         setTab('pedidos');
       }
 
-      const todayOrders = orders.filter(order => order.fecha === today);
       const expressPending = orders.filter(order => order.express && order.estado !== 'Entregado');
-      const todayHojas = todayOrders.reduce((acc, o) => acc + (o.hojas || 0), 0);
 
       const stateMeta = ORDER_STATES.map(state => {
         const itemsInState = orders.flatMap(o =>
@@ -3980,15 +3996,25 @@ Responde ÚNICAMENTE un Array JSON:
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="card p-5 lg:col-span-2">
+                <div className="card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="font-700 text-sm text-ink-800">Capacidad diaria</div>
+                    <div className="font-700 text-sm text-ink-800">Capacidad hoy</div>
                     <span className={`badge ${pct >= 90 ? 'bg-red-50 text-red-600' : pct >= 70 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{pct}%</span>
                   </div>
                   <div className="progress-bar mb-2">
                     <div className={`progress-fill ${pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-ok-DEFAULT'}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <div className="text-xs text-ink-400">{activePages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} paginas · cupo estimado {fmt(cupoDisponible)} disponible</div>
+                  <div className="text-xs text-ink-400">{activePages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} pág · ~{fmt(cupoDisponible)} cupo</div>
+                </div>
+                <div className="card p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-700 text-sm text-ink-800">Capacidad mañana</div>
+                    <span className={`badge ${tomorrowPct >= 90 ? 'bg-red-50 text-red-600' : tomorrowPct >= 70 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{tomorrowPct}%</span>
+                  </div>
+                  <div className="progress-bar mb-2">
+                    <div className={`progress-fill ${tomorrowPct >= 90 ? 'bg-red-400' : tomorrowPct >= 70 ? 'bg-amber-400' : 'bg-ok-DEFAULT'}`} style={{ width: `${tomorrowPct}%` }} />
+                  </div>
+                  <div className="text-xs text-ink-400">{tomorrowPages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} pág · ~{fmt(tomorrowCupo)} cupo</div>
                 </div>
                 <button onClick={() => goToOrders({ estado: 'all' })} className="card p-5 text-left hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-2">
@@ -3997,6 +4023,30 @@ Responde ÚNICAMENTE un Array JSON:
                   </div>
                   <div className="text-xs text-ink-400">Pedidos express no entregados. Click para ver.</div>
                 </button>
+              </div>
+
+              <div className="card p-5">
+                <div className="font-700 text-sm text-ink-800 mb-4">Capacidad semanal <span className="text-xs text-ink-400 font-normal">— páginas y cupo estimado</span></div>
+                <div className="space-y-2.5">
+                  {weekData.map((d, i) => (
+                    <div key={d.fecha} className="flex items-center gap-3">
+                      <span className={`text-xs font-700 w-8 flex-shrink-0 ${d.esHoy ? 'text-brand-DEFAULT' : 'text-ink-400'}`}>{d.label}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="progress-bar h-5 rounded-lg" style={{ background: 'var(--ink-100)' }}>
+                          <div
+                            className={`progress-fill h-full rounded-lg flex items-center justify-end pr-2 transition-all ${d.pct >= 90 ? 'bg-red-400' : d.pct >= 70 ? 'bg-amber-400' : 'bg-ok-DEFAULT'}`}
+                            style={{ width: `${Math.max(d.pct, 3)}%` }}
+                          >
+                            {d.pct >= 15 && <span className="text-[10px] font-700 text-white drop-shadow-sm">{d.pct}%</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-ink-500 w-[100px] flex-shrink-0 text-right">
+                        {d.paginas.toLocaleString('es-AR')} pág · <span className="font-600">{fmt(d.cupo)}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="card p-5">
