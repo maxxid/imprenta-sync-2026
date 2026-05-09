@@ -1865,15 +1865,13 @@
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-lg">{pricing.tipo === 'anillado' ? '🪢' : '📎'}</span>
                     <span className={`font-700 text-base ${pricing.tipo === 'anillado' ? 'text-blue-800' : 'text-emerald-800'}`}>
-                      {pricing.tipo === 'anillado' ? 'Anillado' : 'Abrochado'}{workingBook.encuadernacion ? ' (manual)' : ' automático'}
+                      {pricing.tipo === 'anillado' ? 'Anillado' : 'Abrochado'}
                     </span>
                   </div>
                   <div className={`text-sm ${pricing.tipo === 'anillado' ? 'text-blue-700' : 'text-emerald-700'}`}>
-                    {workingBook.encuadernacion
-                      ? `El administrador configuró este libro como ${workingBook.encuadernacion === 'anillado' ? 'anillado' : 'abrochado'}.`
-                      : pricing.tipo === 'anillado'
-                        ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
-                        : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
+                    {pricing.tipo === 'anillado'
+                      ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
+                      : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
                   </div>
                 </div>
 
