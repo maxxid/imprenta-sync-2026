@@ -3400,6 +3400,7 @@ Color: no`;
         formato: true,
         ventana_retiro: true,
         total: true,
+        observaciones: true,
         estado: true,
         acciones: true
       });
@@ -3751,7 +3752,8 @@ Responde ÚNICAMENTE un Array JSON:
               express: parserPreview.express,
               precio: book.precio || 0,
               tipo: book.hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado',
-              imagen_url: book.imagen_url
+              imagen_url: book.imagen_url,
+              observaciones: parserPreview.aiPedidos?.[idx]?.observaciones || ''
             };
           });
         const career = getCareer(config, books, items[0]?.id_carrera || '');
@@ -3792,8 +3794,9 @@ Responde ÚNICAMENTE un Array JSON:
           talo_ref: `WA-${String(Date.now()).slice(-6)}`,
           ts: new Date().toISOString()
         };
-        order.wa_message = parserPreview.aiMsjWs || await generateWhatsAppMessageForOrder(order, config);
-        await saveOrderToSupabase(order, config);
+          order.wa_message = parserPreview.aiMsjWs || await generateWhatsAppMessageForOrder(order, config);
+          order.notas_admin = itemsWithEstado[0]?.observaciones || '';
+          await saveOrderToSupabase(order, config);
         setOrders(previous => [order, ...previous]);
         syncOrderToSheets(order, config);
         setParserToast('✅ Pedido guardado correctamente');
@@ -4532,6 +4535,7 @@ Responde ÚNICAMENTE un Array JSON:
                         { key: 'formato', label: 'Formato' },
                         { key: 'ventana_retiro', label: 'Entrega' },
                         { key: 'total', label: 'Pago' },
+                        { key: 'observaciones', label: 'Obs' },
                         { key: 'estado', label: 'Estado' },
                         { key: null, label: 'Acciones' }
                       ].map((col, idx) => {
@@ -4682,6 +4686,19 @@ Responde ÚNICAMENTE un Array JSON:
                               </>
                             )) : (
                               <span className="text-xs opacity-50">💰</span>
+                            )}
+                          </td>
+                          <td style={!columnVisibility.observaciones ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
+                            {columnVisibility.observaciones ? (
+                              itemIndex === 0 && (order.notas_admin || (order.items?.[0]?.observaciones)) ? (
+                                <span className="text-xs text-ink-500 truncate block max-w-[120px]" title={order.notas_admin || order.items?.[0]?.observaciones || ''}>
+                                  {order.notas_admin || order.items?.[0]?.observaciones || ''}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-ink-300">—</span>
+                              )
+                            ) : (
+                              <span className="text-xs opacity-50">💬</span>
                             )}
                           </td>
                           <td style={!columnVisibility.estado ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
