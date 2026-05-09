@@ -4768,7 +4768,7 @@ Responde ÚNICAMENTE un Array JSON:
                               ) : (
                               <>
                                 <div className="font-700 text-ink-900">{fmt(item.precio || 0)}</div>
-                                <div className="text-xs text-ink-400">Total {fmt(order.total)} · {fmt(order.monto_pagado)} pagado</div>
+                                <div className="text-xs text-ink-400">Total {fmt(order.total)} · {fmt(order.monto_pagado)} pagado · {fmt(order.saldo_pendiente)} saldo</div>
                               </>
                             )) : (
                               <span className="text-xs opacity-50">💰</span>
