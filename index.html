@@ -766,7 +766,7 @@
           id_carrera: 'abo-unju',
           nombre: 'Abogacia - UNJu',
           universidad: 'UNJu',
-          direccion_entrega: 'Hall central - Facultad de Ciencias Economicas, UNJu',
+          direccion_entrega: 'Aula Magna / Quincho - Facultad de Ciencias Juridicas, UNJu',
           ventanas: [
             { dia: 1, label: 'Lunes tarde', turno: 'tarde', horario: '19:00', activa: true },
             { dia: 2, label: 'Martes tarde', turno: 'tarde', horario: '19:00', activa: true },
@@ -779,14 +779,7 @@
       ]
     };
 
-    const DEMO_WHATSAPP = `Pedido nuevo
-Nombre: Candela Rojas
-Telefono: 11 6543 2100
-Libros: Anatomia Humana, Farmacologia Basica y Clinica
-Formato: A4
-Seña: 50%
-Entrega: 2026-04-29 tarde
-Color: no`;
+    const DEMO_WHATSAPP = ``;
 
     const Icon = {
       Home: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
@@ -864,7 +857,7 @@ Color: no`;
       return combos.length ? Math.min(...combos.map(c => c.precio)) : 0;
     }
 
-    function calcSugerido(paginas, formato, config, paginasPorHoja = 2) {
+    function calcSugerido(paginas, formato, config, paginasPorHoja = 2, encuadernacionOverride = null) {
       const hojas = HOJAS(paginas, paginasPorHoja);
       let sub = 0;
       if (formato === 'A5') {
@@ -872,7 +865,8 @@ Color: no`;
       } else {
         sub = hojas * Number(hojas >= 50 ? config.precios?.A4?.mas_50 || 70 : config.precios?.A4?.menos_50 || 90);
       }
-      if (hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40)) {
+      const tipo = encuadernacionOverride || (hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado');
+      if (tipo === 'anillado') {
         sub += Number(config.encuadernacion?.basica || 600);
       }
       return sub;
@@ -904,8 +898,8 @@ Color: no`;
 
     function recalcBookSugeridos(book, config) {
       const pph = Number(book.paginas_por_hoja) || 2;
-      const a4s = calcSugerido(book.paginas, 'A4', config, pph);
-      const a5s = calcSugerido(book.paginas, 'A5', config, pph);
+      const a4s = calcSugerido(book.paginas, 'A4', config, pph, book.encuadernacion);
+      const a5s = calcSugerido(book.paginas, 'A5', config, pph, book.encuadernacion);
       return {
         ...book,
         a4_bn_sugerido: a4s,
@@ -966,7 +960,7 @@ Color: no`;
       if ('a4_bn_habilitado' in libro) {
         const comboKey = `${formato.toLowerCase()}_${color ? 'color' : 'bn'}`;
         const precioFinal = Number(libro[`${comboKey}_final`] || 0);
-        const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
+        const tipo = libro.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
         // NO rounding here — rounding only at cart total
         return { hojas, subtotal: precioFinal, total: precioFinal, tipo };
       }
@@ -980,7 +974,7 @@ Color: no`;
         const key = hojas >= 50 ? 'mas_50' : 'menos_50';
         subtotal = hojas * Number(config.precios?.A4?.[key] || 0);
       }
-      const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
+      const tipo = libro.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
       if (tipo === 'anillado') {
         subtotal += Number(config.encuadernacion.basica || 0);
       }
@@ -1224,7 +1218,7 @@ Color: no`;
       }
     }
 
-    const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url'];
+     const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url','encuadernacion'];
 
     function cleanBookPayload(book) {
       const cleaned = {};
@@ -1765,6 +1759,11 @@ Color: no`;
       const [showExpressModal, setShowExpressModal] = React.useState(false);
       const [expressSlotSel, setExpressSlotSel] = React.useState(null);
       const [expressCartWarn, setExpressCartWarn] = React.useState(false);
+      const [encuadernacionSel, setEncuadernacionSel] = React.useState('abrochado');
+
+      React.useEffect(() => {
+        setEncuadernacionSel(workingBook?.encuadernacion || pricing.tipo);
+      }, [workingBook?.encuadernacion, pricing.tipo]);
 
       function handleAgregar(item, isExpress) {
         setToast({ msg: isExpress ? '⚡ Libro express agregado al pedido!' : '📚 Libro agregado al pedido!', type: 'ok' });
@@ -1783,7 +1782,7 @@ Color: no`;
           paginas: workingBook.paginas,
           hojas: pricing.hojas,
           formato,
-          encuadernacion: 'basica',
+          encuadernacion: encuadernacionSel,
           color,
           express: false,
           precio: pricing.total,
@@ -1802,7 +1801,8 @@ Color: no`;
       const combo = combos.find(c => c.key === selectedCombo) || combos[0];
       const formato = combo ? combo.formato : (selectedCombo.startsWith('a5') ? 'A5' : 'A4');
       const color = combo ? combo.color : selectedCombo.endsWith('color');
-      const pricing = calcPrecioItem(workingBook, formato, 'basica', config, color);
+      const pricingBook = React.useMemo(() => ({ ...workingBook, encuadernacion: encuadernacionSel }), [workingBook, encuadernacionSel]);
+      const pricing = calcPrecioItem(pricingBook, formato, 'basica', config, color);
 
       async function handlePdfFile(event) {
         const file = event.target.files?.[0];
@@ -1868,14 +1868,19 @@ Color: no`;
                   </div>
                 )}
 
-                <div className={`rounded-2xl p-4 mb-4 ${pricing.tipo === 'anillado' ? 'bg-blue-50 border border-blue-100' : 'bg-emerald-50 border border-emerald-100'}`}>
-                  <div className={`font-700 text-base mb-1 ${pricing.tipo === 'anillado' ? 'text-blue-800' : 'text-emerald-800'}`}>
-                    {pricing.tipo === 'anillado' ? 'Encuadernacion automatica' : 'Abrochado sin costo'}
+                <div className="rounded-2xl p-4 mb-4 bg-ink-50 border border-ink-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-700 text-sm text-ink-800">Encuadernación</span>
+                    <label className="switch-sm">
+                      <input type="checkbox" checked={encuadernacionSel === 'anillado'} onChange={e => setEncuadernacionSel(e.target.checked ? 'anillado' : 'abrochado')} />
+                      <span />
+                    </label>
                   </div>
-                  <div className={`text-sm ${pricing.tipo === 'anillado' ? 'text-blue-700' : 'text-emerald-700'}`}>
-                    {pricing.tipo === 'anillado'
-                      ? `Supera ${config.encuadernacion.umbral_anillado_hojas} hojas, por eso pasa a anillado.`
-                      : `Tiene ${pricing.hojas} hojas y conserva el abrochado gratis.`}
+                  <div className="text-xs text-ink-500">
+                    {encuadernacionSel === 'anillado'
+                      ? `${workingBook?.encuadernacion ? 'Anillado (manual)' : 'Anillado automático'} · ${pricing.hojas} hojas, supera el umbral de ${config.encuadernacion.umbral_anillado_hojas}`
+                      : `${workingBook?.encuadernacion ? 'Abrochado (manual)' : 'Abrochado'} · ${pricing.hojas} hojas`}
+                  </div>
                   </div>
                 </div>
 
@@ -1931,7 +1936,7 @@ Color: no`;
                       paginas: workingBook.paginas,
                       hojas: pricing.hojas,
                       formato,
-                      encuadernacion: 'basica',
+                      encuadernacion: encuadernacionSel,
                       color,
                       express: false,
                       precio: pricing.total,
@@ -2068,7 +2073,7 @@ Color: no`;
                                       paginas: workingBook.paginas,
                                       hojas: pricing.hojas,
                                       formato,
-                                      encuadernacion: 'basica',
+                                      encuadernacion: encuadernacionSel,
                                       color,
                                       express: true,
                                       precio: precioExpress,
@@ -4210,8 +4215,9 @@ Responde ÚNICAMENTE un Array JSON:
                               <th style={{position:'relative'}}>A4 Color<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 5); }} /></th>
                               <th style={{position:'relative'}}>A5 B/N<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 6); }} /></th>
                               <th style={{position:'relative'}}>A5 Color<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 7); }} /></th>
-                              <th style={{position:'relative', width:'60px'}}>Portada<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 8); }} /></th>
-                              <th style={{position:'relative'}}>Activo<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 9); }} /></th>
+                              <th style={{position:'relative', width:'80px'}}>Encuad.<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 8); }} /></th>
+                              <th style={{position:'relative', width:'60px'}}>Portada<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 9); }} /></th>
+                              <th style={{position:'relative'}}>Activo<div className="resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeStart(e, 10); }} /></th>
                               <th style={{width:'40px'}}></th>
                             </>
                           ) : (
@@ -4370,6 +4376,18 @@ Responde ÚNICAMENTE un Array JSON:
                                       {cur.a5_color_habilitado && (
                                         <input className="input-field text-xs py-0.5 w-[65px] text-center" type="number" value={cur.a5_color_final || ''} onChange={e => set('a5_color_final', Number(e.target.value) || 0)} />
                                       )}
+                                    </div>
+                                  </td>
+                                  <td style={{width:'80px'}}>
+                                    <div className="flex flex-col items-center gap-0.5">
+                                      <button
+                                        onClick={() => set('encuadernacion', cur.encuadernacion === 'anillado' ? 'abrochado' : 'anillado')}
+                                        className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${cur.encuadernacion === 'anillado' ? 'bg-blue-500' : 'bg-emerald-500'}`}
+                                        title={cur.encuadernacion === 'anillado' ? 'Anillado' : 'Abrochado'}
+                                      >
+                                        <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${cur.encuadernacion === 'anillado' ? 'right-0.5' : 'left-0.5'}`} />
+                                      </button>
+                                      <span className="text-[10px] text-ink-400">{cur.encuadernacion === 'anillado' ? 'Anillado' : cur.encuadernacion === 'abrochado' ? 'Abroch.' : 'Auto'}</span>
                                     </div>
                                   </td>
                                   <td style={{width:'60px'}}>
