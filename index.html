@@ -1263,22 +1263,38 @@ Color: no`;
     }
 
     async function uploadPdfToStorage(file, bookId, config) {
-      const sb = await getSupabaseAuth(config);
+      const savedAdmin = loadLocal(STORAGE.admin, null);
+      const token = savedAdmin?.token || config.supabase.anon_key;
       const path = `pdfs/${bookId}.pdf`;
-      const { data, error } = await sb.storage.from('pdfs').upload(path, file, { contentType: 'application/pdf', upsert: true });
-      if (error) throw error;
-      const { data: urlData } = sb.storage.from('pdfs').getPublicUrl(path);
-      return urlData.publicUrl;
+      const url = `${config.supabase.url}/storage/v1/object/${path}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: file
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || `HTTP ${res.status}`);
+      }
+      return `${config.supabase.url}/storage/v1/object/public/${path}`;
     }
 
     async function subirPortada(file, bookId, config) {
-      const sb = await getSupabaseAuth(config);
+      const savedAdmin = loadLocal(STORAGE.admin, null);
+      const token = savedAdmin?.token || config.supabase.anon_key;
       const ext = file.name.split('.').pop() || 'jpg';
       const path = `portadas/${bookId}-${Date.now()}.${ext}`;
-      const { data, error } = await sb.storage.from('pdfs').upload(path, file, { contentType: file.type || 'image/jpeg', upsert: true });
-      if (error) throw error;
-      const { data: urlData } = sb.storage.from('pdfs').getPublicUrl(path);
-      return urlData.publicUrl;
+      const url = `${config.supabase.url}/storage/v1/object/${path}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: file
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || `HTTP ${res.status}`);
+      }
+      return `${config.supabase.url}/storage/v1/object/public/${path}`;
     }
 
     async function fetchOrdersFromSupabase(config) {
