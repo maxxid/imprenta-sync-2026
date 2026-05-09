@@ -3477,7 +3477,7 @@ REGLAS DE ORO:
 2. TRABAJO: Usá el nombre EXACTO del catálogo. Si no coincide exacto, usá el más cercano.
 3. VARIOS: Generá un objeto por cada libro mencionado.
 4. OBSERVACIONES (N): Resumí con emojis (🕒hora, 📍lugar, 🚨otro). Solo mencionar lugar si es diferente a la facultad. Si no hay hora, omitir. Estado de pago no es necesario decirlo.
-5. SEÑA: Si hay una seña total, ponela solo en el primero, el resto 0. Si dice "pagado", la seña = precio.
+5. SEÑA (REGLA DE ORO): Si el mensaje NO menciona explícitamente un monto de seña, pago, o "pagado", la seña SIEMPRE es 0. Jamás asumas que está pagado. Solo asignás sena > 0 si el mensaje dice textualmente algo como "dejo $6000 de seña", "transferí $X", "pagué $X", "está pago", "ya pagué", "te pagué $X", "va pagado", "pago total", "pagado completo". Si no ves un número asociado a un pago, sena = 0. Si solo dice "seña" sin monto, sena = 0. Si el mensaje dice "seña del 50%", calculá el 50% del precio del primer libro y asignalo como sena.
 6. FECHA: Calculá la fecha de entrega según el día mencionado. Formato YYYY-MM-DD. Si no hay día específico, dejá vacío.
 7. TELÉFONO: Solo números, sin espacios ni guiones ni +54.
 8. REDACCIÓN DE MENSAJE (msj_ws): Redactá un mensaje de WhatsApp corto y natural en español rioplatense (usá "tenés", "¿cómo estás?").
