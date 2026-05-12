@@ -1498,6 +1498,13 @@
       return new Date(year, month - 1, day, 12, 0, 0).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
     }
 
+    function formatVentana(ventana, fecha, horario) {
+      if (ventana && /^\d{4}-\d{2}-\d{2}/.test(ventana)) {
+        return ventana.replace(/^\d{4}-\d{2}-\d{2}/, match => formatFechaCorta(match));
+      }
+      return ventana || (fecha ? `${formatFechaCorta(fecha)} · ${horario}` : '');
+    }
+
     function saveLocal(key, value) {
       try {
         localStorage.setItem(key, JSON.stringify(value));
@@ -4780,11 +4787,11 @@ Responde ÚNICAMENTE un Array JSON:
                                 <div className="font-700 text-ink-900">{order.modalidad_entrega || 'Retiro facultad'}</div>
                                 {order.excede_capacidad ? (
                                   <div className="text-xs text-ink-400">
-                                    <div>1°: {order.ventana_retiro || `${formatFechaCorta(order.fecha)} · ${order.horario_entrega}`} ({order.hojas_primera_entrega} hojas)</div>
+                                    <div>1°: {formatVentana(order.ventana_retiro, order.fecha, order.horario_entrega)} ({order.hojas_primera_entrega} hojas)</div>
                                     <div>2°: {new Date(`${order.segunda_entrega_fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} ({order.hojas_segunda_entrega} hojas)</div>
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-ink-400">{order.ventana_retiro || `${formatFechaCorta(order.fecha)} · ${order.horario_entrega}`}</div>
+                                  <div className="text-xs text-ink-400">{formatVentana(order.ventana_retiro, order.fecha, order.horario_entrega)}</div>
                                 )}
                               </>
                             )) : (
