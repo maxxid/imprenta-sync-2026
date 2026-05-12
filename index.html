@@ -5352,21 +5352,21 @@ Responde ÚNICAMENTE un Array JSON:
               </div>
             </div>
           )}
-        </div>
-        {refreshing && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)' }}>
-            <div className="bg-surface rounded-2xl shadow-2xl p-8 text-center max-w-xs w-full mx-4 slide-up">
-              <div className="w-12 h-12 mx-auto mb-4">
-                <svg className="animate-spin w-12 h-12 text-brand-DEFAULT" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
-                  <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                </svg>
+          {refreshing && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)' }}>
+              <div className="bg-surface rounded-2xl shadow-2xl p-8 text-center max-w-xs w-full mx-4 slide-up">
+                <div className="w-12 h-12 mx-auto mb-4">
+                  <svg className="animate-spin w-12 h-12 text-brand-DEFAULT" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="font-800 text-ink-900 text-base mb-1">Actualizando datos</div>
+                <div className="text-sm text-ink-400">Sincronizando con Supabase...</div>
               </div>
-              <div className="font-800 text-ink-900 text-base mb-1">Actualizando datos</div>
-              <div className="text-sm text-ink-400">Sincronizando con Supabase...</div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       );
     }
 
