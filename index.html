@@ -3948,8 +3948,29 @@ Responde ÚNICAMENTE un Array JSON:
       async function saveEditedOrder(orderId) {
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
-        await persistOrder(order);
+        const turno = order.turno || 'tarde';
+        const horario = turno === 'manana' ? '10:00' : '19:00';
+        const updated = {
+          ...order,
+          ventana_retiro: order.fecha ? `${formatFechaCorta(order.fecha)} · ${horario}` : order.ventana_retiro,
+          horario_entrega: horario
+        };
+        await persistOrder(updated);
+        setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
         setEditingOrder(null);
+      }
+
+      async function refreshAll() {
+        try {
+          const [booksData, ordersData] = await Promise.all([
+            fetchBooksFromSupabase(config),
+            fetchOrdersFromSupabase(config)
+          ]);
+          if (booksData?.length) setBooks(booksData.map(b => migrateBook(b, config)));
+          if (ordersData) setOrders(ordersData);
+        } catch (err) {
+          console.error('Error refrescando:', err);
+        }
       }
 
       function getFirstName(fullName) {
@@ -4010,6 +4031,10 @@ Responde ÚNICAMENTE un Array JSON:
                 {item.icon}{item.label}
               </button>
             ))}
+            <div className="flex-shrink-0 w-px bg-ink-200 mx-0.5" />
+            <button onClick={refreshAll} className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-700 transition-all text-ink-400 hover:text-ink-700 hover:bg-surface/50" title="Actualizar datos desde Supabase">
+              🔄
+            </button>
           </div>
 
           {tab === 'dashboard' && (
