@@ -694,6 +694,10 @@
       'Entregado'
     ];
 
+    const STATE_LABELS = {
+      'Listo': 'Terminado'
+    };
+
     const STATE_STYLES = {
       'Pendiente de pago': 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
       'Pendiente de impresión': 'bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -1595,7 +1599,7 @@
     }
 
     function statusBadge(status) {
-      return <span className={`status-chip ${STATE_STYLES[status] || 'bg-ink-100 text-ink-700'}`}>{status}</span>;
+      return <span className={`status-chip ${STATE_STYLES[status] || 'bg-ink-100 text-ink-700'}`}>{STATE_LABELS[status] || status}</span>;
     }
 
     function Alert({ type = 'info', className = '', children }) {
@@ -2356,7 +2360,7 @@
               <div className="card p-5 mb-5">
                 <div className="font-700 text-sm text-ink-800 mb-4">Seguimiento de tu pedido</div>
                 <div className="timeline mb-4">
-                  {['Pedido recibido', 'En preparacion', 'Listo!', 'Entregado'].map((label, idx) => {
+                  {['Pedido recibido', 'En preparacion', 'Terminado!', 'Entregado'].map((label, idx) => {
                     const currentIndex = getStateIndexForConfirm(pedidoConfirmado.estado);
                     const isCompleted = idx < currentIndex;
                     const isCurrent = idx === currentIndex;
@@ -2962,7 +2966,7 @@
       const TIMELINE_STEPS = [
         { label: 'Pedido recibido' },
         { label: 'En preparacion' },
-        { label: 'Listo!' },
+        { label: 'Terminado!' },
         { label: 'Entregado' }
       ];
 
@@ -4121,7 +4125,7 @@ Responde ÚNICAMENTE un Array JSON:
                 <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                   {stateMeta.map(({ state, count, totalPaginas, color }) => (
                     <button key={state} onClick={() => goToOrders({ estado: state })} className={`rounded-xl border p-4 text-left hover:shadow-md transition-all ${color}`}>
-                      <div className="text-sm font-700">{state}</div>
+                      <div className="text-sm font-700">{STATE_LABELS[state] || state}</div>
                       <div className="text-2xl font-800 mt-1">{count === 0 ? '—' : `${count}u.`}</div>
                       {totalPaginas > 0 && <div className="text-xs font-600 mt-0.5 opacity-80">{totalPaginas.toLocaleString('es-AR')} pág.</div>}
                     </button>
@@ -4633,7 +4637,7 @@ Responde ÚNICAMENTE un Array JSON:
                         }
                       }}>
                         <option value="all">Todos los estados</option>
-                        {ORDER_STATES.map(state => <option key={state} value={state}>{state}</option>)}
+                        {ORDER_STATES.map(state => <option key={state} value={state}>{STATE_LABELS[state] || state}</option>)}
                         <option value="invert">Invertir selección</option>
                       </select>
                       {excludedStates.length > 0 && (
@@ -4870,7 +4874,7 @@ Responde ÚNICAMENTE un Array JSON:
                                     ←
                                   </button>
                                   <span className="text-xs font-700 px-1">
-                                    {itemEstado}
+                                    {STATE_LABELS[itemEstado] || itemEstado}
                                   </span>
                                   <button
                                     className="px-2 py-1.5 hover:bg-black/10 transition-colors font-bold text-sm"
