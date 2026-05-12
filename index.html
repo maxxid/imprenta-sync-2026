@@ -5395,6 +5395,7 @@ Responde ÚNICAMENTE un Array JSON:
       const [sidebarOpen, setSidebarOpen] = React.useState(false);
       const [loading, setLoading] = React.useState(true);
       const [adminAuthed, setAdminAuthed] = React.useState(loadLocal(STORAGE.admin, false));
+      const [sessionExpired, setSessionExpired] = React.useState(false);
       const [theme, setTheme] = React.useState(loadLocal('imprenta.theme', 'light'));
 
       React.useEffect(() => {
@@ -5423,9 +5424,11 @@ Responde ÚNICAMENTE un Array JSON:
                 console.warn('Sesión admin expirada, requiriendo login:', error.message);
                 saveLocal(STORAGE.admin, false);
                 setAdminAuthed(false);
+                setSessionExpired(true);
               }
             } catch (e) {
               console.warn('Error restaurando sesión admin:', e.message);
+              setSessionExpired(true);
             }
           }
 
@@ -5464,6 +5467,25 @@ Responde ÚNICAMENTE un Array JSON:
       React.useEffect(() => {
         // Pedidos viven en Supabase, no se cachean localmente con PII
       }, [orders, loading]);
+
+      React.useEffect(() => {
+        if (!adminAuthed) return;
+        const interval = setInterval(async () => {
+          try {
+            const sb = getSupabase(config);
+            const { error } = await sb.auth.getSession();
+            if (error) {
+              console.warn('Sesión admin expirada durante uso');
+              saveLocal(STORAGE.admin, false);
+              setAdminAuthed(false);
+              setSessionExpired(true);
+            }
+          } catch (e) {
+            console.warn('Error verificando sesión:', e.message);
+          }
+        }, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+      }, [adminAuthed, config]);
 
       React.useEffect(() => {
         // Libros viven en Supabase, no se cachean localmente
@@ -5575,9 +5597,22 @@ Responde ÚNICAMENTE un Array JSON:
             {screen === 'tracking' && <OrderTracker orders={orders} books={books} config={config} onVolver={() => setScreen('home')} />}
             {screen === 'ayuda' && <AyudaScreen config={config} onVolver={() => setScreen('home')} />}
             {screen === 'admin' && (
-              adminAuthed
+              <>
+                {sessionExpired && !adminAuthed && (
+                  <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-4 flex items-center gap-3">
+                    <span className="text-2xl">⏰</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-700 text-sm text-amber-800">Tu sesión expiró</div>
+                      <div className="text-xs text-amber-600">Por seguridad, las sesiones de administrador caducan. Iniciá sesión nuevamente para seguir gestionando.</div>
+                    </div>
+                    <button className="text-xs text-amber-500 hover:text-amber-700 font-700 flex-shrink-0" onClick={() => setSessionExpired(false)}>✕</button>
+                  </div>
+                )}
+                {adminAuthed
                 ? <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = window.supabase.createClient(config.supabase.url, config.supabase.anon_key); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); }} />
-                : <AdminLogin config={config} onSuccess={setAdminAuthed} />
+                : <AdminLogin config={config} onSuccess={v => { setAdminAuthed(v); setSessionExpired(false); }} />
+                }
+              </>
             )}
           </main>
 
