@@ -5076,8 +5076,40 @@ Responde ÚNICAMENTE un Array JSON:
                     </div>
                     {parserPreview.aiMsjWs && (
                       <div className="mt-4 p-3 bg-ink-50 rounded-lg">
-                        <div className="text-xs font-700 text-ink-500 mb-1">Mensaje de WhatsApp generado por IA:</div>
-                        <pre className="text-xs text-ink-700 whitespace-pre-wrap font-mono">{parserPreview.aiMsjWs}</pre>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-xs font-700 text-ink-500">Mensaje de WhatsApp:</div>
+                          <button
+                            className="text-xs font-700 text-brand-DEFAULT hover:text-brand-dark"
+                            onClick={async () => {
+                              const sheetsUrl = config.integraciones?.SHEETS_API_URL;
+                              if (!sheetsUrl) return;
+                              try {
+                                const librosPayload = parserPreview.libros.map(b => ({
+                                  titulo: b.titulo, hojas: b.hojas || 0, paginas: b.paginas || 0, precio: b.precio || 0
+                                }));
+                                const data = {
+                                  nombre: parserPreview.nombre,
+                                  whatsapp: parserPreview.whatsapp,
+                                  libros: librosPayload,
+                                  fecha: parserPreview.entrega?.fecha || '',
+                                  lugar_entrega: '',
+                                  saldo: parserPreview.saldo || 0
+                                };
+                                const url = `${sheetsUrl}?mode=generate-wa&data=${encodeURIComponent(JSON.stringify(data))}`;
+                                const res = await fetch(url);
+                                const json = await res.json();
+                                if (json.msj_ws) {
+                                  setParserPreview(prev => ({ ...prev, aiMsjWs: json.msj_ws }));
+                                }
+                              } catch (e) { console.error('Error regenerando mensaje:', e); }
+                            }}
+                          >🔄 Regenerar</button>
+                        </div>
+                        <textarea
+                          className="input-field text-xs w-full min-h-[80px] font-mono whitespace-pre-wrap"
+                          value={parserPreview.aiMsjWs}
+                          onChange={e => setParserPreview(prev => ({ ...prev, aiMsjWs: e.target.value }))}
+                        />
                       </div>
                     )}
                     <div className="mt-5">
