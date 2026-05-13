@@ -3667,8 +3667,9 @@ Responde ÚNICAMENTE un Array JSON:
         const estado = excludedStates.length > 0
           ? !excludedStates.includes(itemEstado)
           : (filters.estado === 'all' || itemEstado === filters.estado);
-        const fecha = filters.fecha === 'all' || order.fecha === filters.fecha;
-        const ventana = filters.ventana === 'all' || order.turno === filters.ventana;
+        const isEditing = editingOrder === order.id;
+        const fecha = isEditing || filters.fecha === 'all' || order.fecha === filters.fecha;
+        const ventana = isEditing || filters.ventana === 'all' || order.turno === filters.ventana;
         const alumno = !filters.alumno || slug(order.nombre).includes(slug(filters.alumno));
         const libro = !filters.libro || slug(item.titulo || order.libro).includes(slug(filters.libro));
         const formato = filters.formato === 'all' || String(item.formato || order.formato).includes(filters.formato);
