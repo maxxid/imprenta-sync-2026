@@ -3492,6 +3492,7 @@
       const [abmCareer, setAbmCareer] = React.useState('');
       const [abmStatus, setAbmStatus] = React.useState('all');
       const [sortConfig, setSortConfig] = React.useState({ key: null, direction: 'asc' });
+      const [summaryVisible, setSummaryVisible] = React.useState(true);
       const [resizing, setResizing] = React.useState(null);
       const [newHoliday, setNewHoliday] = React.useState({ fecha: '', motivo: '', universidad: '' });
       const [configDraft, setConfigDraft] = React.useState(() => JSON.parse(JSON.stringify(config)));
@@ -5026,7 +5027,17 @@ Responde ÚNICAMENTE un Array JSON:
                       ))}
                     </div>
                   )}
+                  <button
+                    className="ml-auto inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-ink-100 text-ink-400 transition-colors"
+                    onClick={() => setSummaryVisible(v => !v)}
+                    title={summaryVisible ? 'Ocultar resumen' : 'Mostrar resumen'}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: summaryVisible ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }}>
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
                 </div>
+                {summaryVisible && (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -5039,31 +5050,34 @@ Responde ÚNICAMENTE un Array JSON:
                       </tr>
                     </thead>
                     <tbody>
-                      {ORDER_STATES.map(estado => {
+                      {ORDER_STATES.map((estado, idx, arr) => {
                         const data = pedidosSummary[estado];
-                        const rowClass = STATE_ROW_BG[estado] || '';
+                        const isFirst = idx === 0;
+                        const isLast = idx === arr.length - 1;
+                        const bgClass = idx % 2 === 0 ? 'bg-ink-25' : 'bg-ink-50';
                         return (
-                          <tr key={estado} className={`border-b border-ink-50 ${rowClass}`}>
-                            <td className="py-1.5 text-ink-700 font-600">{STATE_LABELS[estado] || estado}</td>
+                          <tr key={estado} className={`border-b border-ink-100 ${bgClass}`}>
+                            <td className={`py-1.5 text-ink-700 font-600 ${isFirst ? 'rounded-tl-lg' : ''} ${isLast ? 'rounded-bl-lg' : ''}`}>{STATE_LABELS[estado] || estado}</td>
                             <td className="py-1.5 text-right text-ink-700">{data ? data.count : 0}</td>
                             <td className="py-1.5 text-right font-600 text-ink-800">{fmt(data ? data.total : 0)}</td>
                             <td className="py-1.5 text-right text-ink-600">{fmt(data ? data.saldo : 0)}</td>
-                            <td className="py-1.5 text-right text-ink-600">{data ? data.hojas : 0}</td>
+                            <td className={`py-1.5 text-right text-ink-600 ${isFirst ? 'rounded-tr-lg' : ''} ${isLast ? 'rounded-br-lg' : ''}`}>{data ? data.hojas : 0}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="border-t-2 border-ink-200 font-700 bg-ink-50">
-                        <td className="py-2 text-ink-900">TOTAL GENERAL</td>
+                      <tr className="border-t-2 border-ink-200 font-700 bg-ink-100">
+                        <td className="py-2 text-ink-900 rounded-bl-lg">TOTAL GENERAL</td>
                         <td className="py-2 text-right text-ink-900">{Object.values(pedidosSummary).reduce((a, s) => a + s.count, 0)}</td>
                         <td className="py-2 text-right text-ink-900">{fmt(Object.values(pedidosSummary).reduce((a, s) => a + s.total, 0))}</td>
                         <td className="py-2 text-right text-ink-900">{fmt(Object.values(pedidosSummary).reduce((a, s) => a + s.saldo, 0))}</td>
-                        <td className="py-2 text-right text-ink-900">{Object.values(pedidosSummary).reduce((a, s) => a + s.hojas, 0)}</td>
+                        <td className="py-2 text-right text-ink-900 rounded-br-lg">{Object.values(pedidosSummary).reduce((a, s) => a + s.hojas, 0)}</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
+                )}
               </div>
 
             </div>
