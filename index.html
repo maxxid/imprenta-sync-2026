@@ -3507,6 +3507,14 @@
       const [savingBulk, setSavingBulk] = React.useState(false);
       const [refreshing, setRefreshing] = React.useState(false);
       const sb = React.useMemo(() => getSupabase(config), [config.supabase.url, config.supabase.anon_key]);
+      const adminEmail = React.useMemo(() => {
+        const saved = loadLocal(STORAGE.admin, null);
+        return saved?.email || '';
+      }, []);
+      const adminName = React.useMemo(() => {
+        const prefix = adminEmail.split('@')[0];
+        return prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : '';
+      }, [adminEmail]);
 
       async function persistOrder(order) {
         try {
@@ -3911,7 +3919,7 @@ Responde ÚNICAMENTE un Array JSON:
           lugar_entrega: careerAddress(career, config),
           horario_entrega: slot.horario,
           talo_ref: `WA-${String(Date.now()).slice(-6)}`,
-          wa_raw: parserInput,
+          wa_raw: adminName ? `${adminName}: ${parserInput}` : parserInput,
           ts: new Date().toISOString()
         };
           order.wa_message = parserPreview.aiMsjWs || await generateWhatsAppMessageForOrder(order, config);
