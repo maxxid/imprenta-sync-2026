@@ -3265,7 +3265,8 @@
             setLoading(false);
             return;
           }
-          saveLocal(STORAGE.admin, { email: data.user.email, token: data.session.access_token, refresh_token: data.session.refresh_token });
+          const displayName = data.user.user_metadata?.display_name || email.trim().split('@')[0];
+          saveLocal(STORAGE.admin, { email: data.user.email, display_name: displayName, token: data.session.access_token, refresh_token: data.session.refresh_token });
           onSuccess(true);
         } catch (e) {
           setError(e.message || 'Error al conectar con Supabase.');
@@ -3507,14 +3508,12 @@
       const [savingBulk, setSavingBulk] = React.useState(false);
       const [refreshing, setRefreshing] = React.useState(false);
       const sb = React.useMemo(() => getSupabase(config), [config.supabase.url, config.supabase.anon_key]);
-      const adminEmail = React.useMemo(() => {
-        const saved = loadLocal(STORAGE.admin, null);
-        return saved?.email || '';
-      }, []);
       const adminName = React.useMemo(() => {
-        const prefix = adminEmail.split('@')[0];
+        const saved = loadLocal(STORAGE.admin, null);
+        if (saved?.display_name) return saved.display_name.charAt(0).toUpperCase() + saved.display_name.slice(1);
+        const prefix = (saved?.email || '').split('@')[0];
         return prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : '';
-      }, [adminEmail]);
+      }, []);
 
       async function persistOrder(order) {
         try {
