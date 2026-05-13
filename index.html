@@ -1078,7 +1078,7 @@
     function normalizeOrder(order, config) {
       const estado = order.estado === 'Impreso' ? 'Listo' : order.estado;
       const modalidad = order.modalidad_entrega || 'Retiro facultad';
-      const horario = order.horario_entrega || (order.turno === 'manana' ? '10:00' : '19:00');
+      const horario = order.horario_entrega || order.turno || '10:00';
       const lugarGuardado = String(order.lugar_entrega || '').includes('Punto de entrega') ? '' : order.lugar_entrega;
       const items = (order.items || []).map(item => ({ ...item, estado: item.estado || estado || 'Pendiente de impresión' }));
       const derivedEstado = deriveOrderEstado(items);
@@ -3953,8 +3953,8 @@ Responde ÚNICAMENTE un Array JSON:
       async function saveEditedOrder(orderId) {
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
-        const turno = order.turno || 'tarde';
-        const horario = turno === 'manana' ? '10:00' : '19:00';
+        const turno = order.turno || '10:00';
+        const horario = turno;
         const updated = {
           ...order,
           ventana_retiro: order.fecha ? `${formatFechaCorta(order.fecha)} · ${horario}` : order.ventana_retiro,
@@ -4662,8 +4662,9 @@ Responde ÚNICAMENTE un Array JSON:
                     </select>
                     <select className="input-field" value={filters.ventana} onChange={event => setFilters(current => ({ ...current, ventana: event.target.value }))}>
                       <option value="all">Todas las ventanas</option>
-                      <option value="manana">Mañana</option>
-                      <option value="tarde">Tarde</option>
+                      {Array.from({length: 15}, (_, i) => i + 9).map(h => (
+                        <option key={h} value={`${String(h).padStart(2, '0')}:00`}>{`${String(h).padStart(2, '0')}:00 hs`}</option>
+                      ))}
                     </select>
                     <input className="input-field" placeholder="Alumno" value={filters.alumno} onChange={event => setFilters(current => ({ ...current, alumno: event.target.value }))} />
                     <input className="input-field" placeholder="Libro" value={filters.libro} onChange={event => setFilters(current => ({ ...current, libro: event.target.value }))} />
@@ -4809,9 +4810,10 @@ Responde ÚNICAMENTE un Array JSON:
                               editingOrder === order.id ? (
                                 <div className="flex flex-col gap-1">
                                   <input className="input-field text-xs py-1 w-full" value={order.fecha || ''} onChange={e => updateOrderField(order.id, 'fecha', e.target.value)} type="date" />
-                                  <select className="input-field text-xs py-1 w-full" value={order.turno || 'tarde'} onChange={e => updateOrderField(order.id, 'turno', e.target.value)}>
-                                    <option value="manana">Mañana</option>
-                                    <option value="tarde">Tarde</option>
+                                   <select className="input-field text-xs py-1 w-full" value={order.turno || '10:00'} onChange={e => updateOrderField(order.id, 'turno', e.target.value)}>
+                                    {Array.from({length: 15}, (_, i) => i + 9).map(h => (
+                                      <option key={h} value={`${String(h).padStart(2, '0')}:00`}>{`${String(h).padStart(2, '0')}:00 hs`}</option>
+                                    ))}
                                   </select>
                                 </div>
                               ) : (
@@ -4854,12 +4856,18 @@ Responde ÚNICAMENTE un Array JSON:
                           </td>
                           <td style={!columnVisibility.observaciones ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                             {columnVisibility.observaciones ? (
-                              itemIndex === 0 && (order.notas_admin || (order.items?.[0]?.observaciones)) ? (
-                                <span className="text-xs text-ink-500 truncate block max-w-[120px]" title={order.notas_admin || order.items?.[0]?.observaciones || ''}>
-                                  {order.notas_admin || order.items?.[0]?.observaciones || ''}
-                                </span>
+                              editingOrder === order.id ? (
+                                itemIndex === 0 ? (
+                                  <input className="input-field text-xs py-1 w-full" value={order.notas_admin || ''} onChange={e => updateOrderField(order.id, 'notas_admin', e.target.value)} placeholder="Observación" />
+                                ) : null
                               ) : (
-                                <span className="text-xs text-ink-300">—</span>
+                                itemIndex === 0 && (order.notas_admin || (order.items?.[0]?.observaciones)) ? (
+                                  <span className="text-xs text-ink-500 truncate block max-w-[120px]" title={order.notas_admin || order.items?.[0]?.observaciones || ''}>
+                                    {order.notas_admin || order.items?.[0]?.observaciones || ''}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-ink-300">—</span>
+                                )
                               )
                             ) : (
                               <span className="text-xs opacity-50">💬</span>
