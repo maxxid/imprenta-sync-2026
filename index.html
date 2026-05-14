@@ -3799,20 +3799,23 @@ Responde ÚNICAMENTE un Array JSON:
         { id: 'config', label: 'Configuracion', icon: <Icon.Settings /> }
       ];
 
-      function updateParserLibro(idx, bookId, newFormato) {
+      function updateParserLibro(idx, bookId, newValue) {
         const book = books.find(b => b.id === bookId);
         if (!book || !parserPreview) return;
         const updatedLibros = [...parserPreview.libros];
-        const formato = newFormato || parserPreview.libros[idx]?.formato || parserPreview.formato || 'A4';
+        const current = parserPreview.libros[idx] || {};
+        const parts = (newValue || '').split('|');
+        const formatoVal = parts[0] || current.formato || parserPreview.formato || 'A4';
+        const isColor = parts[1] === 'true';
         const combos = getBookCombinations(book);
-        const comboA4 = combos.filter(c => c.formato === 'A4');
-        const comboA5 = combos.filter(c => c.formato === 'A5');
-        const combo = formato === 'A5' && comboA5.length ? comboA5[0] : (comboA4.length ? comboA4[0] : combos[0]);
-        const precio = combo ? combo.precio : calcPrecioItem(book, formato, 'basica', config, false, false).total;
-        const hojas = HOJAS(book.paginas, book.paginas_por_hoja || 2);
-        updatedLibros[idx] = { ...book, formato, color: false, hojas, precio, combosDisponibles: combos };
+        const combo = combos.find(c => c.formato === formatoVal && c.color === isColor)
+          || combos.find(c => c.formato === formatoVal)
+          || combos[0];
+        const precio = combo ? combo.precio : calcPrecioItem(book, formatoVal, 'basica', config, isColor, current.express).total;
+        const hojasObj = HOJAS(book.paginas, book.paginas_por_hoja || 2);
+        updatedLibros[idx] = { ...book, formato: formatoVal, color: combo?.color || false, hojas: hojasObj, precio, combosDisponibles: combos };
         const updatedAiPedidos = [...(parserPreview.aiPedidos || [])];
-        if (updatedAiPedidos[idx]) updatedAiPedidos[idx] = { ...updatedAiPedidos[idx], precio, hojas, paginas: book.paginas };
+        if (updatedAiPedidos[idx]) updatedAiPedidos[idx] = { ...updatedAiPedidos[idx], precio, hojas: hojasObj, paginas: book.paginas };
         const newTotal = updatedLibros.reduce((acc, b) => acc + (b.precio || 0), 0);
         const montoPagado = parserPreview.aiPedidos?.[0]?.sena || parserPreview.montoPagado || 0;
         setParserPreview(prev => ({
@@ -5312,28 +5315,29 @@ Responde ÚNICAMENTE un Array JSON:
                                   <select
                                     className="input-field text-xs py-1.5 flex-1 min-w-[140px]"
                                     value={book.id || ''}
-                                    onChange={e => updateParserLibro(idx, e.target.value, book.formato)}
+                                    onChange={e => updateParserLibro(idx, e.target.value, book.formato ? `${book.formato}|${book.color || false}` : 'A4|false')}
                                   >
                                     {books.filter(b => b.activo !== false).map(b => {
                                       const bc = getBookCombinations(b);
-                                      const a4p = bc.find(c => c.formato === 'A4' && !c.color);
-                                      const a5p = bc.find(c => c.formato === 'A5' && !c.color);
-                                      const info = [a4p && `A4:${fmt(a4p.precio)}`, a5p && `A5:${fmt(a5p.precio)}`].filter(Boolean).join(' | ');
+                                      const lines = bc.map(c => `${c.formato}${c.color ? ' Color' : ''}:${fmt(c.precio)}`);
+                                      const info = lines.join(' | ');
                                       return <option key={b.id} value={b.id}>{b.titulo} [{info}]</option>;
                                     })}
                                   </select>
-                                  {(book.combosDisponibles || []).filter(c => !c.color).length > 1 ? (
+                                  {(book.combosDisponibles || []).length > 1 ? (
                                     <select
-                                      className="input-field text-xs py-1.5 w-[60px]"
-                                      value={book.formato || 'A4'}
+                                      className="input-field text-xs py-1.5 w-[90px]"
+                                      value={`${book.formato || 'A4'}|${book.color ? 'true' : 'false'}`}
                                       onChange={e => updateParserLibro(idx, book.id, e.target.value)}
                                     >
-                                      {(book.combosDisponibles || []).filter(c => !c.color).map(c => (
-                                        <option key={c.formato} value={c.formato}>{c.formato}</option>
+                                      {(book.combosDisponibles || []).map(c => (
+                                        <option key={`${c.formato}-${c.color}`} value={`${c.formato}|${c.color}`}>
+                                          {c.formato} {c.color ? 'Color' : 'B/N'} ({fmt(c.precio)})
+                                        </option>
                                       ))}
                                     </select>
                                   ) : (
-                                    <span className="badge bg-ink-100 text-ink-500 text-xs">{book.formato || 'A4'}</span>
+                                    <span className="badge bg-ink-100 text-ink-500 text-xs">{book.formato || 'A4'} {book.color ? 'Color' : 'B/N'}</span>
                                   )}
                                   <span className="text-xs font-700 text-ink-900 w-[70px] text-right">{book.precio > 0 ? fmt(book.precio) : '—'}</span>
                                   <button
