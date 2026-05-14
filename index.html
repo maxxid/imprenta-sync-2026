@@ -4644,10 +4644,10 @@ Responde ÚNICAMENTE un Array JSON:
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${excludedStates.includes('Entregado') && excludedStates.includes('Pendiente de pago') ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-600 hover:bg-brand-muted hover:text-brand-DEFAULT'}`}
+                      className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${excludedStates.includes('Entregado') && excludedStates.includes('Pendiente de pago') && excludedStates.includes('Listo') ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-600 hover:bg-brand-muted hover:text-brand-DEFAULT'}`}
                       onClick={() => {
-                        const target = ['Entregado', 'Pendiente de pago'];
-                        const isActive = excludedStates.includes('Entregado') && excludedStates.includes('Pendiente de pago');
+                        const target = ['Entregado', 'Pendiente de pago', 'Listo'];
+                        const isActive = excludedStates.includes('Entregado') && excludedStates.includes('Pendiente de pago') && excludedStates.includes('Listo');
                         if (isActive) {
                           setExcludedStates([]);
                         } else {
@@ -4655,9 +4655,25 @@ Responde ÚNICAMENTE un Array JSON:
                           setFilters(current => ({ ...current, estado: 'all' }));
                         }
                       }}
-                      title="Mostrar solo pedidos que requieren acción (excluye Entregado y Pendiente de pago)"
+                      title="Mostrar solo pedidos que requieren acción (excluye Terminado, Entregado y Pendiente de pago)"
                     >
                       POR HACER
+                    </button>
+                    <button
+                      className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${excludedStates.length === 1 && excludedStates.includes('Entregado') ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-600 hover:bg-brand-muted hover:text-brand-DEFAULT'}`}
+                      onClick={() => {
+                        const target = ['Entregado'];
+                        const isActive = excludedStates.length === 1 && excludedStates.includes('Entregado');
+                        if (isActive) {
+                          setExcludedStates([]);
+                        } else {
+                          setExcludedStates(target);
+                          setFilters(current => ({ ...current, estado: 'all' }));
+                        }
+                      }}
+                      title="Mostrar pedidos pendientes de entrega (excluye solo Entregado)"
+                    >
+                      POR ENTREGAR
                     </button>
                     <button
                       className="btn-ghost text-xs px-2 py-1.5"
