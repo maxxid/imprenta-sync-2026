@@ -3709,7 +3709,8 @@ Responde ÚNICAMENTE un Array JSON:
       const pedidosSummary = {};
       for (const row of filtered) {
         const estado = row.item.estado || row.order.estado || 'Pendiente de impresión';
-        if (!pedidosSummary[estado]) pedidosSummary[estado] = { count: 0, total: 0, saldo: 0, hojas: 0, orderIds: new Set() };
+        if (!pedidosSummary[estado]) pedidosSummary[estado] = { count: 0, libros: 0, total: 0, saldo: 0, hojas: 0, orderIds: new Set() };
+        pedidosSummary[estado].libros++;
         pedidosSummary[estado].hojas += Number(row.item.hojas || row.order.hojas || 0);
         if (!pedidosSummary[estado].orderIds.has(row.order.id)) {
           pedidosSummary[estado].orderIds.add(row.order.id);
@@ -5122,14 +5123,15 @@ Responde ÚNICAMENTE un Array JSON:
                 </div>
                 {summaryVisible && (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="text-sm">
                     <thead>
                       <tr className="border-b border-ink-100">
-                        <th className="text-left py-1.5 text-xs text-ink-400 font-600">Estado</th>
-                        <th className="text-right py-1.5 text-xs text-ink-400 font-600 w-20">Pedidos</th>
-                        <th className="text-right py-1.5 text-xs text-ink-400 font-600 w-24">Total $</th>
-                        <th className="text-right py-1.5 text-xs text-ink-400 font-600 w-24">Saldo $</th>
-                        <th className="text-right py-1.5 text-xs text-ink-400 font-600 w-20">Hojas</th>
+                        <th className="text-left py-1.5 pr-3 text-xs text-ink-400 font-600">Estado</th>
+                        <th className="text-right py-1.5 px-2 text-xs text-ink-400 font-600 w-16">Pedidos</th>
+                        <th className="text-right py-1.5 px-2 text-xs text-ink-400 font-600 w-16">Libros</th>
+                        <th className="text-right py-1.5 px-2 text-xs text-ink-400 font-600 w-20">Total $</th>
+                        <th className="text-right py-1.5 px-2 text-xs text-ink-400 font-600 w-20">Saldo $</th>
+                        <th className="text-right py-1.5 px-2 text-xs text-ink-400 font-600 w-16">Hojas</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -5140,22 +5142,24 @@ Responde ÚNICAMENTE un Array JSON:
                         const bgClass = idx % 2 === 0 ? 'bg-ink-25' : 'bg-ink-50';
                         return (
                           <tr key={estado} className={`border-b border-ink-100 ${bgClass}`}>
-                            <td className={`py-1.5 text-ink-700 font-600 ${isFirst ? 'rounded-tl-lg' : ''} ${isLast ? 'rounded-bl-lg' : ''}`}>{STATE_LABELS[estado] || estado}</td>
-                            <td className="py-1.5 text-right text-ink-700">{data ? data.count : 0}</td>
-                            <td className="py-1.5 text-right font-600 text-ink-800">{fmt(data ? data.total : 0)}</td>
-                            <td className="py-1.5 text-right text-ink-600">{fmt(data ? data.saldo : 0)}</td>
-                            <td className={`py-1.5 text-right text-ink-600 ${isFirst ? 'rounded-tr-lg' : ''} ${isLast ? 'rounded-br-lg' : ''}`}>{data ? data.hojas : 0}</td>
+                            <td className={`py-1.5 pr-3 text-ink-700 font-600 ${isFirst ? 'rounded-tl-lg' : ''} ${isLast ? 'rounded-bl-lg' : ''}`}>{STATE_LABELS[estado] || estado}</td>
+                            <td className="py-1.5 px-2 text-right text-ink-700">{data ? data.count : 0}</td>
+                            <td className="py-1.5 px-2 text-right text-ink-700">{data ? data.libros : 0}</td>
+                            <td className="py-1.5 px-2 text-right font-600 text-ink-800">{fmt(data ? data.total : 0)}</td>
+                            <td className="py-1.5 px-2 text-right text-ink-600">{fmt(data ? data.saldo : 0)}</td>
+                            <td className={`py-1.5 px-2 text-right text-ink-600 ${isFirst ? 'rounded-tr-lg' : ''} ${isLast ? 'rounded-br-lg' : ''}`}>{data ? data.hojas : 0}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-ink-200 font-700 bg-ink-100">
-                        <td className="py-2 text-ink-900 rounded-bl-lg">TOTAL GENERAL</td>
-                        <td className="py-2 text-right text-ink-900">{Object.values(pedidosSummary).reduce((a, s) => a + s.count, 0)}</td>
-                        <td className="py-2 text-right text-ink-900">{fmt(Object.values(pedidosSummary).reduce((a, s) => a + s.total, 0))}</td>
-                        <td className="py-2 text-right text-ink-900">{fmt(Object.values(pedidosSummary).reduce((a, s) => a + s.saldo, 0))}</td>
-                        <td className="py-2 text-right text-ink-900 rounded-br-lg">{Object.values(pedidosSummary).reduce((a, s) => a + s.hojas, 0)}</td>
+                        <td className="py-2 pr-3 text-ink-900 rounded-bl-lg">TOTAL GENERAL</td>
+                        <td className="py-2 px-2 text-right text-ink-900">{Object.values(pedidosSummary).reduce((a, s) => a + s.count, 0)}</td>
+                        <td className="py-2 px-2 text-right text-ink-900">{Object.values(pedidosSummary).reduce((a, s) => a + s.libros, 0)}</td>
+                        <td className="py-2 px-2 text-right text-ink-900">{fmt(Object.values(pedidosSummary).reduce((a, s) => a + s.total, 0))}</td>
+                        <td className="py-2 px-2 text-right text-ink-900">{fmt(Object.values(pedidosSummary).reduce((a, s) => a + s.saldo, 0))}</td>
+                        <td className="py-2 px-2 text-right text-ink-900 rounded-br-lg">{Object.values(pedidosSummary).reduce((a, s) => a + s.hojas, 0)}</td>
                       </tr>
                     </tfoot>
                   </table>
