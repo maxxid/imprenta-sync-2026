@@ -3643,7 +3643,7 @@ Responde ÚNICAMENTE un Array JSON:
               const comboA5 = combos.filter(c => c.formato === 'A5');
               const combo = formato === 'A5' && comboA5.length ? comboA5[0] : (comboA4.length ? comboA4[0] : combos[0]);
               const precio = combo ? combo.precio : (Number(p.precio) || 0);
-              return { ...book, formato, color: false, hojas: HOJAS(book.paginas, book.paginas_por_hoja || 2), precio, combosDisponibles: combos };
+              return { ...book, formato: combo?.formato || formato, color: combo?.color || false, hojas: HOJAS(book.paginas, book.paginas_por_hoja || 2), precio, combosDisponibles: combos };
             }
             const fallbackPaginas = Number(p.paginas) || 100;
             return {
@@ -3841,7 +3841,7 @@ Responde ÚNICAMENTE un Array JSON:
           || combos[0];
         const precio = combo ? combo.precio : calcPrecioItem(book, formatoVal, 'basica', config, isColor, current.express).total;
         const hojasObj = HOJAS(book.paginas, book.paginas_por_hoja || 2);
-        updatedLibros[idx] = { ...book, formato: formatoVal, color: combo?.color || false, hojas: hojasObj, precio, combosDisponibles: combos };
+        updatedLibros[idx] = { ...book, formato: combo?.formato || formatoVal, color: combo?.color || false, hojas: hojasObj, precio, combosDisponibles: combos };
         const updatedAiPedidos = [...(parserPreview.aiPedidos || [])];
         if (updatedAiPedidos[idx]) updatedAiPedidos[idx] = { ...updatedAiPedidos[idx], precio, hojas: hojasObj, paginas: book.paginas };
         const newTotal = updatedLibros.reduce((acc, b) => acc + (b.precio || 0), 0);
