@@ -3508,6 +3508,9 @@
       const [savingBulk, setSavingBulk] = React.useState(false);
       const [savingOrder, setSavingOrder] = React.useState(null);
       const [savingItemStates, setSavingItemStates] = React.useState({});
+      const [showQuickUnico, setShowQuickUnico] = React.useState(false);
+      const [quickUnico, setQuickUnico] = React.useState({ nombre: '', whatsapp: '', titulo: '', hojas: 50, paginas: 100, formato: 'A4', precio: 0, fecha: '', turno: '10:00', pago: 'total' });
+      const [savingQuick, setSavingQuick] = React.useState(false);
       const [refreshing, setRefreshing] = React.useState(false);
       const sb = React.useMemo(() => getSupabase(config), [config.supabase.url, config.supabase.anon_key]);
       const adminName = React.useMemo(() => {
@@ -3628,7 +3631,7 @@ Responde ÚNICAMENTE un Array JSON:
               a5_color_habilitado: false, a5_color_final: 0,
               imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=' + encodeURIComponent(p.libro),
               formato: p.formato || 'A4', color: false, hojas: HOJAS(fallbackPaginas, 2),
-              precio: Number(p.precio) || 0, combosDisponibles: []
+              precio: Number(p.precio) || 0, combosDisponibles: [], _manual: true
             };
           });
           const total = matchedBooks.reduce((acc, b) => acc + (b.precio || 0), 0);
@@ -3847,6 +3850,56 @@ Responde ÚNICAMENTE un Array JSON:
         }));
       }
 
+      function updateParserLibroManual(idx, field, value) {
+        if (!parserPreview) return;
+        const updatedLibros = [...parserPreview.libros];
+        updatedLibros[idx] = { ...updatedLibros[idx], [field]: value };
+        if (field === 'paginas') {
+          updatedLibros[idx].hojas = HOJAS(value, updatedLibros[idx].paginas_por_hoja || 2);
+        }
+        const newTotal = updatedLibros.reduce((acc, b) => acc + (b.precio || 0), 0);
+        const montoPagado = parserPreview.aiPedidos?.[0]?.sena || parserPreview.montoPagado || 0;
+        setParserPreview(prev => ({ ...prev, libros: updatedLibros, total: newTotal, saldo: Math.max(0, newTotal - montoPagado) }));
+      }
+
+      function toggleParserLibroManual(idx) {
+        if (!parserPreview) return;
+        const updatedLibros = [...parserPreview.libros];
+        const book = updatedLibros[idx];
+        if (book._manual) {
+          const match = books.find(b => slug(b.titulo).includes(slug(book.titulo)) || slug(book.titulo).includes(slug(b.titulo)));
+          if (match) {
+            const combos = getBookCombinations(match);
+            const combo = combos[0];
+            updatedLibros[idx] = { ...match, formato: book.formato || combo?.formato || 'A4', color: false, hojas: HOJAS(match.paginas, match.paginas_por_hoja || 2), precio: combo?.precio || book.precio || 0, combosDisponibles: combos, _manual: false };
+          } else {
+            updatedLibros[idx] = { ...book, _manual: false };
+          }
+        } else {
+          updatedLibros[idx] = { ...book, _manual: true };
+        }
+        const newTotal = updatedLibros.reduce((acc, b) => acc + (b.precio || 0), 0);
+        const montoPagado = parserPreview.aiPedidos?.[0]?.sena || parserPreview.montoPagado || 0;
+        setParserPreview(prev => ({ ...prev, libros: updatedLibros, total: newTotal, saldo: Math.max(0, newTotal - montoPagado) }));
+      }
+
+      function addParserLibroManual() {
+        if (!parserPreview) return;
+        const newBook = {
+          id: `parser-manual-${Date.now()}`,
+          titulo: '', materia: '', carrera: '', id_carrera: '',
+          paginas: 100, paginas_por_hoja: 2, pdf_url: '', activo: true,
+          a4_bn_habilitado: true, a4_bn_final: 0, a4_color_habilitado: false, a4_color_final: 0,
+          a5_bn_habilitado: false, a5_bn_final: 0, a5_color_habilitado: false, a5_color_final: 0,
+          imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=Manual',
+          formato: parserPreview.formato || 'A4', color: false, hojas: HOJAS(100, 2),
+          precio: 0, combosDisponibles: [], _manual: true
+        };
+        const updatedLibros = [...parserPreview.libros, newBook];
+        const updatedAiPedidos = [...(parserPreview.aiPedidos || []), { precio: 0, hojas: HOJAS(100, 2), paginas: 100 }];
+        setParserPreview(prev => ({ ...prev, libros: updatedLibros, aiPedidos: updatedAiPedidos }));
+      }
+
       function updateParserField(field, value) {
         if (!parserPreview) return;
         setParserPreview(prev => {
@@ -3867,13 +3920,14 @@ Responde ÚNICAMENTE un Array JSON:
         try {
           const items = parserPreview.libros.map((book, idx) => {
             const bookFormato = book.formato || parserPreview.formato || 'A4';
+            const isManual = book._manual;
             return {
               id: `${book.id}-${Date.now()}-${idx}`,
-              libroId: book.id,
+              libroId: isManual ? null : book.id,
               titulo: book.titulo,
               materia: book.materia || '',
-              carrera: book.carrera,
-              id_carrera: bookCareerId(book),
+              carrera: isManual ? 'Único' : book.carrera,
+              id_carrera: isManual ? '' : bookCareerId(book),
               paginas: book.paginas || 0,
               hojas: book.hojas || HOJAS(book.paginas, book.paginas_por_hoja || 2),
               formato: bookFormato,
@@ -3923,6 +3977,7 @@ Responde ÚNICAMENTE un Array JSON:
           horario_entrega: slot.horario,
           talo_ref: `WA-${String(Date.now()).slice(-6)}`,
           wa_raw: adminName ? `${adminName}: ${parserInput}` : parserInput,
+          es_unico: itemsWithEstado.some(item => !item.libroId),
           ts: new Date().toISOString()
         };
           order.wa_message = parserPreview.aiMsjWs || await generateWhatsAppMessageForOrder(order, config);
@@ -4019,6 +4074,66 @@ Responde ÚNICAMENTE un Array JSON:
         setEditingOrder(null);
         } finally {
           setSavingOrder(null);
+        }
+      }
+
+      async function createQuickUnico() {
+        if (!quickUnico.nombre.trim() || !quickUnico.titulo.trim()) return;
+        setSavingQuick(true);
+        try {
+          const itemId = `quick-${Date.now()}`;
+          const items = [{
+            id: itemId,
+            libroId: null,
+            titulo: quickUnico.titulo.trim(),
+            materia: '', carrera: 'Único', id_carrera: '',
+            paginas: quickUnico.paginas || 100,
+            hojas: quickUnico.hojas || 50,
+            formato: quickUnico.formato || 'A4',
+            encuadernacion: (quickUnico.hojas || 50) >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado',
+            color: false, express: false,
+            precio: quickUnico.precio || 0,
+            tipo: (quickUnico.hojas || 50) >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado',
+            imagen_url: '', observaciones: '',
+            estado: quickUnico.pago === 'total' ? 'Pendiente de impresión' : 'Pendiente de pago'
+          }];
+          const total = roundTotal(quickUnico.precio || 0, config);
+          const montoPagado = quickUnico.pago === 'total' ? total : 0;
+          const order = {
+            id: `WA${String(Date.now()).slice(-6)}`,
+            nombre: quickUnico.nombre.trim(),
+            whatsapp: quickUnico.whatsapp.trim(),
+            items, libro: quickUnico.titulo.trim(),
+            carrera: 'Único', id_carrera: '', materia: '',
+            formato: quickUnico.formato || 'A4',
+            paginas: quickUnico.paginas || 100,
+            hojas: quickUnico.hojas || 50,
+            subtotal: total, total,
+            monto_pagado: montoPagado,
+            saldo_pendiente: total - montoPagado,
+            pago_modalidad: quickUnico.pago,
+            estado: quickUnico.pago === 'total' ? 'Pendiente de impresión' : 'Pendiente de pago',
+            fecha: quickUnico.fecha || '',
+            turno: quickUnico.turno || '10:00',
+            modalidad_entrega: 'Retiro facultad',
+            express: false,
+            ventana_retiro: quickUnico.fecha ? `${formatFechaCorta(quickUnico.fecha)} · ${quickUnico.turno || '10:00'}` : '',
+            lugar_entrega: '', horario_entrega: quickUnico.turno || '10:00',
+            talo_ref: `WA-${String(Date.now()).slice(-6)}`,
+            wa_raw: adminName ? `${adminName}: ${quickUnico.titulo} (carga manual)` : '',
+            es_unico: true,
+            ts: new Date().toISOString()
+          };
+          await saveOrderToSupabase(order, config);
+          setOrders(previous => [order, ...previous]);
+          syncOrderToSheets(order, config);
+          setQuickUnico({ nombre: '', whatsapp: '', titulo: '', hojas: 50, paginas: 100, formato: 'A4', precio: 0, fecha: '', turno: '10:00', pago: 'total' });
+          setShowQuickUnico(false);
+        } catch (err) {
+          console.error('Error creando pedido único:', err);
+          alert('Error al crear el pedido único.');
+        } finally {
+          setSavingQuick(false);
         }
       }
 
@@ -4677,6 +4792,13 @@ Responde ÚNICAMENTE un Array JSON:
                       POR ENTREGAR
                     </button>
                     <button
+                      className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${showQuickUnico ? 'bg-brand-DEFAULT text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                      onClick={() => setShowQuickUnico(v => !v)}
+                      title="Crear pedido único (sin catálogo)"
+                    >
+                      + Único
+                    </button>
+                    <button
                       className="btn-ghost text-xs px-2 py-1.5"
                       onClick={() => {
                         setFilters({ estado: 'all', fecha: 'all', ventana: 'all', alumno: '', libro: '', formato: 'all', modalidad: 'all', hojas: 'all' });
@@ -4762,6 +4884,71 @@ Responde ÚNICAMENTE un Array JSON:
                 )}
               </div>
 
+              {showQuickUnico && (
+                <div className="card p-4 bg-amber-50 border border-amber-100 slide-up">
+                  <div className="font-700 text-sm text-amber-800 mb-3">Nuevo pedido único</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">Nombre</label>
+                      <input className="input-field text-xs py-1.5 w-full" value={quickUnico.nombre} onChange={e => setQuickUnico(prev => ({ ...prev, nombre: e.target.value }))} placeholder="Nombre del alumno" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">WhatsApp</label>
+                      <input className="input-field text-xs py-1.5 w-full" value={quickUnico.whatsapp} onChange={e => setQuickUnico(prev => ({ ...prev, whatsapp: e.target.value }))} placeholder="Sin +54" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">Libro</label>
+                      <input className="input-field text-xs py-1.5 w-full" value={quickUnico.titulo} onChange={e => setQuickUnico(prev => ({ ...prev, titulo: e.target.value }))} placeholder="Título del libro" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">Precio $</label>
+                      <input className="input-field text-xs py-1.5 w-full" type="number" value={quickUnico.precio || ''} onChange={e => setQuickUnico(prev => ({ ...prev, precio: Number(e.target.value) || 0 }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">Hojas</label>
+                      <input className="input-field text-xs py-1.5 w-full" type="number" value={quickUnico.hojas || ''} onChange={e => setQuickUnico(prev => ({ ...prev, hojas: Number(e.target.value) || 0 }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">Formato</label>
+                      <select className="input-field text-xs py-1.5 w-full" value={quickUnico.formato} onChange={e => setQuickUnico(prev => ({ ...prev, formato: e.target.value }))}>
+                        <option value="A4">A4</option>
+                        <option value="A5">A5</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">Fecha entrega</label>
+                      <input className="input-field text-xs py-1.5 w-full" type="date" value={quickUnico.fecha} onChange={e => setQuickUnico(prev => ({ ...prev, fecha: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink-500 block mb-0.5">Hora</label>
+                      <select className="input-field text-xs py-1.5 w-full" value={quickUnico.turno} onChange={e => setQuickUnico(prev => ({ ...prev, turno: e.target.value }))}>
+                        {Array.from({length: 15}, (_, i) => i + 9).map(h => (
+                          <option key={h} value={`${String(h).padStart(2, '0')}:00`}>{`${String(h).padStart(2, '0')}:00 hs`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    <label className="flex items-center gap-1.5 text-xs text-ink-600">
+                      <input type="radio" name="quickPago" checked={quickUnico.pago === 'total'} onChange={() => setQuickUnico(prev => ({ ...prev, pago: 'total' }))} />
+                      Pago total
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-ink-600">
+                      <input type="radio" name="quickPago" checked={quickUnico.pago === 'sena'} onChange={() => setQuickUnico(prev => ({ ...prev, pago: 'sena' }))} />
+                      Seña
+                    </label>
+                    <button
+                      className="btn-primary text-xs px-4 py-1.5 ml-auto"
+                      disabled={savingQuick || !quickUnico.nombre.trim() || !quickUnico.titulo.trim()}
+                      onClick={createQuickUnico}
+                    >
+                      {savingQuick ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Crear pedido'}
+                    </button>
+                    <button className="btn-ghost text-xs px-3 py-1.5" onClick={() => setShowQuickUnico(false)}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+
               <div className="table-shell" onMouseMove={handleResizeMove} onMouseUp={handleResizeEnd} onMouseLeave={handleResizeEnd}>
                 <table>
                   <thead>
@@ -4838,6 +5025,9 @@ Responde ÚNICAMENTE un Array JSON:
                                 )}
                                 {expandedWaId === order.id && order.wa_raw && (
                                   <div className="text-xs text-ink-500 mt-1 bg-ink-25 rounded p-1.5 max-w-[200px] whitespace-pre-wrap break-words">{order.wa_raw}</div>
+                                )}
+                                {itemIndex === 0 && order.es_unico && (
+                                  <span className="badge bg-amber-100 text-amber-700 text-[10px] mt-0.5">Único</span>
                                 )}
                                 <div className="text-xs text-ink-400">{itemIndex + 1}/{totalItems} · {item.hojas || order.hojas} hojas</div>
                               </>
@@ -5203,42 +5393,93 @@ Responde ÚNICAMENTE un Array JSON:
                         <span className="text-ink-500 text-xs block mb-2">Libros</span>
                         <div className="space-y-2">
                           {parserPreview.libros.map((book, idx) => {
-                            const combos = book.combosDisponibles || [];
-                            const a4 = combos.find(c => c.formato === 'A4' && !c.color);
-                            const a5 = combos.find(c => c.formato === 'A5' && !c.color);
-                            const availableFormats = [a4, a5].filter(Boolean);
+                            const isManual = book._manual;
                             return (
-                            <div key={idx} className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[10px] font-700 text-ink-400">{idx + 1}.</span>
-                              <select
-                                className="input-field text-xs py-1.5 flex-1 min-w-[140px]"
-                                value={book.id || ''}
-                                onChange={e => updateParserLibro(idx, e.target.value, book.formato)}
-                              >
-                                {books.filter(b => b.activo !== false).map(b => {
-                                  const bc = getBookCombinations(b);
-                                  const a4p = bc.find(c => c.formato === 'A4' && !c.color);
-                                  const a5p = bc.find(c => c.formato === 'A5' && !c.color);
-                                  const info = [a4p && `A4:${fmt(a4p.precio)}`, a5p && `A5:${fmt(a5p.precio)}`].filter(Boolean).join(' | ');
-                                  return <option key={b.id} value={b.id}>{b.titulo} [{info}]</option>;
-                                })}
-                              </select>
-                              {availableFormats.length > 1 ? (
-                                <select
-                                  className="input-field text-xs py-1.5 w-[60px]"
-                                  value={book.formato || 'A4'}
-                                  onChange={e => updateParserLibro(idx, book.id, e.target.value)}
-                                >
-                                  {availableFormats.map(c => (
-                                    <option key={c.formato} value={c.formato}>{c.formato}</option>
-                                  ))}
-                                </select>
+                            <div key={idx} className={`flex items-start gap-1.5 flex-wrap p-2 rounded-lg ${isManual ? 'bg-amber-50 border border-amber-100' : ''}`}>
+                              <span className="text-[10px] font-700 text-ink-400 mt-1.5">{idx + 1}.</span>
+                              {isManual ? (
+                                <div className="flex-1 flex items-center gap-1.5 flex-wrap">
+                                  <input
+                                    className="input-field text-xs py-1 flex-1 min-w-[120px]"
+                                    value={book.titulo || ''}
+                                    onChange={e => updateParserLibroManual(idx, 'titulo', e.target.value)}
+                                    placeholder="Título del libro"
+                                  />
+                                  <input
+                                    className="input-field text-xs py-1 w-[55px]"
+                                    type="number"
+                                    value={book.paginas || ''}
+                                    onChange={e => updateParserLibroManual(idx, 'paginas', Number(e.target.value) || 0)}
+                                    placeholder="Págs"
+                                    title="Páginas"
+                                  />
+                                  <input
+                                    className="input-field text-xs py-1 w-[55px]"
+                                    type="number"
+                                    value={book.hojas || ''}
+                                    onChange={e => updateParserLibroManual(idx, 'hojas', Number(e.target.value) || 0)}
+                                    placeholder="Hojas"
+                                    title="Hojas impresas"
+                                  />
+                                  <select
+                                    className="input-field text-xs py-1 w-[60px]"
+                                    value={book.formato || 'A4'}
+                                    onChange={e => updateParserLibroManual(idx, 'formato', e.target.value)}
+                                  >
+                                    <option value="A4">A4</option>
+                                    <option value="A5">A5</option>
+                                  </select>
+                                  <input
+                                    className="input-field text-xs py-1 w-[90px]"
+                                    type="number"
+                                    value={book.precio || ''}
+                                    onChange={e => updateParserLibroManual(idx, 'precio', Number(e.target.value) || 0)}
+                                    placeholder="$ Precio"
+                                  />
+                                  <button
+                                    className="text-xs font-700 text-brand-DEFAULT hover:text-brand-dark flex items-center gap-0.5"
+                                    onClick={() => toggleParserLibroManual(idx)}
+                                    title="Buscar en catálogo"
+                                  >🔍</button>
+                                </div>
                               ) : (
-                                <span className="badge bg-ink-100 text-ink-500 text-xs">{book.formato || 'A4'}</span>
+                                <>
+                                  <select
+                                    className="input-field text-xs py-1.5 flex-1 min-w-[140px]"
+                                    value={book.id || ''}
+                                    onChange={e => updateParserLibro(idx, e.target.value, book.formato)}
+                                  >
+                                    {books.filter(b => b.activo !== false).map(b => {
+                                      const bc = getBookCombinations(b);
+                                      const a4p = bc.find(c => c.formato === 'A4' && !c.color);
+                                      const a5p = bc.find(c => c.formato === 'A5' && !c.color);
+                                      const info = [a4p && `A4:${fmt(a4p.precio)}`, a5p && `A5:${fmt(a5p.precio)}`].filter(Boolean).join(' | ');
+                                      return <option key={b.id} value={b.id}>{b.titulo} [{info}]</option>;
+                                    })}
+                                  </select>
+                                  {(book.combosDisponibles || []).filter(c => !c.color).length > 1 ? (
+                                    <select
+                                      className="input-field text-xs py-1.5 w-[60px]"
+                                      value={book.formato || 'A4'}
+                                      onChange={e => updateParserLibro(idx, book.id, e.target.value)}
+                                    >
+                                      {(book.combosDisponibles || []).filter(c => !c.color).map(c => (
+                                        <option key={c.formato} value={c.formato}>{c.formato}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className="badge bg-ink-100 text-ink-500 text-xs">{book.formato || 'A4'}</span>
+                                  )}
+                                  <span className="text-xs font-700 text-ink-900 w-[70px] text-right">{book.precio > 0 ? fmt(book.precio) : '—'}</span>
+                                  <button
+                                    className="text-[10px] font-700 text-amber-500 hover:text-amber-700 flex-shrink-0"
+                                    onClick={() => toggleParserLibroManual(idx)}
+                                    title="Convertir a libro manual"
+                                  >✎</button>
+                                </>
                               )}
-                              <span className="text-xs font-700 text-ink-900 w-[70px] text-right">{book.precio > 0 ? fmt(book.precio) : '—'}</span>
                               <button
-                                className="text-red-400 hover:text-red-600 font-700 text-sm flex-shrink-0 ml-1"
+                                className="text-red-400 hover:text-red-600 font-700 text-sm flex-shrink-0 ml-0.5"
                                 title="Quitar libro"
                                 onClick={() => {
                                   const updatedLibros = parserPreview.libros.filter((_, i) => i !== idx);
@@ -5250,7 +5491,10 @@ Responde ÚNICAMENTE un Array JSON:
                               >✕</button>
                             </div>
                           );})}
-                          <button onClick={addParserLibro} className="text-xs text-brand-DEFAULT hover:text-brand-dark font-700 flex items-center gap-1 mt-1">+ Agregar otro libro</button>
+                          <div className="flex gap-2 mt-1">
+                            <button onClick={addParserLibro} className="text-xs text-brand-DEFAULT hover:text-brand-dark font-700 flex items-center gap-1">+ Agregar del catálogo</button>
+                            <button onClick={addParserLibroManual} className="text-xs text-amber-600 hover:text-amber-800 font-700 flex items-center gap-1">+ Agregar libro manual</button>
+                          </div>
                         </div>
                       </div>
                       <div className="flex justify-between items-center"><span className="text-ink-500">Formato</span><select className="input-field text-xs py-1.5 w-[80px] text-right font-700" value={parserPreview.formato} onChange={e => updateParserField('formato', e.target.value)}><option value="A4">A4</option><option value="A5">A5</option></select></div>
