@@ -3506,6 +3506,7 @@
       const [catFiltersVisible, setCatFiltersVisible] = React.useState(true);
       const [savingConfig, setSavingConfig] = React.useState(false);
       const [savingBulk, setSavingBulk] = React.useState(false);
+      const [savingOrder, setSavingOrder] = React.useState(null);
       const [refreshing, setRefreshing] = React.useState(false);
       const sb = React.useMemo(() => getSupabase(config), [config.supabase.url, config.supabase.anon_key]);
       const adminName = React.useMemo(() => {
@@ -3987,6 +3988,8 @@ Responde ÚNICAMENTE un Array JSON:
       }
 
       async function saveEditedOrder(orderId) {
+        setSavingOrder(orderId);
+        try {
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
         const turno = order.turno || '10:00';
@@ -3999,6 +4002,9 @@ Responde ÚNICAMENTE un Array JSON:
         await persistOrder(updated);
         setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
         setEditingOrder(null);
+        } finally {
+          setSavingOrder(null);
+        }
       }
 
       async function refreshAll() {
@@ -4967,11 +4973,16 @@ Responde ÚNICAMENTE un Array JSON:
                                 {editingOrder === order.id ? (
                                   <>
                                     <button
-                                      className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-ok-muted text-ok-DEFAULT hover:bg-ok-muted/80 transition-colors"
+                                      className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-all ${savingOrder === order.id ? 'bg-brand-muted text-brand-DEFAULT' : 'bg-ok-muted text-ok-DEFAULT hover:bg-ok-muted/80'}`}
                                       onClick={() => saveEditedOrder(order.id)}
+                                      disabled={savingOrder !== null}
                                       title="Guardar cambios"
                                     >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      {savingOrder === order.id ? (
+                                        <span className="spinner-sm" />
+                                      ) : (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      )}
                                     </button>
                                     <button
                                       className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
