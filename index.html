@@ -5362,7 +5362,7 @@ Responde ÚNICAMENTE un Array JSON:
                           </div>
                         </div>
                       </div>
-                      {parserPreview.libros.length > 0 && (() => {
+                      {parserPreview.libros.length > 0 && parserPreview.libros.some(b => b._manual) && (() => {
                         const previewId = `WA${String(Date.now()).slice(-6)}`;
                         const librosStr = parserPreview.libros.map(b => b.titulo).join(', ');
                         const nombrePdf = `${previewId}-${parserPreview.nombre || 'SinNombre'}-${librosStr}`.replace(/[\\/:*?"<>|]/g, '-').slice(0, 200);
