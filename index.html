@@ -3508,9 +3508,6 @@
       const [savingBulk, setSavingBulk] = React.useState(false);
       const [savingOrder, setSavingOrder] = React.useState(null);
       const [savingItemStates, setSavingItemStates] = React.useState({});
-      const [showQuickUnico, setShowQuickUnico] = React.useState(false);
-      const [quickUnico, setQuickUnico] = React.useState({ nombre: '', whatsapp: '', titulo: '', hojas: 50, paginas: 100, formato: 'A4', precio: 0, fecha: '', turno: '10:00', pago: 'total' });
-      const [savingQuick, setSavingQuick] = React.useState(false);
       const [refreshing, setRefreshing] = React.useState(false);
       const sb = React.useMemo(() => getSupabase(config), [config.supabase.url, config.supabase.anon_key]);
       const adminName = React.useMemo(() => {
@@ -4074,66 +4071,6 @@ Responde ÚNICAMENTE un Array JSON:
         setEditingOrder(null);
         } finally {
           setSavingOrder(null);
-        }
-      }
-
-      async function createQuickUnico() {
-        if (!quickUnico.nombre.trim() || !quickUnico.titulo.trim()) return;
-        setSavingQuick(true);
-        try {
-          const itemId = `quick-${Date.now()}`;
-          const items = [{
-            id: itemId,
-            libroId: null,
-            titulo: quickUnico.titulo.trim(),
-            materia: '', carrera: 'Único', id_carrera: '',
-            paginas: quickUnico.paginas || 100,
-            hojas: quickUnico.hojas || 50,
-            formato: quickUnico.formato || 'A4',
-            encuadernacion: (quickUnico.hojas || 50) >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado',
-            color: false, express: false,
-            precio: quickUnico.precio || 0,
-            tipo: (quickUnico.hojas || 50) >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado',
-            imagen_url: '', observaciones: '',
-            estado: quickUnico.pago === 'total' ? 'Pendiente de impresión' : 'Pendiente de pago'
-          }];
-          const total = roundTotal(quickUnico.precio || 0, config);
-          const montoPagado = quickUnico.pago === 'total' ? total : 0;
-          const order = {
-            id: `WA${String(Date.now()).slice(-6)}`,
-            nombre: quickUnico.nombre.trim(),
-            whatsapp: quickUnico.whatsapp.trim(),
-            items, libro: quickUnico.titulo.trim(),
-            carrera: 'Único', id_carrera: '', materia: '',
-            formato: quickUnico.formato || 'A4',
-            paginas: quickUnico.paginas || 100,
-            hojas: quickUnico.hojas || 50,
-            subtotal: total, total,
-            monto_pagado: montoPagado,
-            saldo_pendiente: total - montoPagado,
-            pago_modalidad: quickUnico.pago,
-            estado: quickUnico.pago === 'total' ? 'Pendiente de impresión' : 'Pendiente de pago',
-            fecha: quickUnico.fecha || '',
-            turno: quickUnico.turno || '10:00',
-            modalidad_entrega: 'Retiro facultad',
-            express: false,
-            ventana_retiro: quickUnico.fecha ? `${formatFechaCorta(quickUnico.fecha)} · ${quickUnico.turno || '10:00'}` : '',
-            lugar_entrega: '', horario_entrega: quickUnico.turno || '10:00',
-            talo_ref: `WA-${String(Date.now()).slice(-6)}`,
-            wa_raw: adminName ? `${adminName}: ${quickUnico.titulo} (carga manual)` : '',
-            es_unico: true,
-            ts: new Date().toISOString()
-          };
-          await saveOrderToSupabase(order, config);
-          setOrders(previous => [order, ...previous]);
-          syncOrderToSheets(order, config);
-          setQuickUnico({ nombre: '', whatsapp: '', titulo: '', hojas: 50, paginas: 100, formato: 'A4', precio: 0, fecha: '', turno: '10:00', pago: 'total' });
-          setShowQuickUnico(false);
-        } catch (err) {
-          console.error('Error creando pedido único:', err);
-          alert('Error al crear el pedido único.');
-        } finally {
-          setSavingQuick(false);
         }
       }
 
@@ -4792,13 +4729,6 @@ Responde ÚNICAMENTE un Array JSON:
                       POR ENTREGAR
                     </button>
                     <button
-                      className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${showQuickUnico ? 'bg-brand-DEFAULT text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
-                      onClick={() => setShowQuickUnico(v => !v)}
-                      title="Crear pedido único (sin catálogo)"
-                    >
-                      + Único
-                    </button>
-                    <button
                       className="btn-ghost text-xs px-2 py-1.5"
                       onClick={() => {
                         setFilters({ estado: 'all', fecha: 'all', ventana: 'all', alumno: '', libro: '', formato: 'all', modalidad: 'all', hojas: 'all' });
@@ -4883,71 +4813,6 @@ Responde ÚNICAMENTE un Array JSON:
                   </div>
                 )}
               </div>
-
-              {showQuickUnico && (
-                <div className="card p-4 bg-amber-50 border border-amber-100 slide-up">
-                  <div className="font-700 text-sm text-amber-800 mb-3">Nuevo pedido único</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">Nombre</label>
-                      <input className="input-field text-xs py-1.5 w-full" value={quickUnico.nombre} onChange={e => setQuickUnico(prev => ({ ...prev, nombre: e.target.value }))} placeholder="Nombre del alumno" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">WhatsApp</label>
-                      <input className="input-field text-xs py-1.5 w-full" value={quickUnico.whatsapp} onChange={e => setQuickUnico(prev => ({ ...prev, whatsapp: e.target.value }))} placeholder="Sin +54" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">Libro</label>
-                      <input className="input-field text-xs py-1.5 w-full" value={quickUnico.titulo} onChange={e => setQuickUnico(prev => ({ ...prev, titulo: e.target.value }))} placeholder="Título del libro" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">Precio $</label>
-                      <input className="input-field text-xs py-1.5 w-full" type="number" value={quickUnico.precio || ''} onChange={e => setQuickUnico(prev => ({ ...prev, precio: Number(e.target.value) || 0 }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">Hojas</label>
-                      <input className="input-field text-xs py-1.5 w-full" type="number" value={quickUnico.hojas || ''} onChange={e => setQuickUnico(prev => ({ ...prev, hojas: Number(e.target.value) || 0 }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">Formato</label>
-                      <select className="input-field text-xs py-1.5 w-full" value={quickUnico.formato} onChange={e => setQuickUnico(prev => ({ ...prev, formato: e.target.value }))}>
-                        <option value="A4">A4</option>
-                        <option value="A5">A5</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">Fecha entrega</label>
-                      <input className="input-field text-xs py-1.5 w-full" type="date" value={quickUnico.fecha} onChange={e => setQuickUnico(prev => ({ ...prev, fecha: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-500 block mb-0.5">Hora</label>
-                      <select className="input-field text-xs py-1.5 w-full" value={quickUnico.turno} onChange={e => setQuickUnico(prev => ({ ...prev, turno: e.target.value }))}>
-                        {Array.from({length: 15}, (_, i) => i + 9).map(h => (
-                          <option key={h} value={`${String(h).padStart(2, '0')}:00`}>{`${String(h).padStart(2, '0')}:00 hs`}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 mt-3">
-                    <label className="flex items-center gap-1.5 text-xs text-ink-600">
-                      <input type="radio" name="quickPago" checked={quickUnico.pago === 'total'} onChange={() => setQuickUnico(prev => ({ ...prev, pago: 'total' }))} />
-                      Pago total
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs text-ink-600">
-                      <input type="radio" name="quickPago" checked={quickUnico.pago === 'sena'} onChange={() => setQuickUnico(prev => ({ ...prev, pago: 'sena' }))} />
-                      Seña
-                    </label>
-                    <button
-                      className="btn-primary text-xs px-4 py-1.5 ml-auto"
-                      disabled={savingQuick || !quickUnico.nombre.trim() || !quickUnico.titulo.trim()}
-                      onClick={createQuickUnico}
-                    >
-                      {savingQuick ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Crear pedido'}
-                    </button>
-                    <button className="btn-ghost text-xs px-3 py-1.5" onClick={() => setShowQuickUnico(false)}>Cancelar</button>
-                  </div>
-                </div>
-              )}
 
               <div className="table-shell" onMouseMove={handleResizeMove} onMouseUp={handleResizeEnd} onMouseLeave={handleResizeEnd}>
                 <table>
@@ -5497,6 +5362,17 @@ Responde ÚNICAMENTE un Array JSON:
                           </div>
                         </div>
                       </div>
+                      {parserPreview.libros.length > 0 && (() => {
+                        const previewId = `WA${String(Date.now()).slice(-6)}`;
+                        const librosStr = parserPreview.libros.map(b => b.titulo).join(', ');
+                        const nombrePdf = `${previewId}-${parserPreview.nombre || 'SinNombre'}-${librosStr}`.replace(/[\\/:*?"<>|]/g, '-').slice(0, 200);
+                        return (
+                          <div className="mt-3 p-2 bg-ink-50 rounded-lg">
+                            <div className="text-[10px] font-600 text-ink-400 uppercase mb-1">Nombre sugerido para PDF</div>
+                            <div className="text-xs text-ink-700 break-all font-mono select-all" title="Click para seleccionar todo">{nombrePdf}.pdf</div>
+                          </div>
+                        );
+                      })()}
                       <div className="flex justify-between items-center"><span className="text-ink-500">Formato</span><select className="input-field text-xs py-1.5 w-[80px] text-right font-700" value={parserPreview.formato} onChange={e => updateParserField('formato', e.target.value)}><option value="A4">A4</option><option value="A5">A5</option></select></div>
                       <div className="flex justify-between items-center"><span className="text-ink-500">Seña / pago</span><input className="input-field text-xs py-1.5 w-[130px] text-right font-700" type="number" value={parserPreview.montoPagado || 0} onChange={e => updateParserField('montoPagado', Number(e.target.value) || 0)} /></div>
                       <div className="flex justify-between"><span className="text-ink-500">Saldo</span><span className="font-700">{fmt(parserPreview.saldo)}</span></div>
