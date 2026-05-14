@@ -5388,6 +5388,17 @@ Responde ÚNICAMENTE un Array JSON:
                                   setParserPreview(prev => ({ ...prev, libros: updatedLibros, aiPedidos: updatedAiPedidos, total: newTotal, saldo: Math.max(0, newTotal - montoPagado) }));
                                 }}
                               >✕</button>
+                              <input
+                                className="input-field text-xs py-1 w-full mt-1"
+                                value={(parserPreview.aiPedidos || [])[idx]?.observaciones || ''}
+                                onChange={e => {
+                                  const updated = [...(parserPreview.aiPedidos || [])];
+                                  if (!updated[idx]) updated[idx] = {};
+                                  updated[idx] = { ...updated[idx], observaciones: e.target.value };
+                                  setParserPreview(prev => ({ ...prev, aiPedidos: updated }));
+                                }}
+                                placeholder="Observación (ej: 🕒14hs 📍Lavalle)"
+                              />
                             </div>
                           );})}
                           <div className="flex gap-2 mt-1">
