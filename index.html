@@ -1075,6 +1075,34 @@
       return states[0];
     }
 
+    function extractTimeFromMessage(text) {
+      if (!text) return null;
+      // "21hs", "21 hs", "21:00hs", "21:00 hs", "21 horas", "a las 21hs", "a las 21"
+      const hrMatch = text.match(/(?:a\s+las?\s+)?(\d{1,2})(?::?(\d{2}))?\s*(?:hs|horas)\b/gi);
+      if (hrMatch) {
+        // Re-match without global to get groups
+        const m = text.match(/(?:a\s+las?\s+)?(\d{1,2})(?::?(\d{2}))?\s*(?:hs|horas)\b/i);
+        if (m) {
+          let h = parseInt(m[1], 10);
+          const min = m[2] ? parseInt(m[2], 10) : 0;
+          if (h >= 0 && h <= 23) return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+        }
+      }
+      // Range: "de 14 a 16hs", "14-16 hs", "14 a 16", "entre 14 y 16"
+      const rangeMatch = text.match(/(?:de|entre)?\s*(\d{1,2})\s*(?:hasta|al?|a|y|-|–)\s*(\d{1,2})/i);
+      if (rangeMatch) {
+        let h = parseInt(rangeMatch[1], 10);
+        if (h >= 0 && h <= 23) return `${String(h).padStart(2, '0')}:00`;
+      }
+      // "a las 21" without hs/horas (loose match, only if previous ones didn't match)
+      const looseMatch = text.match(/(?:a\s+las?\s+)(\d{1,2})(?!\d|:)/i);
+      if (looseMatch) {
+        let h = parseInt(looseMatch[1], 10);
+        if (h >= 0 && h <= 23) return `${String(h).padStart(2, '0')}:00`;
+      }
+      return null;
+    }
+
     function normalizeOrder(order, config) {
       const estado = order.estado === 'Impreso' ? 'Listo' : order.estado;
       const modalidad = order.modalidad_entrega || 'Retiro facultad';
@@ -3941,11 +3969,13 @@ Responde ÚNICAMENTE un Array JSON:
             };
           });
         const career = getCareer(config, books, items[0]?.id_carrera || '');
+        const msgTime = extractTimeFromMessage(parserInput);
+        const horarioFinal = msgTime || (parserPreview.entrega?.turno === 'manana' ? '10:00' : '19:00');
         const slot = {
           fecha: parserPreview.entrega?.fecha || today,
-          turno: parserPreview.entrega?.turno || 'tarde',
-          horario: parserPreview.entrega?.turno === 'manana' ? '10:00' : '19:00',
-          label: parserPreview.entrega?.turno === 'manana' ? 'Mañana' : 'Tarde'
+          turno: horarioFinal,
+          horario: horarioFinal,
+          label: msgTime || (parserPreview.entrega?.turno === 'manana' ? 'Mañana' : 'Tarde')
         };
         const total = roundTotal(items.reduce((acc, item) => acc + item.precio, 0), config);
         const orderEstado = parserPreview.montoPagado > 0 ? 'Pendiente de impresión' : 'Pendiente de pago';
