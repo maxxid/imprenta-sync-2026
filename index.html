@@ -3725,6 +3725,7 @@ Responde ÚNICAMENTE un Array JSON:
           if (sortConfig.key === 'libro') { aVal = a.item.titulo || a.order.libro; bVal = b.item.titulo || b.order.libro; }
           else if (sortConfig.key === 'estado') { aVal = a.item.estado || a.order.estado; bVal = b.item.estado || b.order.estado; }
           else if (sortConfig.key === 'formato') { aVal = a.item.formato || a.order.formato; bVal = b.item.formato || b.order.formato; }
+          else if (sortConfig.key === 'ventana_retiro') { aVal = (a.order.fecha || '') + (a.order.horario_entrega || a.order.turno || ''); bVal = (b.order.fecha || '') + (b.order.horario_entrega || b.order.turno || ''); }
           else { aVal = a.order[sortConfig.key]; bVal = b.order[sortConfig.key]; }
           if (typeof aVal === 'string') { aVal = slug(aVal); bVal = slug(bVal); }
           if (aVal == null) aVal = ''; if (bVal == null) bVal = '';
