@@ -4207,7 +4207,7 @@ Responde ÚNICAMENTE un Array JSON:
                 </button>
                 <div className="stat-card">
                   <div className="text-2xl font-800 text-ink-900">{activePages.toLocaleString('es-AR')}</div>
-                  <div className="text-xs text-ink-400 mt-0.5">Paginas hoy</div>
+                  <div className="text-xs text-ink-400 mt-0.5">Hojas hoy</div>
                   <div className="text-[10px] text-ink-300 mt-1">{todayOrders.length} pedidos · {todayHojas} hojas</div>
                 </div>
               </div>
@@ -4221,7 +4221,7 @@ Responde ÚNICAMENTE un Array JSON:
                   <div className="progress-bar mb-2">
                     <div className="progress-fill" style={{ width: `${pct}%`, background: pct >= 90 ? '#EF4444' : pct >= 70 ? '#F59E0B' : '#00B67A' }} />
                   </div>
-                  <div className="text-xs text-ink-400">{activePages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} pág · ~{fmt(cupoDisponible)} cupo</div>
+                  <div className="text-xs text-ink-400">{activePages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} hojas · ~{fmt(cupoDisponible)} cupo</div>
                 </div>
                 <div className="card p-5">
                   <div className="flex items-center justify-between mb-3">
@@ -4231,7 +4231,7 @@ Responde ÚNICAMENTE un Array JSON:
                   <div className="progress-bar mb-2">
                     <div className="progress-fill" style={{ width: `${tomorrowPct}%`, background: tomorrowPct >= 90 ? '#EF4444' : tomorrowPct >= 70 ? '#F59E0B' : '#00B67A' }} />
                   </div>
-                  <div className="text-xs text-ink-400">{tomorrowPages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} pág · ~{fmt(tomorrowCupo)} cupo</div>
+                  <div className="text-xs text-ink-400">{tomorrowPages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} hojas · ~{fmt(tomorrowCupo)} cupo</div>
                 </div>
                 <button onClick={() => goToOrders({ estado: 'all' })} className="card p-5 text-left hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-2">
@@ -4243,7 +4243,7 @@ Responde ÚNICAMENTE un Array JSON:
               </div>
 
               <div className="card p-5">
-                <div className="font-700 text-sm text-ink-800 mb-4">Capacidad semanal <span className="text-xs text-ink-400 font-normal">— páginas y cupo estimado</span></div>
+                <div className="font-700 text-sm text-ink-800 mb-4">Capacidad semanal <span className="text-xs text-ink-400 font-normal">— hojas y cupo estimado</span></div>
                 <div className="space-y-2.5">
                   {weekData.map((d, i) => (
                     <div key={d.fecha} className="flex items-center gap-3">
@@ -4259,7 +4259,7 @@ Responde ÚNICAMENTE un Array JSON:
                         </div>
                       </div>
                       <span className="text-[11px] text-ink-500 w-[100px] flex-shrink-0 text-right">
-                        {d.paginas.toLocaleString('es-AR')} pág · <span className="font-600">{fmt(d.cupo)}</span>
+                        {d.paginas.toLocaleString('es-AR')} hojas · <span className="font-600">{fmt(d.cupo)}</span>
                       </span>
                     </div>
                   ))}
