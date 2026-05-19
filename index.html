@@ -1254,14 +1254,6 @@
     }
 
     function getSupabaseAuth(config) {
-      const savedAdmin = loadLocal(STORAGE.admin, null);
-      const token = savedAdmin?.token;
-      if (token) {
-        return window.supabase.createClient(config.supabase.url, config.supabase.anon_key, {
-          auth: { autoRefreshToken: false, persistSession: false },
-          global: { headers: { Authorization: `Bearer ${token}` } }
-        });
-      }
       return window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
     }
 
@@ -1316,8 +1308,9 @@
     }
 
     async function uploadPdfToStorage(file, bookId, config) {
-      const savedAdmin = loadLocal(STORAGE.admin, null);
-      const token = savedAdmin?.token || config.supabase.anon_key;
+      const sb = getSupabase(config);
+      const { data: { session } } = await sb.auth.getSession();
+      const token = session?.access_token || config.supabase.anon_key;
       const url = `${config.supabase.url}/storage/v1/object/pdfs/${bookId}.pdf`;
       const res = await fetch(url, {
         method: 'POST',
@@ -1332,8 +1325,9 @@
     }
 
     async function subirPortada(file, bookId, config) {
-      const savedAdmin = loadLocal(STORAGE.admin, null);
-      const token = savedAdmin?.token || config.supabase.anon_key;
+      const sb = getSupabase(config);
+      const { data: { session } } = await sb.auth.getSession();
+      const token = session?.access_token || config.supabase.anon_key;
       const ext = file.name.split('.').pop() || 'jpg';
       const path = `portadas/${bookId}-${Date.now()}.${ext}`;
       const url = `${config.supabase.url}/storage/v1/object/pdfs/${path}`;
@@ -3295,7 +3289,7 @@
             return;
           }
           const displayName = data.user.user_metadata?.display_name || email.trim().split('@')[0];
-          saveLocal(STORAGE.admin, { email: data.user.email, display_name: displayName, token: data.session.access_token, refresh_token: data.session.refresh_token });
+          saveLocal(STORAGE.admin, { email: data.user.email, display_name: displayName });
           onSuccess(true);
         } catch (e) {
           setError(e.message || 'Error al conectar con Supabase.');
@@ -5821,20 +5815,21 @@ Responde ÚNICAMENTE un Array JSON:
           const savedCliente = loadLocal(STORAGE.cliente, null);
           setConfig(mergedConfig);
 
-          // Restaurar sesión de admin si hay token guardado
+          // Restaurar sesión de admin vía Supabase (maneja tokens automáticamente)
           const savedAdmin = loadLocal(STORAGE.admin, null);
-          if (savedAdmin?.token) {
+          if (savedAdmin?.email) {
             try {
               const sb = getSupabase(mergedConfig);
-              const { error } = await sb.auth.setSession({ access_token: savedAdmin.token, refresh_token: savedAdmin.refresh_token || '' });
-              if (error) {
-                console.warn('Sesión admin expirada, requiriendo login:', error.message);
+              const { data: { session }, error } = await sb.auth.getSession();
+              if (error || !session) {
+                console.warn('Sesión admin expirada, requiriendo login');
                 saveLocal(STORAGE.admin, false);
                 setAdminAuthed(false);
                 setSessionExpired(true);
               }
             } catch (e) {
               console.warn('Error restaurando sesión admin:', e.message);
+              saveLocal(STORAGE.admin, false);
               setSessionExpired(true);
             }
           }
