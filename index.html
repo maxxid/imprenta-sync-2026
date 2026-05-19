@@ -735,7 +735,7 @@
         ]
       },
       redondeo: {
-        multiplo: 200
+        multiplo: 1
       },
       produccion: {
         capacidad_diaria_paginas: 5000,
@@ -971,7 +971,8 @@
 
     function roundTotal(value, config) {
       const base = Number(value || 0);
-      const multiple = config?.redondeo?.multiplo || 200;
+      const multiple = config?.redondeo?.multiplo ?? 1;
+      if (multiple <= 1) return base;
       if (window.roundingUtils?.roundToMultiple) {
         return window.roundingUtils.roundToMultiple(base, multiple);
       }
