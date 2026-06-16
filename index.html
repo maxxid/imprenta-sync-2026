@@ -5,7 +5,7 @@
   <title>Imprenta Sync 2026</title>
   <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.10/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.3/dist/umd/supabase.min.js"></script>
@@ -3524,7 +3524,7 @@
       const [catSortConfig, setCatSortConfig] = React.useState({ key: null, direction: 'asc' });
       const [catColumnVisibility, setCatColumnVisibility] = React.useState({
         libro: true, carrera: true, paginas: true, a4bn: true, a4color: true,
-        a5bn: true, a5color: true, estado: true, acciones: true
+        a5bn: true, a5color: true, estado: true, pdf: true, portada: true, acciones: true
       });
       const [catFiltersVisible, setCatFiltersVisible] = React.useState(true);
       const [savingConfig, setSavingConfig] = React.useState(false);
@@ -4437,6 +4437,8 @@ Responde ÚNICAMENTE un Array JSON:
                               { key: 'a5bn', label: 'A5 B/N' },
                               { key: 'a5color', label: 'A5 Color' },
                               { key: 'estado', label: 'Estado' },
+                              { key: 'pdf', label: 'PDF' },
+                              { key: 'portada', label: 'Port' },
                               { key: 'acciones', label: 'Acciones' }
                             ].map((col, idx) => (
                               <th key={col.key} style={{...(!catColumnVisibility[col.key] ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}), position: 'relative'}}>
@@ -4476,6 +4478,8 @@ Responde ÚNICAMENTE un Array JSON:
                               else if (catSortConfig.key === 'a5bn') { aVal = a.a5_bn_final; bVal = b.a5_bn_final; }
                               else if (catSortConfig.key === 'a5color') { aVal = a.a5_color_final; bVal = b.a5_color_final; }
                               else if (catSortConfig.key === 'estado') { aVal = a.activo !== false ? 1 : 0; bVal = b.activo !== false ? 1 : 0; }
+                              else if (catSortConfig.key === 'pdf') { aVal = a.pdf_url ? 1 : 0; bVal = b.pdf_url ? 1 : 0; }
+                              else if (catSortConfig.key === 'portada') { aVal = a.imagen_url && !a.imagen_url.startsWith('https://placehold.co/') ? 1 : 0; bVal = b.imagen_url && !b.imagen_url.startsWith('https://placehold.co/') ? 1 : 0; }
                               else { aVal = a[catSortConfig.key]; bVal = b[catSortConfig.key]; }
                               if (typeof aVal === 'string') { aVal = slug(aVal); bVal = slug(bVal); }
                               if (aVal == null) aVal = ''; if (bVal == null) bVal = '';
@@ -4695,6 +4699,20 @@ Responde ÚNICAMENTE un Array JSON:
                                   </button>
                                 )}
                               </td>
+                              <td style={!catColumnVisibility.pdf ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}} className="text-center">
+                                {catColumnVisibility.pdf ? (
+                                  b.pdf_url
+                                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00B67A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto" title="Tiene PDF"><polyline points="20 6 9 17 4 12" /></svg>
+                                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto opacity-40" title="Sin PDF"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                ) : <span className="text-xs opacity-50">{b.pdf_url ? '✓' : '✕'}</span>}
+                              </td>
+                              <td style={!catColumnVisibility.portada ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}} className="text-center">
+                                {catColumnVisibility.portada ? (
+                                  b.imagen_url && !b.imagen_url.startsWith('https://placehold.co/')
+                                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0066FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto" title="Portada personalizada"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9BAABB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto opacity-40" title="Portada genérica"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg>
+                                ) : <span className="text-xs opacity-50">{b.imagen_url && !b.imagen_url.startsWith('https://placehold.co/') ? '✓' : '✕'}</span>}
+                              </td>
                               <td style={!catColumnVisibility.acciones ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                                 {catColumnVisibility.acciones ? (
                                   <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => setEditingBook(b)}>Editar</button>
@@ -4706,7 +4724,7 @@ Responde ÚNICAMENTE un Array JSON:
                           ));
                         })()}
                         {books.length === 0 && (
-                          <tr><td colSpan={bulkEdit ? 10 : 9} className="text-center text-ink-400 py-10">No hay libros en el catálogo. Creá uno o importá desde JSON.</td></tr>
+                          <tr><td colSpan={bulkEdit ? 10 : 11} className="text-center text-ink-400 py-10">No hay libros en el catálogo. Creá uno o importá desde JSON.</td></tr>
                         )}
                       </tbody>
                     </table>
