@@ -1249,12 +1249,14 @@
     /* ========================================================
        SUPABASE HELPERS (libros + pedidos)
        ======================================================== */
+    let _sbClient = null;
     function getSupabase(config) {
-      return window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
+      if (!_sbClient) _sbClient = window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
+      return _sbClient;
     }
 
     function getSupabaseAuth(config) {
-      return window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
+      return getSupabase(config);
     }
 
     async function fetchBooksFromSupabase(config) {
@@ -3281,7 +3283,7 @@
         setLoading(true);
         setError('');
         try {
-          const sb = window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
+          const sb = getSupabase(config);
           const { data, error: err } = await sb.auth.signInWithPassword({ email: email.trim(), password });
           if (err) {
             setError(err.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos.' : err.message);
@@ -6029,7 +6031,7 @@ Responde ÚNICAMENTE un Array JSON:
                   </div>
                 )}
                 {adminAuthed
-                ? <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = window.supabase.createClient(config.supabase.url, config.supabase.anon_key); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); }} />
+                ? <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); }} />
                 : <AdminLogin config={config} onSuccess={v => { setAdminAuthed(v); setSessionExpired(false); }} />
                 }
               </>
