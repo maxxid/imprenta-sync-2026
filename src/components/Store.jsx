@@ -1233,7 +1233,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
   );
 }
 
-function OrderTracker({ orders, books, config, onVolver }) {
+function OrderTracker({ orders, setOrders, books, config, onVolver }) {
   const [phone, setPhone] = React.useState('');
   const [searched, setSearched] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState(null);
@@ -1262,21 +1262,26 @@ function OrderTracker({ orders, books, config, onVolver }) {
   }
 
   async function handleConfirmAttendance(order) {
-    await confirmAttendance(order, (fn) => {
-      const updated = fn(orders);
-      setSelectedOrder(updated.find(o => o.id === order.id) || order);
-    }, config);
+    await confirmAttendance(order, setOrders, config);
+    setSelectedOrder(prev => ({ ...prev, asistencia_confirmada: true, asistencia_ts: new Date().toISOString() }));
     showToast('Confirmaste tu asistencia correctamente!');
   }
 
   async function handleReschedule(order) {
     if (!rescheduleSlot) return;
-    const careerForOrder = getCareer(config, orders, order.id_carrera);
-    await rescheduleOrder(order, rescheduleSlot.fecha, rescheduleSlot.turno, rescheduleSlot.horario, rescheduleSlot.label, (fn) => {
-      const updated = fn(orders);
-      const found = updated.find(o => o.id === order.id);
-      if (found) setSelectedOrder(found);
-    }, config);
+    await rescheduleOrder(order, rescheduleSlot.fecha, rescheduleSlot.turno, rescheduleSlot.horario, rescheduleSlot.label, setOrders, config);
+    setSelectedOrder(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        fecha: rescheduleSlot.fecha,
+        turno: rescheduleSlot.turno,
+        horario_entrega: rescheduleSlot.horario,
+        ventana_retiro: `${rescheduleSlot.label || rescheduleSlot.fecha} · ${rescheduleSlot.horario}`,
+        asistencia_confirmada: false,
+        asistencia_ts: null
+      };
+    });
     setRescheduleMode(false);
     setRescheduleSlot(null);
     showToast('Tu pedido fue reagendado correctamente!');
@@ -1612,6 +1617,7 @@ export function Store({ books, config, orders, setOrders, screen, setScreen, car
   if (screen === 'tracking' || screen === 'pedido') return (
     <OrderTracker
       orders={orders}
+      setOrders={setOrders}
       books={books}
       config={config}
       onVolver={() => setScreen('home')}

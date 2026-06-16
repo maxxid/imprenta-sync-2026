@@ -192,7 +192,7 @@ export default function App() {
           />
         )}
         {screen === 'checkout' && <Store screen="checkout" carrito={carrito} setCarrito={setCarrito} setScreen={setScreen} orders={orders} setOrders={setOrders} config={config} checkoutForm={checkoutForm} setCheckoutForm={setCheckoutForm} />}
-        {screen === 'tracking' && <Store screen="tracking" orders={orders} books={books} config={config} setScreen={setScreen} />}
+        {screen === 'tracking' && <Store screen="tracking" orders={orders} setOrders={setOrders} books={books} config={config} setScreen={setScreen} />}
         {screen === 'ayuda' && <Store screen="ayuda" config={config} setScreen={setScreen} />}
         {screen === 'admin' && (
           <>
