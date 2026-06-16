@@ -111,17 +111,17 @@ export function AdminDashboard({ orders, books, config, setTab, refreshOrders })
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <button onClick={() => goToOrders()} className="stat-card text-left hover:shadow-md transition-shadow">
+        <button onClick={() => goToOrders()} className="stat-card text-left hover:bg-surface-hover transition-colors">
           <div className="text-2xl font-800 text-ink-900">{orders.length}</div>
           <div className="text-xs text-ink-400 mt-0.5">Total pedidos</div>
           <div className="text-[10px] text-ink-300 mt-1">Ver todos →</div>
         </button>
-        <button onClick={() => goToOrders()} className="stat-card text-left hover:shadow-md transition-shadow">
+        <button onClick={() => goToOrders()} className="stat-card text-left hover:bg-surface-hover transition-colors">
           <div className="text-2xl font-800 text-ink-900">{pendingCount}</div>
           <div className="text-xs text-ink-400 mt-0.5">Pendientes</div>
           <div className="text-[10px] text-ink-300 mt-1">No entregados →</div>
         </button>
-        <button onClick={() => goToOrders()} className="stat-card text-left hover:shadow-md transition-shadow">
+        <button onClick={() => goToOrders()} className="stat-card text-left hover:bg-surface-hover transition-colors">
           <div className="text-2xl font-800 text-ink-900">{saldoCount}</div>
           <div className="text-xs text-ink-400 mt-0.5">Con saldo</div>
           <div className="text-[10px] text-ink-300 mt-1">Ver pedidos →</div>
@@ -154,7 +154,7 @@ export function AdminDashboard({ orders, books, config, setTab, refreshOrders })
           </div>
           <div className="text-xs text-ink-400">{tomorrowPages.toLocaleString('es-AR')} / {config.produccion.capacidad_diaria_paginas.toLocaleString('es-AR')} hojas · ~{fmt(tomorrowCupo)} cupo</div>
         </div>
-        <button onClick={() => goToOrders()} className="card p-5 text-left hover:shadow-md transition-shadow">
+        <button onClick={() => goToOrders()} className="card p-5 text-left hover:bg-surface-hover transition-colors">
           <div className="flex items-center justify-between mb-2">
             <div className="font-700 text-sm text-ink-800">Express activos</div>
             <span className="badge bg-accent-muted text-accent">{expressPending.length}</span>
@@ -191,7 +191,7 @@ export function AdminDashboard({ orders, books, config, setTab, refreshOrders })
         <div className="font-700 text-sm text-ink-800 mb-4">Estados del flujo <span className="text-xs text-ink-400 font-normal">— clickeá para filtrar</span></div>
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           {stateMeta.map(({ state, count, totalPaginas, color }) => (
-            <button key={state} onClick={() => goToOrders()} className={`rounded-xl border p-4 text-left hover:shadow-md transition-all ${color}`}>
+            <button key={state} onClick={() => goToOrders()} className={`rounded-xl border p-4 text-left hover:bg-surface-hover transition-all ${color}`}>
               <div className="text-sm font-700">{STATE_LABELS[state] || state}</div>
               <div className="text-2xl font-800 mt-1">{count === 0 ? '—' : `${count}u.`}</div>
               {totalPaginas > 0 && <div className="text-xs font-600 mt-0.5 opacity-80">{totalPaginas.toLocaleString('es-AR')} pág.</div>}
@@ -208,7 +208,7 @@ export function AdminDashboard({ orders, books, config, setTab, refreshOrders })
               const uniOrders = orders.filter(o => config.carreras.some(c => c.universidad === uni && (c.nombre === o.carrera || c.id_carrera === o.id_carrera)));
               const uniPending = uniOrders.filter(o => o.estado !== 'Entregado');
               return (
-                <button key={uni} onClick={() => goToOrders()} className="rounded-xl border border-ink-100 bg-ink-50 p-4 text-left hover:shadow-md transition-all">
+                <button key={uni} onClick={() => goToOrders()} className="rounded-xl border border-ink-100 bg-ink-50 p-4 text-left hover:bg-surface-hover transition-all">
                   <div className="text-sm font-700 text-ink-900">{uni}</div>
                   <div className="text-2xl font-800 mt-2 text-ink-900">{uniOrders.length}</div>
                   <div className="text-xs text-ink-400 mt-1">{uniPending.length} activos · {uniOrders.filter(o => Number(o.saldo_pendiente) > 0).length} con saldo</div>
