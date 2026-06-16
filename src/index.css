@@ -292,13 +292,13 @@ button:focus {
 }
 
 .tag-link {
-  background: #E8F0FF;
-  color: #0052CC;
+  background: var(--brand-muted);
+  color: var(--brand-dark, #0052CC);
 }
 
 .tag-staple {
-  background: #E6F9F2;
-  color: #00875A;
+  background: var(--ok-muted);
+  color: var(--ok, #00875A);
 }
 
 .progress-bar {
@@ -614,9 +614,9 @@ input[type=number] {
   line-height: 1.3;
   font-weight: 600;
 }
-.timeline-label.completed { color: #00875A; }
+.timeline-label.completed { color: var(--ok, #00875A); }
 .timeline-label.current { color: #0066FF; }
-.timeline-label.pending { color: #9BAABB; }
+.timeline-label.pending { color: var(--ink-300); }
 .timeline-line {
   flex: 1;
   height: 2px;

@@ -124,7 +124,7 @@ export default function App() {
       <nav className="bg-surface border-b border-ink-100 sticky top-0 z-50">
         <div className={`mx-auto px-4 h-14 flex items-center justify-between ${isAdmin ? 'max-w-[1440px]' : 'max-w-6xl'}`}>
           <button onClick={() => setScreen('home')} className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-ink-900 flex items-center justify-center text-white text-sm">IS</div>
+            <div className="w-8 h-8 rounded-xl bg-ink-900 flex items-center justify-center text-white text-sm dark:bg-white dark:text-black">IS</div>
             <span className="font-800 text-ink-900 dark:text-white text-base leading-none">Imprenta<br /><span className="text-brand-DEFAULT text-xs font-700">Sync 2026</span></span>
           </button>
           <div className="hidden sm:flex items-center gap-1">

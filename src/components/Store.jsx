@@ -404,7 +404,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
                   imagen_url: workingBook.imagen_url,
                   origen: book.isPdfPropio ? 'pdf-propio' : 'catalogo'
                 })}
-                className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl border-2 border-brand-DEFAULT bg-[#E8F0FF] hover:bg-[#D0E0FF] text-brand-dark font-700 text-sm transition-all btn-press"
+                className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl border-2 border-brand-DEFAULT bg-brand-muted hover:bg-brand-muted/70 dark:bg-brand-muted dark:hover:bg-brand-muted/80 text-brand-dark dark:text-brand-light font-700 text-sm transition-all btn-press"
                 disabled={pricing.total <= 0}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
@@ -1308,7 +1308,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
 
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 slide-up">
-          <div className="bg-ink-900 text-white rounded-xl px-5 py-3 text-sm font-700 shadow-xl flex items-center gap-2">
+          <div className="bg-ink-900 dark:bg-black text-white rounded-xl px-5 py-3 text-sm font-700 shadow-xl flex items-center gap-2">
             <Icon.Check /> {toast}
           </div>
         </div>
@@ -1426,7 +1426,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
                   <div className="flex items-center gap-2"><Icon.Clock /> {selectedOrder.horario_entrega} hs</div>
                 </div>
                 <button
-                  className="order-action-btn bg-surface text-brand-dark hover:bg-ink-50"
+                  className="order-action-btn bg-surface text-brand-dark dark:text-brand-light hover:bg-surface-hover"
                   onClick={() => handleConfirmAttendance(selectedOrder)}
                 >
                   <Icon.Check /> Confirmo que voy a asistir
@@ -1534,7 +1534,7 @@ function AyudaScreen({ config, onVolver }) {
     <div className="fade-in">
       <button onClick={onVolver} className="flex items-center gap-2 text-sm text-ink-400 hover:text-ink-700 mb-5 font-700">← Volver</button>
 
-      <div className="bg-ink-900 text-white rounded-2xl p-6 mb-6">
+      <div className="bg-ink-900 dark:bg-black text-white rounded-2xl p-6 mb-6">
         <div className="text-xs font-semibold uppercase tracking-widest text-ink-300 mb-1">Centro de ayuda</div>
         <h1 className="text-2xl font-black mb-1">Como te ayudamos?</h1>
         <p className="text-ink-300 text-sm mb-5">Respuestas rapidas a las consultas mas frecuentes.</p>

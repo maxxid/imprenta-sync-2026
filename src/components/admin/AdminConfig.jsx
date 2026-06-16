@@ -208,7 +208,7 @@ export function AdminConfig({ config, setConfig }) {
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-700 border transition-all ${
                         isActive
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200'
+                          : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
                       }`}
                       title={isActive ? 'Clic para desactivar' : 'Clic para activar'}
                     >

@@ -37,7 +37,7 @@ export function AdminLogin({ config, onSuccess }) {
   return (
     <div className="fade-in max-w-md mx-auto pt-10">
       <div className="card p-6">
-        <div className="w-12 h-12 rounded-2xl bg-ink-900 text-white flex items-center justify-center mb-4"><Icon.Lock /></div>
+        <div className="w-12 h-12 rounded-2xl bg-ink-900 dark:bg-white text-white dark:text-black flex items-center justify-center mb-4"><Icon.Lock /></div>
         <h2 className="text-2xl font-800 text-ink-900 mb-1">Acceso protegido</h2>
         <p className="text-sm text-ink-400 mb-5">Ingresá con tu cuenta de administración.</p>
         <div className="space-y-4">
