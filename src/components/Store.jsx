@@ -146,7 +146,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
             <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Buscar materia o libro</label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400"><Icon.Search /></span>
-              <input className="input-field pl-10" value={query} onChange={event => setQuery(event.target.value)} placeholder="Ej: Anatomia, Constitucional..." />
+              <input className="input-field" style={{paddingLeft: '2.75rem'}} value={query} onChange={event => setQuery(event.target.value)} placeholder="Ej: Anatomia, Constitucional..." />
             </div>
           </div>
         </div>

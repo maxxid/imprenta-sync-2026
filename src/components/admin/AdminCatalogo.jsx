@@ -193,7 +193,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400"><Icon.Search /></span>
-            <input className="input-field pl-10" placeholder="Buscar libro o materia" value={abmSearch} onChange={e => setAbmSearch(e.target.value)} />
+            <input className="input-field" style={{paddingLeft: '2.75rem'}} placeholder="Buscar libro o materia" value={abmSearch} onChange={e => setAbmSearch(e.target.value)} />
           </div>
           <select className="input-field" value={abmCareer} onChange={e => setAbmCareer(e.target.value)}>
             <option value="">Todas las carreras</option>

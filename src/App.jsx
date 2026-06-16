@@ -182,7 +182,7 @@ export default function App() {
       )}
 
       <main className={`mx-auto py-6 pb-24 ${isAdmin ? 'max-w-full px-8' : 'max-w-6xl px-4'}`}>
-        {screen === 'home' && <Store screen="home" books={books} config={config} carrito={carrito} setCarrito={setCarrito} setScreen={setScreen} orders={orders} setOrders={setOrders} catalogFilters={catalogFilters} setCatalogFilters={setCatalogFilters} onSelectLibro={book => { setBookSel(book); setScreen('ficha'); }} />}
+        {screen === 'home' && <Store screen="home" books={books} config={config} carrito={carrito} setCarrito={setCarrito} setBookSel={setBookSel} setScreen={setScreen} orders={orders} setOrders={setOrders} catalogFilters={catalogFilters} setCatalogFilters={setCatalogFilters} />}
         {screen === 'ficha' && bookSel && (
           <Store
             screen="ficha"

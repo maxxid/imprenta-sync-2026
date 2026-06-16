@@ -51,7 +51,8 @@ export function CareerCombobox({ careers, value, onChange }) {
       <div className="relative">
         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400"><Icon.Search /></span>
         <input
-          className="input-field pl-10 pr-10"
+          className="input-field"
+          style={{paddingLeft: '2.75rem', paddingRight: '2.75rem'}}
           value={query}
           placeholder="Buscar carrera"
           onFocus={() => setOpen(true)}
