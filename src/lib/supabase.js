@@ -1,10 +1,11 @@
+import { createClient } from '@supabase/supabase-js';
 import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone } from './utils.js';
 import { STATE_STYLES, STATE_LABELS, FALLBACK_CONFIG } from './constants.js';
 
 let _sbClient = null;
 
 export function getSupabase(config) {
-  if (!_sbClient) _sbClient = window.supabase.createClient(config.supabase.url, config.supabase.anon_key);
+  if (!_sbClient) _sbClient = createClient(config.supabase.url, config.supabase.anon_key);
   return _sbClient;
 }
 
