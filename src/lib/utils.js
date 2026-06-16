@@ -188,11 +188,11 @@ export function computeOrderStatus(montoPagado) {
   return montoPagado > 0 ? 'Pendiente de impresión' : 'Pendiente de pago';
 }
 
-export function fechaLabel(fecha, dOffset) {
-  if (!fecha) return '';
-  const d = new Date(fecha + 'T00:00:00');
-  d.setDate(d.getDate() + (dOffset || 0));
-  return d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
+export function fechaLabel(fecha, offset) {
+  if (offset === 0) return 'Hoy';
+  if (offset === 1) return 'Manana';
+  const [year, month, day] = fecha.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
 export function buildOrder(items, form, slot, config, career, metodoPago = 'talo') {

@@ -268,13 +268,6 @@ export function getNextSlots(config, pedidos, career, isExpress = false) {
   return slots.slice(0, 8);
 }
 
-export function fechaLabel(fecha, offset) {
-  if (offset === 0) return 'Hoy';
-  if (offset === 1) return 'Manana';
-  const [year, month, day] = fecha.split('-').map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' });
-}
-
 export function formatFechaCorta(fecha) {
   if (!fecha) return '';
   const [year, month, day] = fecha.split('-').map(Number);
@@ -375,10 +368,6 @@ export function normalizeConfig(config) {
   if (!merged.precios.A5.unico) merged.precios.A5.unico = merged.precios.A5.mas_50 || 49;
   if (!merged.produccion.precio_promedio_hoja) merged.produccion.precio_promedio_hoja = merged.precios.A4.mas_50 || 70;
   return merged;
-}
-
-export function statusBadge(status) {
-  return React.createElement('span', { className: `status-chip ${STATE_STYLES[status] || 'bg-ink-100 text-ink-700'}` }, STATE_LABELS[status] || status);
 }
 
 export async function syncOrderToSheets(order, config) {

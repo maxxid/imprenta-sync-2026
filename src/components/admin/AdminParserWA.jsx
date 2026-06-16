@@ -367,7 +367,7 @@ Responde ÚNICAMENTE un Array JSON:
         <div className="font-700 text-sm text-ink-800 mb-1">Parser IA con Gemini</div>
         <div className="text-xs text-ink-400 mb-4">Pegá el mensaje de WhatsApp. La IA extrae nombre, libros, formato, seña y teléfono automáticamente.</div>
         <textarea className="input-field min-h-[200px]" value={parserInput} onChange={event => setParserInput(event.target.value)} placeholder="Ej: Hola! Soy Brenda Borges, quiero 3 libros en A4 B/N. Anatomia 350 pags, Biologia 180 pags y Quimica 220 pags. Dejo seña de $30000. Mi tel 1155667788" />
-        {parserError && <Alert type="error" className="mt-3">{parserError}</Alert>}
+        {parserError && <Alert type="danger" className="mt-3">{parserError}</Alert>}
         <div className="mt-3">
           <button className="btn-primary w-full" disabled={!parserInput.trim() || parserLoading} onClick={() => parseWithGemini(parserInput)}>
             {parserLoading ? (
