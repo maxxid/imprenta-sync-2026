@@ -4,6 +4,7 @@ import { statusBadge, Alert, Spinner, fechaLabel, buildWhatsAppMessage } from '.
 import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal } from '../../lib/utils';
 import { ORDER_STATES, STATE_LABELS, STATE_STYLES, STATE_ROW_BG } from '../../lib/constants';
 import { getSupabase, saveOrderToSupabase, syncOrderToSheets, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta } from '../../lib/supabase';
+import { getShopId } from '../../lib/shop';
 import { BookFormPanel } from '../BookFormPanel';
 
 function getFirstName(fullName) {
@@ -90,7 +91,11 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
 
   async function persistOrder(order) {
     try {
-      await sb.from('pedidos').upsert({ ...order, items: order.items || [] }, { onConflict: 'id' });
+      const shopId = getShopId();
+      const payload = { ...order, items: order.items || [] };
+      if (shopId && !payload.shop_id) payload.shop_id = shopId;
+      const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+      await sb.from('pedidos').upsert(payload, upsertOpts);
       return true;
     } catch (err) {
       console.error('Error persistiendo pedido:', err);
@@ -100,7 +105,10 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
 
   async function removeOrder(id) {
     try {
-      await sb.from('pedidos').delete().eq('id', id);
+      const query = sb.from('pedidos').delete().eq('id', id);
+      const shopId = getShopId();
+      if (shopId) query.eq('shop_id', shopId);
+      await query;
     } catch (err) {
       console.error('Error eliminando pedido:', err);
     }

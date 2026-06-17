@@ -13,15 +13,18 @@ imprenta-sync-2026/
 ├── libros.json             # Catálogo local (fallback offline)
 ├── rounding.js             # Utilidad de redondeo (cargada como <script>)
 ├── rls_policies.sql        # Row Level Security de Supabase
+├── migration_multi_tenant.sql # Migración multi-tenant: shops + FK + índices
+├── vercel.json             # Config de deploy Vercel
 ├── dist/                   # Build de producción (generado)
 └── src/
     ├── main.jsx            # Punto de entrada React
-    ├── App.jsx             # App principal: auth, routing, estado global
-    ├── index.css           # Tailwind v4 + estilos personalizados
+    ├── App.jsx             # App principal: auth, routing, estado global, detección subdominio
+    ├── index.css           # Tailwind v4 + @variant dark + estilos personalizados
     ├── lib/
     │   ├── constants.js    # STORAGE, ORDER_STATES, FALLBACK_CONFIG, etc.
     │   ├── utils.js        # fmt, slug, calcSugerido, buildOrder, etc.
-    │   └── supabase.js     # Cliente Supabase (singleton) + CRUD + Sheets sync
+    │   ├── supabase.js     # Cliente Supabase (singleton) + CRUD + Sheets sync
+    │   └── shop.js         # Contexto global de shop (multi-tenant)
     └── components/
         ├── Icons.jsx       # 21 iconos SVG (Home, Cart, Settings, etc.)
         ├── UI.jsx          # Componentes base: statusBadge, Alert, Spinner, Cover, etc.
@@ -143,6 +146,49 @@ npm run dev       # Servidor de desarrollo (HMR)
 npm run build     # Build de producción
 npm run preview   # Preview del build
 ```
+
+## Multi-tenant (subdominios)
+
+Cada fotocopiadora tiene su propio subdominio que determina qué datos ve.
+
+### Arquitectura
+
+```
+unju.imprenta.store   →  misma app  →  Supabase (shop_id = UUID de UNJu)
+claudio.imprenta.store →  misma app  →  Supabase (shop_id = UUID de Claudio)
+imprenta.store        →  landing page pública
+```
+
+### Tabla `shops` (Supabase)
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | Identificador único del shop |
+| slug | TEXT UNIQUE | Slug para subdominio (ej: "unju") |
+| name | TEXT | Nombre visible (ej: "Imprenta UNJu") |
+| subdomain | TEXT UNIQUE | Subdominio completo |
+| suscripcion_status | TEXT | trial, active, cancelled |
+
+### Flujo de detección de shop
+
+1. `App.jsx` detecta subdominio vía `getSubdomainSlug()` (lee `hostname`)
+2. Busca shop en `shops` por slug → setea `currentShop` y `setGlobalShop()`
+3. Si no hay subdominio → muestra landing page (`isRootDomain = true`)
+4. `src/lib/shop.js` exporta `getShopId()` que usan todas las queries
+5. Todas las queries Supabase filtran por `shop_id` automáticamente
+
+### Aislamiento de datos
+
+- **RLS anónimo:** Los alumnos solo leen libros/pedidos/config de su shop (filtrado en app, no en DB por ahora para compatibilidad con anon)
+- **Admin autenticado:** Solo ve/modifica datos de su shop (vía `shop_id` en queries)
+- **Storage:** PDFs y portadas usan path `{shopId}/` como namespace
+
+### Nuevo shop (onboarding futuro)
+
+```sql
+INSERT INTO shops (slug, name, subdomain) VALUES ('nuevo', 'Fotocopiadora Nueva', 'nuevo.imprenta.store');
+```
+Luego el admin del nuevo shop carga su catálogo y configura precios/ventanas.
 
 ## Convenciones
 

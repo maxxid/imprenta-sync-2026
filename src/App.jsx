@@ -7,6 +7,16 @@ import { AdminPanel } from './components/AdminPanel';
 import { FALLBACK_CONFIG, STORAGE } from './lib/constants';
 import { migrateBook } from './lib/utils';
 import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig } from './lib/supabase';
+import { setShop as setGlobalShop, getShopId } from './lib/shop';
+
+function getSubdomainSlug() {
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+  // imprenta.store → 2 parts → no subdominio
+  // unju.imprenta.store → 3+ parts → subdominio = parts[0]
+  if (parts.length <= 2) return null;
+  return parts[0];
+}
 
 export default function App() {
   const [screen, setScreen] = useState('home');
@@ -22,6 +32,8 @@ export default function App() {
   const [adminAuthed, setAdminAuthed] = useState(loadLocal(STORAGE.admin, false));
   const [sessionExpired, setSessionExpired] = useState(false);
   const [theme, setTheme] = useState(loadLocal('imprenta.theme', 'light'));
+  const [currentShop, setCurrentShop] = useState(null);
+  const [isRootDomain, setIsRootDomain] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -29,6 +41,24 @@ export default function App() {
 
   useEffect(() => {
     async function init() {
+      const slug = getSubdomainSlug();
+      if (!slug) {
+        setIsRootDomain(true);
+        setLoading(false);
+        return;
+      }
+
+      // Buscar el shop por slug
+      const sb = getSupabase(FALLBACK_CONFIG);
+      const { data: shop } = await sb.from('shops').select('*').eq('slug', slug).single();
+      if (!shop) {
+        setIsRootDomain(true);
+        setLoading(false);
+        return;
+      }
+      setCurrentShop(shop);
+      setGlobalShop(shop);
+
       const savedConfig = loadLocal(STORAGE.config, null);
       const loadedConfig = await loadJson('./config.json', FALLBACK_CONFIG);
       const supabaseConfig = await fetchConfigFromSupabase(loadedConfig);
@@ -42,8 +72,8 @@ export default function App() {
       const savedAdmin = loadLocal(STORAGE.admin, null);
       if (savedAdmin?.email) {
         try {
-          const sb = getSupabase(mergedConfig);
-          const { data: { session }, error } = await sb.auth.getSession();
+          const sb2 = getSupabase(mergedConfig);
+          const { data: { session }, error } = await sb2.auth.getSession();
           if (error || !session) {
             console.warn('Sesión admin expirada, requiriendo login');
             saveLocal(STORAGE.admin, false);
@@ -119,13 +149,52 @@ export default function App() {
     return <div className="page-loader"><div className="card p-6 flex items-center gap-3 text-ink-900 dark:text-white"><Spinner /> Cargando catalogo y configuracion...</div></div>;
   }
 
+  if (isRootDomain) {
+    return (
+      <div className="min-h-screen bg-ink-50 font-sans text-ink">
+        <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-ink-900 flex items-center justify-center text-white text-2xl font-800 mx-auto mb-6 dark:bg-white dark:text-black">IS</div>
+          <h1 className="text-4xl font-black text-ink-900 dark:text-white mb-4">Imprenta Sync 2026</h1>
+          <p className="text-lg text-ink-500 mb-2">Gestión de pedidos para fotocopiadoras universitarias</p>
+          <p className="text-sm text-ink-400 mb-10">Catálogo digital · Carrito · Checkout · Seguimiento en tiempo real</p>
+          <div className="grid gap-5 sm:grid-cols-3 mb-12">
+            {[
+              { title: 'Catálogo online', desc: 'Tus apuntes organizados por carrera y materia, con vista previa de PDF.' },
+              { title: 'Pedidos automáticos', desc: 'El alumno elige, paga y agenda la entrega sin WhatsApp.' },
+              { title: 'Panel de gestión', desc: 'Dashboard con capacidad diaria, estados y seguimiento por pedido.' }
+            ].map((f, i) => (
+              <div key={i} className="card p-5 text-left">
+                <div className="font-700 text-ink-900 mb-1">{f.title}</div>
+                <div className="text-xs text-ink-400">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card p-6 text-center max-w-md mx-auto">
+            <div className="font-700 text-lg text-ink-900 mb-2">¿Tenés una fotocopiadora?</div>
+            <div className="text-sm text-ink-500 mb-5">Escribinos a WhatsApp y creamos tu tienda en minutos.</div>
+            <a href={`https://wa.me/${config?.pagos?.whatsapp_admin || '5493885888949'}`} target="_blank" rel="noreferrer" className="btn-primary inline-flex">
+              <Icon.Message /> Contactar por WhatsApp
+            </a>
+          </div>
+          <div className="mt-16 text-xs text-ink-300">
+            {currentShop ? (
+              <span>Redirigiendo a <strong>{currentShop.subdomain}</strong>...</span>
+            ) : (
+              <span>¿Ya tenés tu tienda? Entrá desde tu subdominio. Ej: <strong>unju.imprenta.store</strong></span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-ink-50 font-sans text-ink">
       <nav className="bg-surface border-b border-ink-100 sticky top-0 z-50">
         <div className={`mx-auto px-4 h-14 flex items-center justify-between ${isAdmin ? 'max-w-[1440px]' : 'max-w-6xl'}`}>
           <button onClick={() => setScreen('home')} className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-ink-900 flex items-center justify-center text-white text-sm dark:bg-white dark:text-black">IS</div>
-            <span className="font-800 text-ink-900 dark:text-white text-base leading-none">Imprenta<br /><span className="text-brand-DEFAULT text-xs font-700">Sync 2026</span></span>
+            <span className="font-800 text-ink-900 dark:text-white text-base leading-none">{currentShop?.name || 'Imprenta'}<br /><span className="text-brand-DEFAULT text-xs font-700">Sync 2026</span></span>
           </button>
           <div className="hidden sm:flex items-center gap-1">
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-700 transition-colors" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>

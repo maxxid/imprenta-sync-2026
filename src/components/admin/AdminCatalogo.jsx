@@ -3,6 +3,7 @@ import { Icon } from '../Icons';
 import { fmt, slug, HOJAS, getBookCombinations, recalcBookSugeridos, migrateBook, bookCareerId, getCareers, careerLabel } from '../../lib/utils';
 import { COMBO_KEYS, COMBO_LABELS } from '../../lib/constants';
 import { getSupabase, saveBookToSupabase, deleteBookFromSupabase, uploadPdfToStorage, subirPortada, fetchBooksFromSupabase } from '../../lib/supabase';
+import { getShopId } from '../../lib/shop';
 import { BookFormPanel } from '../BookFormPanel';
 
 export function AdminCatalogo({ books, setBooks, config }) {
@@ -173,9 +174,16 @@ export function AdminCatalogo({ books, setBooks, config }) {
                 try {
                   const data = JSON.parse(ev.target.result);
                   if (!Array.isArray(data)) { alert('El archivo debe contener un array de libros.'); return; }
-                  const migrated = data.map(b => migrateBook(b, config));
+                  const migrated = data.map(b => {
+                    const book = migrateBook(b, config);
+                    const shopId = getShopId();
+                    if (shopId) book.shop_id = shopId;
+                    return book;
+                  });
                   const sb = getSupabase(config);
-                  const { data: upserted, error } = await sb.from('libros').upsert(migrated, { onConflict: 'id' });
+                  const shopId = getShopId();
+                  const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+                  const { data: upserted, error } = await sb.from('libros').upsert(migrated, upsertOpts);
                   if (error) { console.error('Supabase upsert error:', error); alert('Error al importar a Supabase:\n' + (error.message || JSON.stringify(error))); return; }
                   const fresh = await fetchBooksFromSupabase(config);
                   if (fresh && fresh.length > 0) setBooks(fresh);

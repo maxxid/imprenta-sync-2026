@@ -2,6 +2,8 @@
 -- RLS (Row Level Security) para Imprenta Sync 2026
 -- Ejecutar en SQL Editor de Supabase (https://hjtbwnsxgellbtfariog.supabase.co)
 -- Idempotente: se puede correr multiples veces sin error
+-- 
+-- NOTA: Para multi-tenant, ejecutar primero migration_multi_tenant.sql
 -- ============================================================
 
 -- ============ PEDIDOS ============

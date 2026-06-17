@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone } from './utils.js';
 import { STATE_STYLES, STATE_LABELS, FALLBACK_CONFIG } from './constants.js';
+import { getShopId } from './shop.js';
 
 let _sbClient = null;
 
@@ -16,7 +17,10 @@ export function getSupabaseAuth(config) {
 export async function fetchBooksFromSupabase(config) {
   try {
     const sb = getSupabase(config);
-    const { data, error } = await sb.from('libros').select('*').order('titulo', { ascending: true });
+    const query = sb.from('libros').select('*');
+    const shopId = getShopId();
+    if (shopId) query.eq('shop_id', shopId);
+    const { data, error } = await query.order('titulo', { ascending: true });
     if (error) throw error;
     return data || [];
   } catch (err) {
@@ -25,7 +29,7 @@ export async function fetchBooksFromSupabase(config) {
   }
 }
 
-export const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url','encuadernacion'];
+export const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url','encuadernacion','shop_id'];
 
 export function cleanBookPayload(book) {
   const cleaned = {};
@@ -33,6 +37,8 @@ export function cleanBookPayload(book) {
     if (key in book) cleaned[key] = book[key];
   }
   cleaned.id_libro = book.id_libro || book.id;
+  const shopId = getShopId();
+  if (shopId && !cleaned.shop_id) cleaned.shop_id = shopId;
   return cleaned;
 }
 
@@ -40,7 +46,9 @@ export async function saveBookToSupabase(book, config) {
   try {
     const sb = getSupabase(config);
     const payload = cleanBookPayload(book);
-    const { error } = await sb.from('libros').upsert(payload, { onConflict: 'id' });
+    const shopId = getShopId();
+    const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+    const { error } = await sb.from('libros').upsert(payload, upsertOpts);
     if (error) throw error;
     return true;
   } catch (err) {
@@ -53,7 +61,10 @@ export async function saveBookToSupabase(book, config) {
 export async function deleteBookFromSupabase(id, config) {
   try {
     const sb = getSupabase(config);
-    const { error } = await sb.from('libros').delete().eq('id', id);
+    const query = sb.from('libros').delete().eq('id', id);
+    const shopId = getShopId();
+    if (shopId) query.eq('shop_id', shopId);
+    const { error } = await query;
     if (error) throw error;
     return true;
   } catch (err) {
@@ -67,7 +78,10 @@ export async function uploadPdfToStorage(file, bookId, config) {
   const sb = getSupabase(config);
   const { data: { session } } = await sb.auth.getSession();
   const token = session?.access_token || config.supabase.anon_key;
-  const url = `${config.supabase.url}/storage/v1/object/pdfs/${bookId}.pdf`;
+  const shopId = getShopId();
+  const prefix = shopId ? `${shopId}/` : '';
+  const path = `${prefix}${bookId}.pdf`;
+  const url = `${config.supabase.url}/storage/v1/object/pdfs/${path}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +91,7 @@ export async function uploadPdfToStorage(file, bookId, config) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || err.error || `HTTP ${res.status}`);
   }
-  return `${config.supabase.url}/storage/v1/object/public/pdfs/${bookId}.pdf`;
+  return `${config.supabase.url}/storage/v1/object/public/pdfs/${path}`;
 }
 
 export async function subirPortada(file, bookId, config) {
@@ -85,7 +99,9 @@ export async function subirPortada(file, bookId, config) {
   const { data: { session } } = await sb.auth.getSession();
   const token = session?.access_token || config.supabase.anon_key;
   const ext = file.name.split('.').pop() || 'jpg';
-  const path = `portadas/${bookId}-${Date.now()}.${ext}`;
+  const shopId = getShopId();
+  const prefix = shopId ? `portadas/${shopId}/` : 'portadas/';
+  const path = `${prefix}${bookId}-${Date.now()}.${ext}`;
   const url = `${config.supabase.url}/storage/v1/object/pdfs/${path}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -102,7 +118,10 @@ export async function subirPortada(file, bookId, config) {
 export async function fetchOrdersFromSupabase(config) {
   try {
     const sb = getSupabase(config);
-    const { data, error } = await sb.from('pedidos').select('*').order('ts', { ascending: false });
+    const query = sb.from('pedidos').select('*');
+    const shopId = getShopId();
+    if (shopId) query.eq('shop_id', shopId);
+    const { data, error } = await query.order('ts', { ascending: false });
     if (error) throw error;
     return (data || []).map(o => normalizeOrder(o, config));
   } catch (err) {
@@ -115,7 +134,10 @@ export async function saveOrderToSupabase(order, config) {
   try {
     const sb = getSupabase(config);
     const payload = { ...order, items: order.items || [] };
-    const { error } = await sb.from('pedidos').upsert(payload, { onConflict: 'id' });
+    const shopId = getShopId();
+    if (shopId && !payload.shop_id) payload.shop_id = shopId;
+    const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+    const { error } = await sb.from('pedidos').upsert(payload, upsertOpts);
     if (error) {
       console.error('Supabase error:', error);
       throw new Error(error.message || JSON.stringify(error));
@@ -135,7 +157,10 @@ export async function updateOrderInSupabase(order, config) {
 export async function fetchConfigFromSupabase(config) {
   try {
     const sb = getSupabase(config);
-    const { data, error } = await sb.from('config').select('data').eq('id', 1).single();
+    const query = sb.from('config').select('data').eq('id', 1);
+    const shopId = getShopId();
+    if (shopId) query.eq('shop_id', shopId);
+    const { data, error } = await query.single();
     if (error) throw error;
     return data?.data || null;
   } catch (err) {
@@ -147,7 +172,11 @@ export async function fetchConfigFromSupabase(config) {
 export async function saveConfigToSupabase(configData, config) {
   try {
     const sb = await getSupabaseAuth(config);
-    const { error } = await sb.from('config').upsert({ id: 1, data: configData, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+    const shopId = getShopId();
+    const payload = { id: 1, data: configData, updated_at: new Date().toISOString() };
+    if (shopId) payload.shop_id = shopId;
+    const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+    const { error } = await sb.from('config').upsert(payload, upsertOpts);
     if (error) throw error;
     return true;
   } catch (err) {
