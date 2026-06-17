@@ -34,6 +34,8 @@ export default function App() {
   const [theme, setTheme] = useState(loadLocal('imprenta.theme', 'light'));
   const [currentShop, setCurrentShop] = useState(null);
   const [isRootDomain, setIsRootDomain] = useState(false);
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const [allShops, setAllShops] = useState([]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -44,6 +46,20 @@ export default function App() {
       const slug = getSubdomainSlug();
       if (!slug) {
         setIsRootDomain(true);
+        setLoading(false);
+        return;
+      }
+
+      // Admin global → sin filtro shop_id, ve todos los shops
+      if (slug === 'admin') {
+        setIsGlobalAdmin(true);
+        const loadedConfig = await loadJson('./config.json', FALLBACK_CONFIG);
+        const mergedConfig = normalizeConfig(loadedConfig);
+        setConfig(mergedConfig);
+
+        const sb = getSupabase(mergedConfig);
+        const { data: shops } = await sb.from('shops').select('*').order('name');
+        setAllShops(shops || []);
         setLoading(false);
         return;
       }
@@ -149,6 +165,45 @@ export default function App() {
 
   if (loading) {
     return <div className="page-loader"><div className="card p-6 flex items-center gap-3 text-ink-900 dark:text-white"><Spinner /> Cargando catalogo y configuracion...</div></div>;
+  }
+
+  if (isGlobalAdmin) {
+    return (
+      <div className="min-h-screen bg-ink-50 font-sans text-ink">
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-2xl font-black text-ink-900 dark:text-white">Panel Global</h1>
+              <p className="text-sm text-ink-400">{allShops.length} fotocopiadoras activas</p>
+            </div>
+            <button className="btn-primary text-sm" onClick={() => alert('Onboarding en desarrollo')}>+ Nueva fotocopiadora</button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {allShops.map(shop => (
+              <div key={shop.id} className="card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="font-700 text-ink-900 text-lg">{shop.name}</div>
+                    <div className="text-xs text-ink-400">{shop.subdomain}</div>
+                  </div>
+                  <span className={`badge text-xs ${shop.suscripcion_status === 'active' ? 'bg-ok-muted text-ok-DEFAULT' : shop.suscripcion_status === 'trial' ? 'bg-warn-muted text-warn-DEFAULT' : 'bg-ink-100 text-ink-400'}`}>
+                    {shop.suscripcion_status === 'trial' ? 'Prueba' : shop.suscripcion_status === 'active' ? 'Activo' : shop.suscripcion_status}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <a href={`https://${shop.subdomain}`} target="_blank" rel="noreferrer" className="btn-secondary text-xs flex-1">
+                    Ver tienda
+                  </a>
+                  <a href={`https://${shop.subdomain}/admin`} target="_blank" rel="noreferrer" className="btn-primary text-xs flex-1">
+                    Panel admin
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (isRootDomain) {
