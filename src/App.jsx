@@ -120,7 +120,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-50 font-sans">
+    <div className="min-h-screen bg-ink-50 font-sans text-ink">
       <nav className="bg-surface border-b border-ink-100 sticky top-0 z-50">
         <div className={`mx-auto px-4 h-14 flex items-center justify-between ${isAdmin ? 'max-w-[1440px]' : 'max-w-6xl'}`}>
           <button onClick={() => setScreen('home')} className="flex items-center gap-2.5">
