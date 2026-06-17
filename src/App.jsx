@@ -60,26 +60,31 @@ export default function App() {
 
         const sb = getSupabase(mergedConfig);
 
-        // Restaurar sesión (ej: post Google OAuth redirect)
-        const savedAdmin = loadLocal(STORAGE.admin, null);
-        if (savedAdmin?.email) {
-          try {
-            const { data: { session }, error } = await sb.auth.getSession();
-            if (error || !session) {
-              saveLocal(STORAGE.admin, false);
-            }
-          } catch (e) { saveLocal(STORAGE.admin, false); }
-        }
-        // Si hay token en URL (OAuth callback), Supabase lo procesa automáticamente
-        const { data: { session: oauthSession } } = await sb.auth.getSession();
-        if (oauthSession?.user?.email) {
-          saveLocal(STORAGE.admin, { email: oauthSession.user.email, display_name: oauthSession.user.user_metadata?.full_name || oauthSession.user.email.split('@')[0] });
+        // Detectar sesión post OAuth redirect (hash token)
+        const { data: { session } } = await sb.auth.getSession();
+        if (session?.user?.email) {
           const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL;
-          if (allowedEmail && oauthSession.user.email !== allowedEmail) {
-            saveLocal(STORAGE.admin, false);
+          if (allowedEmail && session.user.email !== allowedEmail) {
             await sb.auth.signOut();
+            saveLocal(STORAGE.admin, false);
           } else {
+            saveLocal(STORAGE.admin, { email: session.user.email, display_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0] });
             setAdminAuthed(true);
+          }
+        } else {
+          const savedAdmin = loadLocal(STORAGE.admin, null);
+          if (savedAdmin?.email) {
+            try {
+              const { data: { session: storedSession }, error } = await sb.auth.getSession();
+              if (!error && storedSession) {
+                const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL;
+                if (!allowedEmail || storedSession.user?.email === allowedEmail) {
+                  setAdminAuthed(true);
+                }
+              } else {
+                saveLocal(STORAGE.admin, false);
+              }
+            } catch (e) { saveLocal(STORAGE.admin, false); }
           }
         }
 
