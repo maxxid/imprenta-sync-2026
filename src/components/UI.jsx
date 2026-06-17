@@ -18,7 +18,7 @@ export function Alert({ type = 'info', className = '', children }) {
 }
 
 export function Spinner() {
-  return <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />;
+  return <div className="w-5 h-5 border-2 border-brand-DEFAULT border-t-transparent rounded-full animate-spin" />;
 }
 
 export function Cover({ src, alt }) {

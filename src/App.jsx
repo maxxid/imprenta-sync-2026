@@ -116,7 +116,7 @@ export default function App() {
   const isAdmin = screen === 'admin';
 
   if (loading) {
-    return <div className="page-loader"><div className="card p-6 flex items-center gap-3"><Spinner /> Cargando catalogo y configuracion...</div></div>;
+    return <div className="page-loader"><div className="card p-6 flex items-center gap-3 text-ink-900 dark:text-white"><Spinner /> Cargando catalogo y configuracion...</div></div>;
   }
 
   return (
