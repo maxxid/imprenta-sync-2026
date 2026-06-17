@@ -4,6 +4,7 @@ import { Spinner } from './components/UI';
 import { Store } from './components/Store';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminPanel } from './components/AdminPanel';
+import { GlobalAdminDashboard } from './components/admin/GlobalAdminDashboard';
 import { FALLBACK_CONFIG, STORAGE } from './lib/constants';
 import { migrateBook } from './lib/utils';
 import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig } from './lib/supabase';
@@ -168,40 +169,33 @@ export default function App() {
   }
 
   if (isGlobalAdmin) {
+    if (!adminAuthed) {
+      return (
+        <div className="min-h-screen bg-ink-50 font-sans text-ink">
+          <AdminLogin config={config} onSuccess={v => {
+            const saved = loadLocal(STORAGE.admin, null);
+            const allowedEmail = config?.supabase?.admin_email;
+            if (allowedEmail && saved?.email !== allowedEmail) {
+              alert('Acceso denegado. Solo el admin global puede ingresar aquí.');
+              saveLocal(STORAGE.admin, false);
+              return;
+            }
+            setAdminAuthed(v);
+            setSessionExpired(false);
+          }} />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-ink-50 font-sans text-ink">
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-black text-ink-900 dark:text-white">Panel Global</h1>
-              <p className="text-sm text-ink-400">{allShops.length} fotocopiadoras activas</p>
-            </div>
-            <button className="btn-primary text-sm" onClick={() => alert('Onboarding en desarrollo')}>+ Nueva fotocopiadora</button>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {allShops.map(shop => (
-              <div key={shop.id} className="card p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <div className="font-700 text-ink-900 text-lg">{shop.name}</div>
-                    <div className="text-xs text-ink-400">{shop.subdomain}</div>
-                  </div>
-                  <span className={`badge text-xs ${shop.suscripcion_status === 'active' ? 'bg-ok-muted text-ok-DEFAULT' : shop.suscripcion_status === 'trial' ? 'bg-warn-muted text-warn-DEFAULT' : 'bg-ink-100 text-ink-400'}`}>
-                    {shop.suscripcion_status === 'trial' ? 'Prueba' : shop.suscripcion_status === 'active' ? 'Activo' : shop.suscripcion_status}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <a href={`https://${shop.subdomain}`} target="_blank" rel="noreferrer" className="btn-secondary text-xs flex-1">
-                    Ver tienda
-                  </a>
-                  <a href={`https://${shop.subdomain}/admin`} target="_blank" rel="noreferrer" className="btn-primary text-xs flex-1">
-                    Panel admin
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <GlobalAdminDashboard
+          config={config}
+          onLogout={async () => {
+            try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) {}
+            saveLocal(STORAGE.admin, false);
+            setAdminAuthed(false);
+          }}
+        />
       </div>
     );
   }

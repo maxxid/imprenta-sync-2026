@@ -443,3 +443,63 @@ export function isDeliveryDayOrder(order) {
 export function needsAttendance(order) {
   return ['Listo'].includes(order.estado) && isDeliveryDayOrder(order) && !order.asistencia_confirmada;
 }
+
+// ============ GLOBAL ADMIN ============
+
+export async function fetchAllShops(config) {
+  try {
+    const sb = getSupabase(config);
+    const { data, error } = await sb.from('shops').select('*').order('name');
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Error cargando shops:', err);
+    return [];
+  }
+}
+
+export async function fetchShopStats(config, shopId) {
+  try {
+    const sb = getSupabase(config);
+    const [{ count: bookCount }, { count: activeOrders }] = await Promise.all([
+      sb.from('libros').select('*', { count: 'exact', head: true }).eq('shop_id', shopId).eq('activo', true),
+      sb.from('pedidos').select('*', { count: 'exact', head: true }).eq('shop_id', shopId).in('estado', ['Pendiente de impresión', 'Imprimiendo', 'Para encuadernar', 'Listo'])
+    ]);
+    return { bookCount: bookCount || 0, activeOrders: activeOrders || 0 };
+  } catch (err) {
+    console.error('Error cargando stats del shop:', err);
+    return { bookCount: 0, activeOrders: 0 };
+  }
+}
+
+export async function createShop(config, { slug, name, adminEmail }) {
+  try {
+    const sb = getSupabase(config);
+    const subdomain = `${slug}.imprenta.store`;
+    const { error } = await sb.from('shops').insert({
+      slug,
+      name,
+      subdomain,
+      admin_email: adminEmail || null,
+      suscripcion_status: 'trial',
+      trial_ends_at: new Date(Date.now() + 14 * 86400000).toISOString()
+    });
+    if (error) throw error;
+    return { success: true, subdomain };
+  } catch (err) {
+    console.error('Error creando shop:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateShopStatus(config, shopId, status) {
+  try {
+    const sb = getSupabase(config);
+    const { error } = await sb.from('shops').update({ suscripcion_status: status }).eq('id', shopId);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error actualizando shop:', err);
+    return false;
+  }
+}

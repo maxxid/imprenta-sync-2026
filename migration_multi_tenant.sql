@@ -115,7 +115,10 @@ CREATE POLICY "authenticated_update_config" ON config
   FOR UPDATE TO authenticated
   USING (true);
 
--- ============ 6. Índices para queries por shop_id ============
+-- ============ 6. admin_email en shops (panel global) ============
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS admin_email TEXT;
+
+-- ============ 7. Índices para queries por shop_id ============
 CREATE INDEX IF NOT EXISTS idx_libros_shop_id ON libros(shop_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_shop_id ON pedidos(shop_id);
 CREATE INDEX IF NOT EXISTS idx_config_shop_id ON config(shop_id);
