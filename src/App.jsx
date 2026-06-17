@@ -209,36 +209,101 @@ export default function App() {
   if (isRootDomain) {
     return (
       <div className="min-h-screen bg-ink-50 font-sans text-ink">
-        <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-ink-900 flex items-center justify-center text-white text-2xl font-800 mx-auto mb-6 dark:bg-white dark:text-black">IS</div>
-          <h1 className="text-4xl font-black text-ink-900 dark:text-white mb-4">Imprenta Sync 2026</h1>
-          <p className="text-lg text-ink-500 mb-2">Gestión de pedidos para fotocopiadoras universitarias</p>
-          <p className="text-sm text-ink-400 mb-10">Catálogo digital · Carrito · Checkout · Seguimiento en tiempo real</p>
-          <div className="grid gap-5 sm:grid-cols-3 mb-12">
+        {/* Nav */}
+        <nav className="bg-surface border-b border-ink-100 sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-ink-900 flex items-center justify-center text-white text-sm dark:bg-white dark:text-black">IS</div>
+              <span className="font-800 text-ink-900 dark:text-white text-base">Imprenta <span className="text-brand-DEFAULT">Sync 2026</span></span>
+            </div>
+            <div className="flex items-center gap-3">
+              <a href="https://demo.imprenta.store" className="btn-secondary text-sm font-700 px-4 py-2" target="_blank" rel="noreferrer">
+                <Icon.Book /> Ver demo
+              </a>
+              <a href={`https://wa.me/${config?.pagos?.whatsapp_admin || '5493885888949'}`} target="_blank" rel="noreferrer" className="btn-primary text-sm px-4 py-2">
+                <Icon.Message /> Contactar
+              </a>
+            </div>
+          </div>
+        </nav>
+
+        {/* Hero */}
+        <div className="hero-glow max-w-4xl mx-4 sm:mx-auto mt-12 relative z-10">
+          <div className="relative z-10 text-center">
+            <div className="text-xs font-semibold uppercase tracking-widest text-sky-300 mb-2">Plataforma de gestión</div>
+            <h1 className="text-3xl sm:text-4xl font-black mb-3">Digitalizá tu fotocopiadora universitaria</h1>
+            <p className="text-sky-100/70 text-base mb-6 max-w-xl mx-auto">Catálogo online, pedidos automatizados, pagos integrados. Tus alumnos compran sin necesidad de WhatsApp.</p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <a href="https://demo.imprenta.store" target="_blank" rel="noreferrer" className="btn-primary text-base px-6 py-3 bg-brand-DEFAULT hover:bg-brand-dark">
+                <Icon.Search /> Probar demo
+              </a>
+              <a href={`https://wa.me/${config?.pagos?.whatsapp_admin || '5493885888949'}`} target="_blank" rel="noreferrer" className="btn-secondary text-base px-6 py-3 border-white/20 text-white hover:bg-white/10 hover:text-white">
+                <Icon.Message /> Hablar por WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="max-w-5xl mx-auto px-4 py-16">
+          <div className="text-center mb-10">
+            <div className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-2">¿Por qué Imprenta Sync?</div>
+            <h2 className="text-2xl font-black text-ink-900 dark:text-white">Todo lo que necesitás en un solo lugar</h2>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { title: 'Catálogo online', desc: 'Tus apuntes organizados por carrera y materia, con vista previa de PDF.' },
-              { title: 'Pedidos automáticos', desc: 'El alumno elige, paga y agenda la entrega sin WhatsApp.' },
-              { title: 'Panel de gestión', desc: 'Dashboard con capacidad diaria, estados y seguimiento por pedido.' }
+              { icon: <Icon.Book />, title: 'Catálogo online', desc: 'Cargá tus apuntes con vista previa de PDF. Los alumnos buscan por carrera y materia.' },
+              { icon: <Icon.Cart />, title: 'Pedidos 24/7', desc: 'Recibí pedidos automáticos sin atender WhatsApp. El alumno paga y elige ventana de entrega.' },
+              { icon: <Icon.Bell />, title: 'Seguimiento', desc: 'El alumno sigue su pedido en tiempo real. Estados: pago, impresión, listo, entregado.' },
+              { icon: <Icon.Settings />, title: 'Panel de control', desc: 'Dashboard con capacidad diaria, gestión de catálogo, precios por formato y más.' }
             ].map((f, i) => (
-              <div key={i} className="card p-5 text-left">
+              <div key={i} className="card p-5 text-center hover:bg-surface-hover hover:border-brand hover:shadow-lg hover:shadow-brand-DEFAULT/20 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-brand-muted flex items-center justify-center text-brand-DEFAULT mx-auto mb-3">
+                  {f.icon}
+                </div>
                 <div className="font-700 text-ink-900 mb-1">{f.title}</div>
-                <div className="text-xs text-ink-400">{f.desc}</div>
+                <div className="text-xs text-ink-400 leading-relaxed">{f.desc}</div>
               </div>
             ))}
           </div>
-          <div className="card p-6 text-center max-w-md mx-auto">
-            <div className="font-700 text-lg text-ink-900 mb-2">¿Tenés una fotocopiadora?</div>
-            <div className="text-sm text-ink-500 mb-5">Escribinos a WhatsApp y creamos tu tienda en minutos.</div>
-            <a href={`https://wa.me/${config?.pagos?.whatsapp_admin || '5493885888949'}`} target="_blank" rel="noreferrer" className="btn-primary inline-flex">
-              <Icon.Message /> Contactar por WhatsApp
+        </div>
+
+        {/* How it works */}
+        <div className="bg-surface border-y border-border py-16">
+          <div className="max-w-5xl mx-auto px-4">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-black text-ink-900 dark:text-white">Así de fácil es empezar</h2>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-3">
+              {[
+                { step: '1', title: 'Creá tu tienda', desc: 'Te damos un subdominio. Cargás tus libros, precios y horarios de entrega.' },
+                { step: '2', title: 'Compartí el link', desc: 'Los alumnos entran, eligen sus apuntes y pagan desde el celular.' },
+                { step: '3', title: 'Entregá en facultad', desc: 'Dashboard te muestra qué imprimir y cuándo. El alumno retira en la ventana pactada.' }
+              ].map((s, i) => (
+                <div key={i} className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-brand-DEFAULT text-white flex items-center justify-center text-xl font-800 mx-auto mb-4">{s.step}</div>
+                  <div className="font-700 text-ink-900 mb-1">{s.title}</div>
+                  <div className="text-sm text-ink-400">{s.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Pricing / CTA final */}
+        <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+          <h2 className="text-2xl font-black text-ink-900 dark:text-white mb-4">Probá gratis, crecé cuando quieras</h2>
+          <p className="text-ink-500 mb-8 max-w-lg mx-auto">Arrancá con 14 días de prueba sin costo. Cargá tu catálogo, probá el sistema y cuando estés listo pasás al plan mensual.</p>
+          <div className="flex gap-4 justify-center flex-wrap">
+            <a href="https://demo.imprenta.store" target="_blank" rel="noreferrer" className="btn-primary text-base px-8 py-3">
+              <Icon.Book /> Entrar a la demo
+            </a>
+            <a href={`https://wa.me/${config?.pagos?.whatsapp_admin || '5493885888949'}`} target="_blank" rel="noreferrer" className="btn-secondary text-base px-8 py-3">
+              <Icon.Message /> Crear mi tienda
             </a>
           </div>
-          <div className="mt-16 text-xs text-ink-300">
-            {currentShop ? (
-              <span>Redirigiendo a <strong>{currentShop.subdomain}</strong>...</span>
-            ) : (
-              <span>¿Ya tenés tu tienda? Entrá desde tu subdominio. Ej: <strong>unju.imprenta.store</strong></span>
-            )}
+          <div className="mt-12 text-xs text-ink-300">
+            ¿Ya tenés tu tienda? Entrá desde tu subdominio. Ej: <strong>unju.imprenta.store</strong>
           </div>
         </div>
       </div>
