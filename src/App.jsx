@@ -59,6 +59,30 @@ export default function App() {
         setConfig(mergedConfig);
 
         const sb = getSupabase(mergedConfig);
+
+        // Restaurar sesión (ej: post Google OAuth redirect)
+        const savedAdmin = loadLocal(STORAGE.admin, null);
+        if (savedAdmin?.email) {
+          try {
+            const { data: { session }, error } = await sb.auth.getSession();
+            if (error || !session) {
+              saveLocal(STORAGE.admin, false);
+            }
+          } catch (e) { saveLocal(STORAGE.admin, false); }
+        }
+        // Si hay token en URL (OAuth callback), Supabase lo procesa automáticamente
+        const { data: { session: oauthSession } } = await sb.auth.getSession();
+        if (oauthSession?.user?.email) {
+          saveLocal(STORAGE.admin, { email: oauthSession.user.email, display_name: oauthSession.user.user_metadata?.full_name || oauthSession.user.email.split('@')[0] });
+          const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL;
+          if (allowedEmail && oauthSession.user.email !== allowedEmail) {
+            saveLocal(STORAGE.admin, false);
+            await sb.auth.signOut();
+          } else {
+            setAdminAuthed(true);
+          }
+        }
+
         const { data: shops } = await sb.from('shops').select('*').order('name');
         setAllShops(shops || []);
         setLoading(false);
