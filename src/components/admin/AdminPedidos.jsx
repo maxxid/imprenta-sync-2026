@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Icon } from '../Icons';
 import { statusBadge, Alert, Spinner, fechaLabel, buildWhatsAppMessage } from '../UI';
-import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal } from '../../lib/utils';
+import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal } from '../../lib/utils';
 import { ORDER_STATES, STATE_LABELS, STATE_STYLES, STATE_ROW_BG } from '../../lib/constants';
 import { getSupabase, saveOrderToSupabase, syncOrderToSheets, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
@@ -247,9 +247,10 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
       const newEstado = ORDER_STATES[newIdx];
       const updatedItems = order.items.map((it, i) => i === itemIndex ? { ...it, estado: newEstado } : it);
       const updated = { ...order, items: updatedItems, estado: deriveOrderEstado(updatedItems) };
-      const ok = await persistOrder(updated);
+      const normalized = normalizeOrder(updated, config);
+      const ok = await persistOrder(normalized);
       if (!ok) return;
-      setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? normalized : o));
     } finally {
       setSavingItemStates(prev => { const n = { ...prev }; delete n[key]; return n; });
     }
