@@ -1,8 +1,7 @@
 {
   "supabase": {
     "url": "https://hjtbwnsxgellbtfariog.supabase.co",
-    "anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqdGJ3bnN4Z2VsbGJ0ZmFyaW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzcxMjcsImV4cCI6MjA5MjkxMzEyN30.-PmIguEq6p_76LnDg1QYSWBIwovkAtWByaLMz65rEts",
-    "admin_email": ""
+    "anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqdGJ3bnN4Z2VsbGJ0ZmFyaW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzcxMjcsImV4cCI6MjA5MjkxMzEyN30.-PmIguEq6p_76LnDg1QYSWBIwovkAtWByaLMz65rEts"
   },
   "integraciones": {
     "SHEETS_API_URL": "https://script.google.com/macros/s/AKfycbzGL5LW4PvZ-N4SuF4XMo-yoeLD0b-wvaugtaQ9bzIRLnfnpXCPkM8N2HvAjfl2JZjUIQ/exec"

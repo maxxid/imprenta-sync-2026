@@ -174,7 +174,7 @@ export default function App() {
         <div className="min-h-screen bg-ink-50 font-sans text-ink">
           <AdminLogin config={config} onSuccess={v => {
             const saved = loadLocal(STORAGE.admin, null);
-            const allowedEmail = config?.supabase?.admin_email;
+            const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL;
             if (allowedEmail && saved?.email !== allowedEmail) {
               alert('Acceso denegado. Solo el admin global puede ingresar aquí.');
               saveLocal(STORAGE.admin, false);
