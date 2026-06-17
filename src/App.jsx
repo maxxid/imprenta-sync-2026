@@ -48,8 +48,13 @@ export default function App() {
         return;
       }
 
+      // Cargar config primero para tener credenciales Supabase
+      const loadedConfig = await loadJson('./config.json', FALLBACK_CONFIG);
+      const supabaseConfig = await fetchConfigFromSupabase(loadedConfig);
+      const baseConfig = supabaseConfig ? deepMerge(loadedConfig, supabaseConfig) : loadedConfig;
+
       // Buscar el shop por slug
-      const sb = getSupabase(FALLBACK_CONFIG);
+      const sb = getSupabase(baseConfig);
       const { data: shop } = await sb.from('shops').select('*').eq('slug', slug).single();
       if (!shop) {
         setIsRootDomain(true);
@@ -60,9 +65,6 @@ export default function App() {
       setGlobalShop(shop);
 
       const savedConfig = loadLocal(STORAGE.config, null);
-      const loadedConfig = await loadJson('./config.json', FALLBACK_CONFIG);
-      const supabaseConfig = await fetchConfigFromSupabase(loadedConfig);
-      const baseConfig = supabaseConfig ? deepMerge(loadedConfig, supabaseConfig) : loadedConfig;
       const mergedConfig = normalizeConfig(savedConfig ? deepMerge(baseConfig, savedConfig) : baseConfig);
       const savedCarrito = loadLocal(STORAGE.carrito, []);
       const savedForm = loadLocal(STORAGE.checkoutForm, null);
