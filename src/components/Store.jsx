@@ -184,7 +184,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
           const hojas = HOJAS(book.paginas, book.paginas_por_hoja || 2);
           const tipo = book.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
           return (
-            <button key={book.id} onClick={() => onSelectLibro(book)} className="card p-4 text-left hover:bg-surface-hover hover:border-brand hover:shadow-lg transition-all btn-press">
+            <button key={book.id} onClick={() => onSelectLibro(book)} className="card p-4 text-left hover:bg-surface-hover hover:border-brand hover:shadow-lg hover:shadow-brand-DEFAULT/20 transition-all btn-press">
               <div className="grid grid-cols-[88px_1fr] gap-4 items-start">
                 <Cover src={book.imagen_url} alt={book.titulo} />
                 <div>
@@ -1351,7 +1351,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
           {matchedOrders.map(order => {
             const isReady = needsAttendanceConfirmation(order);
             return (
-              <button key={order.id} onClick={() => setSelectedOrder(order)} className="card p-4 w-full text-left hover:bg-surface-hover hover:border-brand hover:shadow-lg transition-all btn-press">
+              <button key={order.id} onClick={() => setSelectedOrder(order)} className="card p-4 w-full text-left hover:bg-surface-hover hover:border-brand hover:shadow-lg hover:shadow-brand-DEFAULT/20 transition-all btn-press">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-700 text-sm text-ink-900 truncate">{order.libro}</div>
