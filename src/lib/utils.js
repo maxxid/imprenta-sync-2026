@@ -285,10 +285,14 @@ export function normalizeOrder(order, config) {
   const lugarGuardado = String(order.lugar_entrega || '').includes('Punto de entrega') ? '' : order.lugar_entrega;
   const items = (order.items || []).map(item => ({ ...item, estado: item.estado || estado || 'Pendiente de impresión' }));
   const derivedEstado = deriveOrderEstado(items);
+  const total = order.total || 0;
+  const autoSaldado = derivedEstado === 'Entregado';
   return {
     ...order,
     items,
     estado: derivedEstado,
+    monto_pagado: autoSaldado ? total : (order.monto_pagado ?? 0),
+    saldo_pendiente: autoSaldado ? 0 : (order.saldo_pendiente ?? 0),
     modalidad_entrega: modalidad,
     ventana_retiro: order.ventana_retiro || (modalidad === 'Cadete' || modalidad === 'Retiro domicilio' ? 'Se coordina por WhatsApp' : `${order.fecha || ''} · ${horario}`),
     lugar_entrega: lugarGuardado || config.carreras?.[0]?.direccion_entrega || 'Dirección de facultad según carrera',
