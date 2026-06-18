@@ -14,8 +14,7 @@ import { setShop as setGlobalShop, getShopId } from './lib/shop';
 function getSubdomainSlug() {
   const hostname = window.location.hostname;
   const parts = hostname.split('.');
-  // imprenta.store → 2 parts → no subdominio
-  // unju.imprenta.store → 3+ parts → subdominio = parts[0]
+  if (parts[0] === 'www') return null;
   if (parts.length <= 2) return null;
   return parts[0];
 }
@@ -67,6 +66,11 @@ export default function App() {
               return;
             }
           }
+        }
+        // Detectar error de magic link en hash
+        const hash = window.location.hash;
+        if (hash.includes('error=access_denied') || hash.includes('otp_expired')) {
+          setLoginError('El enlace de acceso expiró o ya fue usado. Solicitá uno nuevo.');
         }
         setIsRootDomain(true);
         setLoading(false);
@@ -271,6 +275,11 @@ export default function App() {
   if (isRootDomain) {
     return (
       <div className="min-h-screen bg-ink-50 font-sans text-ink">
+        {loginError && (
+          <div className="bg-red-50 border-b border-red-200 text-red-700 text-sm text-center py-3 px-4">
+            {loginError}
+          </div>
+        )}
         {/* Nav */}
         <nav className="bg-surface border-b border-ink-100 sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
