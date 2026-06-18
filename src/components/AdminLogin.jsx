@@ -11,7 +11,6 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
   const [error, setError] = useState(initialError);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
 
   useEffect(() => { if (initialError) setError(initialError); }, [initialError]);
@@ -160,18 +159,13 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
             <div className="text-xs text-ink-500">Revisá <strong>{email}</strong>. Te enviamos un link de acceso. No requiere contraseña.</div>
             <button className="text-xs text-brand-DEFAULT font-700 mt-2 hover:underline" onClick={() => setSent(false)}>Enviar de nuevo</button>
           </div>
-        ) : showPassword ? (
-          /* Modo contraseña */
+        ) : (
+          /* Modo contraseña (default) */
           <div className="space-y-3 mt-3">
             <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">
-                  {creatingAccount ? 'Creá tu contraseña' : 'Contraseña'}
-                </label>
-                {!creatingAccount && (
-                  <button className="text-xs text-brand-DEFAULT font-700 hover:underline" onClick={() => sendMagicLink()}>Enlace mágico</button>
-                )}
-              </div>
+              <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">
+                {creatingAccount ? 'Creá tu contraseña' : 'Contraseña'}
+              </label>
               <input type="password" className="input-field" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && (creatingAccount ? createAccount() : loginWithPassword())} placeholder={creatingAccount ? 'Mínimo 6 caracteres' : 'Tu contraseña'} />
             </div>
             {error && <Alert type="danger"><Icon.AlertCircle /><span>{error}</span></Alert>}
@@ -185,23 +179,10 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
               </button>
             )}
             <div className="text-center">
-              <button className="text-xs text-ink-400 hover:text-ink-600 font-700 pt-1" onClick={() => { setShowPassword(false); setCreatingAccount(false); }}>
-                ← Volver al enlace mágico
+              <button className="text-xs text-brand-DEFAULT font-700 hover:underline" onClick={sendMagicLink} disabled={loading}>
+                <Icon.Message /> Enviar enlace de acceso
               </button>
-            </div>
-          </div>
-        ) : (
-          /* Modo enlace mágico (default) */
-          <div className="space-y-3 mt-3">
-            {error && <Alert type="danger"><Icon.AlertCircle /><span>{error}</span></Alert>}
-            <button className="btn-primary w-full" onClick={sendMagicLink} disabled={loading}>
-              <Icon.Message /> {loading ? <><Spinner />Enviando...</> : 'Enviar enlace de acceso'}
-            </button>
-            <div className="text-center space-y-1">
-              <div className="text-xs text-ink-400">No requiere contraseña. Te enviamos un link al email.</div>
-              <button className="text-xs text-brand-DEFAULT font-700 hover:underline" onClick={() => setShowPassword(true)}>
-                Ingresar con contraseña
-              </button>
+              <div className="text-xs text-ink-400 mt-1">Sin contraseña. Recibí un link en tu email.</div>
             </div>
           </div>
         )}
