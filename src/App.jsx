@@ -87,6 +87,7 @@ export default function App() {
           if (allowedEmail && session.user.email !== allowedEmail) {
             await sb.auth.signOut();
             saveLocal(STORAGE.admin, false);
+            setAdminAuthed(false);
             setLoginError(`Acceso denegado. ${session.user.email} no es el admin global.`);
           } else {
             saveLocal(STORAGE.admin, { email: session.user.email, display_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0] });
@@ -99,13 +100,22 @@ export default function App() {
               const { data: { session: storedSession }, error } = await sb.auth.getSession();
               if (!error && storedSession) {
                 const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL;
-                if (!allowedEmail || storedSession.user?.email === allowedEmail) {
+                if (!allowedEmail || storedSession?.user?.email === allowedEmail) {
                   setAdminAuthed(true);
+                } else {
+                  await sb.auth.signOut().catch(() => {});
+                  saveLocal(STORAGE.admin, false);
+                  setAdminAuthed(false);
+                  setLoginError('Acceso denegado. No sos el admin global.');
                 }
               } else {
                 saveLocal(STORAGE.admin, false);
+                setAdminAuthed(false);
               }
-            } catch (e) { saveLocal(STORAGE.admin, false); }
+            } catch (e) { saveLocal(STORAGE.admin, false); setAdminAuthed(false); }
+          } else {
+            saveLocal(STORAGE.admin, false);
+            setAdminAuthed(false);
           }
         }
 

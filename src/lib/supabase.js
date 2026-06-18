@@ -557,10 +557,10 @@ export async function checkPasswordChanged(config, shopId, email) {
       .eq('shop_id', shopId)
       .eq('email', email)
       .single();
-    if (error) return true; // por defecto, no forzar cambio
+    if (error) return false;
     return data?.password_changed !== false;
   } catch (err) {
-    return true;
+    return false;
   }
 }
 
