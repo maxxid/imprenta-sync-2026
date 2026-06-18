@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from './Icons';
 import { Alert, Spinner } from './UI';
 import { STORAGE } from '../lib/constants';
 import { getSupabase, saveLocal } from '../lib/supabase';
 
-export function AdminLogin({ config, onSuccess, showGoogle = true }) {
+export function AdminLogin({ config, onSuccess, showGoogle = true, initialError = '' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError);
+
+  useEffect(() => { if (initialError) setError(initialError); }, [initialError]);
   const [loading, setLoading] = useState(false);
 
   async function submit() {

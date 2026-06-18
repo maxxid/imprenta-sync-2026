@@ -37,6 +37,7 @@ export default function App() {
   const [isRootDomain, setIsRootDomain] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [allShops, setAllShops] = useState([]);
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -67,6 +68,7 @@ export default function App() {
           if (allowedEmail && session.user.email !== allowedEmail) {
             await sb.auth.signOut();
             saveLocal(STORAGE.admin, false);
+            setLoginError(`Acceso denegado. ${session.user.email} no es el admin global.`);
           } else {
             saveLocal(STORAGE.admin, { email: session.user.email, display_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0] });
             setAdminAuthed(true);
@@ -201,11 +203,12 @@ export default function App() {
     if (!adminAuthed) {
       return (
         <div className="min-h-screen bg-ink-50 font-sans text-ink">
-          <AdminLogin config={config} onSuccess={v => {
+          <AdminLogin config={config} initialError={loginError} onSuccess={v => {
+            setLoginError('');
             const saved = loadLocal(STORAGE.admin, null);
             const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL;
             if (allowedEmail && saved?.email !== allowedEmail) {
-              alert('Acceso denegado. Solo el admin global puede ingresar aquí.');
+              setLoginError('Acceso denegado. Solo el admin global puede ingresar aquí.');
               saveLocal(STORAGE.admin, false);
               return;
             }
