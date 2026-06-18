@@ -8,9 +8,31 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(initialError);
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => { if (initialError) setError(initialError); }, [initialError]);
-  const [loading, setLoading] = useState(false);
+
+  async function sendMagicLink() {
+    if (!email.trim() || !email.includes('@')) {
+      setError('Ingresá un email válido.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const sb = getSupabase(config);
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+      await sb.auth.signInWithOtp({
+        email: email.trim(),
+        options: { shouldCreateUser: true, emailRedirectTo: redirectTo }
+      });
+      setSent(true);
+    } catch (e) {
+      setError(e.message || 'Error al enviar el enlace. ¿Está habilitado el Magic Link en Supabase?');
+    }
+    setLoading(false);
+  }
 
   async function submit() {
     if (!email.trim() || !password.trim()) {
@@ -54,7 +76,7 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
       <div className="card p-6">
         <div className="w-12 h-12 rounded-2xl bg-ink-900 dark:bg-white text-white dark:text-black flex items-center justify-center mb-4"><Icon.Lock /></div>
         <h2 className="text-2xl font-800 text-ink-900 mb-1">Acceso protegido</h2>
-        <p className="text-sm text-ink-400 mb-5">Ingresá con tu cuenta de administración.</p>
+        <p className="text-sm text-ink-400 mb-5">{showGoogle ? 'Ingresá con tu cuenta de administración.' : 'Ingresá tu email para acceder.'}</p>
         <div className="space-y-3">
           {showGoogle && (
             <>
@@ -71,16 +93,37 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
           )}
           <div>
             <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Email</label>
-            <input className="input-field" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ejemplo@mail.com" onKeyDown={e => e.key === 'Enter' && submit()} />
+            <input className="input-field" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ejemplo@mail.com" onKeyDown={e => e.key === 'Enter' && (showGoogle ? submit() : sendMagicLink())} />
           </div>
-          <div>
-            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Contraseña</label>
-            <input type="password" className="input-field" value={password} onChange={event => setPassword(event.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
-          </div>
-          {error && <Alert type="danger"><Icon.AlertCircle /><span>{error}</span></Alert>}
-          <button className="btn-primary w-full" onClick={submit} disabled={loading}>
-            {loading ? <><Spinner /> Conectando...</> : 'Ingresar'}
-          </button>
+          {sent ? (
+            <div className="rounded-xl bg-ok-muted border border-ok-DEFAULT/30 p-4">
+              <div className="font-700 text-ok-DEFAULT text-sm mb-1">✓ Enlace enviado</div>
+              <div className="text-xs text-ink-500">Revisá <strong>{email}</strong>. Te enviamos un enlace de acceso. No requiere contraseña.</div>
+            </div>
+          ) : showGoogle ? (
+            <>
+              <div>
+                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Contraseña</label>
+                <input type="password" className="input-field" value={password} onChange={event => setPassword(event.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
+              </div>
+              {error && <Alert type="danger"><Icon.AlertCircle /><span>{error}</span></Alert>}
+              <button className="btn-primary w-full" onClick={submit} disabled={loading}>
+                {loading ? <><Spinner /> Conectando...</> : 'Ingresar'}
+              </button>
+            </>
+          ) : (
+            <>
+              {error && <Alert type="danger"><Icon.AlertCircle /><span>{error}</span></Alert>}
+              <button className="btn-primary w-full" onClick={sendMagicLink} disabled={loading}>
+                <Icon.Message /> {loading ? <><Spinner />Enviando...</> : 'Enviar enlace de acceso'}
+              </button>
+              {!sent && (
+                <div className="text-xs text-ink-400 text-center pt-2">
+                  No requiere contraseña. Te enviamos un link al email.
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
