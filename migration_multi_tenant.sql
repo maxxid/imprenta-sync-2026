@@ -139,7 +139,21 @@ ON CONFLICT (shop_id, email) DO NOTHING;
 ALTER TABLE shop_admins ADD COLUMN IF NOT EXISTS password_changed BOOLEAN DEFAULT TRUE;
 UPDATE shop_admins SET password_changed = TRUE WHERE password_changed IS NULL;
 
--- ============ 8. RLS para shops y shop_admins ============
+-- ============ 8. Constraints compuestas para multi-tenant ============
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'libros_id_shop_id_unique') THEN
+    ALTER TABLE libros ADD CONSTRAINT libros_id_shop_id_unique UNIQUE(id, shop_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pedidos_id_shop_id_unique') THEN
+    ALTER TABLE pedidos ADD CONSTRAINT pedidos_id_shop_id_unique UNIQUE(id, shop_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'config_id_shop_id_unique') THEN
+    ALTER TABLE config ADD CONSTRAINT config_id_shop_id_unique UNIQUE(id, shop_id);
+  END IF;
+END $$;
+
+-- ============ 9. RLS para shops y shop_admins ============
 ALTER TABLE shops ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "anon_select_shops" ON shops;
