@@ -83,8 +83,7 @@ export const FALLBACK_CONFIG = {
   },
   supabase: {
     url: '',
-    anon_key: '',
-    admin_email: ''
+    anon_key: ''
   },
   pagos: {
     talo_activo: true,

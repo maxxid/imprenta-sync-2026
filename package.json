@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/dm-sans": "^5.2.5",
     "@supabase/supabase-js": "^2.49.1",
     "pdfjs-dist": "^5.0.375",
     "react": "^19.2.6",
