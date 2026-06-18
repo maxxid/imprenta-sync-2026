@@ -133,6 +133,7 @@ export default function App() {
             // Verificar que el admin pertenece a este shop
             const allowed = await isShopAdmin(mergedConfig, currentShop?.id || shop.id, savedAdmin.email);
             if (!allowed) {
+              await sb2.auth.signOut().catch(() => {});
               saveLocal(STORAGE.admin, false);
               setAdminAuthed(false);
               setSessionExpired(true);
