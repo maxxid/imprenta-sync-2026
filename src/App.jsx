@@ -48,6 +48,24 @@ export default function App() {
     async function init() {
       const slug = getSubdomainSlug();
       if (!slug) {
+        // Si viene de reset password (type=recovery en hash), redirigir al shop
+        if (window.location.hash.includes('type=recovery')) {
+          const loadedConfig = await loadJson('./config.json', FALLBACK_CONFIG);
+          const mergedConfig = normalizeConfig(loadedConfig);
+          setConfig(mergedConfig);
+          const sb = getSupabase(mergedConfig);
+          const { data: { session } } = await sb.auth.getSession();
+          if (session?.user?.email) {
+            const { data: adminRows } = await sb.from('shop_admins').select('shop_id').eq('email', session.user.email.toLowerCase()).limit(1);
+            if (adminRows?.length > 0) {
+              const { data: shop } = await sb.from('shops').select('subdomain').eq('id', adminRows[0].shop_id).single();
+              if (shop?.subdomain) {
+                window.location.href = `https://${shop.subdomain}/admin`;
+                return;
+              }
+            }
+          }
+        }
         setIsRootDomain(true);
         setLoading(false);
         return;
