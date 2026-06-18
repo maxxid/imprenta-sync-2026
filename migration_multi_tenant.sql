@@ -134,7 +134,27 @@ SELECT id, admin_email FROM shops
 WHERE admin_email IS NOT NULL AND admin_email <> ''
 ON CONFLICT (shop_id, email) DO NOTHING;
 
--- ============ 8. Índices para queries por shop_id ============
+-- ============ 8. RLS para shops y shop_admins ============
+ALTER TABLE shops ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anon_select_shops" ON shops;
+CREATE POLICY "anon_select_shops" ON shops
+  FOR SELECT TO anon
+  USING (true);
+
+DROP POLICY IF EXISTS "authenticated_all_shops" ON shops;
+CREATE POLICY "authenticated_all_shops" ON shops
+  FOR ALL TO authenticated
+  USING (true);
+
+ALTER TABLE shop_admins ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "authenticated_all_shop_admins" ON shop_admins;
+CREATE POLICY "authenticated_all_shop_admins" ON shop_admins
+  FOR ALL TO authenticated
+  USING (true);
+
+-- ============ 9. Índices para queries por shop_id ============
 CREATE INDEX IF NOT EXISTS idx_libros_shop_id ON libros(shop_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_shop_id ON pedidos(shop_id);
 CREATE INDEX IF NOT EXISTS idx_config_shop_id ON config(shop_id);

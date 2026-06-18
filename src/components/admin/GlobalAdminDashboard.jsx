@@ -59,7 +59,11 @@ export function GlobalAdminDashboard({ config, onLogout }) {
   async function handleToggleStatus(shopId, currentStatus) {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
     const ok = await updateShopStatus(config, shopId, newStatus);
-    if (ok) loadData();
+    if (ok) {
+      loadData();
+    } else {
+      alert('No se pudo cambiar el estado. Revisá la consola.');
+    }
   }
 
   async function openAdmins(shop) {
