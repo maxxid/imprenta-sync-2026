@@ -31,7 +31,7 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
     }
     const shopId = getShopId();
     if (shopId) {
-      const allowed = await isShopAdmin(config, shopId, email.trim());
+      const allowed = await isShopAdmin(config, shopId, email.trim().toLowerCase());
       if (!allowed) {
         setError('Ese email no está autorizado para acceder a este sistema.');
         return false;
