@@ -20,7 +20,7 @@ function getSubdomainSlug() {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState('home');
+  const [screen, setScreen] = useState(() => window.location.pathname === '/admin' ? 'admin' : 'home');
   const [bookSel, setBookSel] = useState(null);
   const [carrito, setCarrito] = useState([]);
   const [books, setBooks] = useState([]);
@@ -48,30 +48,6 @@ export default function App() {
     async function init() {
       const slug = getSubdomainSlug();
       if (!slug) {
-        // Cargar config para verificar sesión (magic link)
-        const loadedConfig = await loadJson('./config.json', FALLBACK_CONFIG);
-        const mergedConfig = normalizeConfig(loadedConfig);
-        setConfig(mergedConfig);
-        const sb = getSupabase(mergedConfig);
-        const { data: { session } } = await sb.auth.getSession();
-        if (session?.user?.email) {
-          // Buscar a qué shop pertenece este admin
-          const { data: adminRows } = await sb.from('shop_admins')
-            .select('shop_id').eq('email', session.user.email.toLowerCase()).limit(1);
-          if (adminRows && adminRows.length > 0) {
-            const { data: shop } = await sb.from('shops')
-              .select('subdomain').eq('id', adminRows[0].shop_id).single();
-            if (shop?.subdomain) {
-              window.location.href = `https://${shop.subdomain}/admin`;
-              return;
-            }
-          }
-        }
-        // Detectar error de magic link en hash
-        const hash = window.location.hash;
-        if (hash.includes('error=access_denied') || hash.includes('otp_expired')) {
-          setLoginError('El enlace de acceso expiró o ya fue usado. Solicitá uno nuevo.');
-        }
         setIsRootDomain(true);
         setLoading(false);
         return;

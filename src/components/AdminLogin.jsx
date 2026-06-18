@@ -10,45 +10,10 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
   const [password, setPassword] = useState('');
   const [error, setError] = useState(initialError);
   const [loading, setLoading] = useState(false);
-  const [sentMagic, setSentMagic] = useState(false);
   const [sentReset, setSentReset] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
 
   useEffect(() => { if (initialError) setError(initialError); }, [initialError]);
-
-  function resetForm() {
-    setError('');
-    setSentMagic(false);
-    setSentReset(false);
-    setCreatingAccount(false);
-    setPassword('');
-  }
-
-  async function verifyEmail() {
-    if (!email.trim() || !email.includes('@')) {
-      setError('Ingresá un email válido.');
-      return false;
-    }
-    return true;
-  }
-
-  /* ─── Magic link ─── */
-  async function sendMagicLink() {
-    if (!(await verifyEmail())) return;
-    setLoading(true);
-    setError('');
-    try {
-      const sb = getSupabase(config);
-      await sb.auth.signInWithOtp({
-        email: email.trim(),
-        options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
-      });
-      setSentMagic(true);
-    } catch (e) {
-      setError(e.message || 'Error al enviar. ¿Está habilitado el Magic Link en Supabase?');
-    }
-    setLoading(false);
-  }
 
   /* ─── Password reset ─── */
   async function sendResetLink() {
@@ -60,9 +25,7 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
     setError('');
     try {
       const sb = getSupabase(config);
-      await sb.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}${window.location.pathname}`
-      });
+      await sb.auth.resetPasswordForEmail(email.trim());
       setSentReset(true);
     } catch (e) {
       setError(e.message || 'Error al enviar el link de restablecimiento.');
@@ -72,7 +35,10 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
 
   /* ─── Password login ─── */
   async function loginWithPassword() {
-    if (!(await verifyEmail())) return;
+    if (!email.trim() || !email.includes('@')) {
+      setError('Ingresá un email válido.');
+      return;
+    }
     if (!password.trim()) {
       setError('Ingresá tu contraseña.');
       return;
@@ -87,7 +53,6 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
         setLoading(false);
         return;
       }
-      // Verificar shop_admins post-login (requiere autenticación)
       const shopId = getShopId();
       if (shopId) {
         const allowed = await isShopAdmin(config, shopId, data.user.email);
@@ -109,7 +74,10 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
 
   /* ─── Create account ─── */
   async function createAccount() {
-    if (!(await verifyEmail())) return;
+    if (!email.trim() || !email.includes('@')) {
+      setError('Ingresá un email válido.');
+      return;
+    }
     if (!password.trim() || password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres.');
       return;
@@ -118,14 +86,10 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
     setError('');
     try {
       const sb = getSupabase(config);
-      const { data, error: err } = await sb.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
-      });
+      const { data, error: err } = await sb.auth.signUp({ email: email.trim(), password });
       if (err) {
         setError(err.message === 'User already registered'
-          ? 'Ese email ya tiene cuenta. Ingresá tu contraseña o usá el enlace de acceso.'
+          ? 'Ese email ya tiene cuenta. Ingresá tu contraseña.'
           : err.message);
         setLoading(false);
         return;
@@ -165,48 +129,33 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
           {showGoogle ? 'Ingresá con tu cuenta de administración.' : 'Ingresá a tu panel de administración.'}
         </p>
 
-        {/* Google (solo global admin) */}
         {showGoogle && (
-          <>
-            <button onClick={loginWithGoogle} disabled={loading} className="w-full flex items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white dark:bg-ink-800 px-4 py-2.5 text-sm font-700 text-ink-700 dark:text-ink-200 hover:bg-ink-50 dark:hover:bg-ink-700 transition-colors mb-3">
-              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/><path fill="none" d="M1 1h22v22H1z"/></svg>
-              {loading ? <Spinner /> : 'Continuar con Google'}
-            </button>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex-1 h-px bg-ink-100 dark:bg-ink-700" />
-              <span className="text-xs text-ink-400">o con email</span>
-              <div className="flex-1 h-px bg-ink-100 dark:bg-ink-700" />
-            </div>
-          </>
+          <button onClick={loginWithGoogle} disabled={loading} className="w-full flex items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white dark:bg-ink-800 px-4 py-2.5 text-sm font-700 text-ink-700 dark:text-ink-200 hover:bg-ink-50 dark:hover:bg-ink-700 transition-colors mb-3">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/><path fill="none" d="M1 1h22v22H1z"/></svg>
+            {loading ? <Spinner /> : 'Continuar con Google'}
+          </button>
         )}
 
-        {/* Email */}
-        <div>
-          <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Email</label>
-          <input className="input-field" type="email" value={email} onChange={e => { setEmail(e.target.value); resetForm(); }} placeholder="ejemplo@mail.com" />
-        </div>
-
-        {/* Magic link success */}
-        {sentMagic && (
-          <div className="rounded-xl bg-ok-muted border border-ok-DEFAULT/30 p-4 mt-3">
-            <div className="font-700 text-ok-DEFAULT text-sm mb-1">✓ Enlace enviado</div>
-            <div className="text-xs text-ink-500">Revisá <strong>{email}</strong>. Te enviamos un link de acceso sin contraseña.</div>
-            <button className="text-xs text-brand-DEFAULT font-700 mt-2 hover:underline" onClick={() => setSentMagic(false)}>Enviar de nuevo</button>
+        {showGoogle && (
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 h-px bg-ink-100 dark:bg-ink-700" />
+            <span className="text-xs text-ink-400">o con email</span>
+            <div className="flex-1 h-px bg-ink-100 dark:bg-ink-700" />
           </div>
         )}
 
-        {/* Reset success */}
-        {sentReset && (
+        <div>
+          <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Email</label>
+          <input className="input-field" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setSentReset(false); setCreatingAccount(false); }} placeholder="ejemplo@mail.com" />
+        </div>
+
+        {sentReset ? (
           <div className="rounded-xl bg-ok-muted border border-ok-DEFAULT/30 p-4 mt-3">
             <div className="font-700 text-ok-DEFAULT text-sm mb-1">✓ Link de restablecimiento enviado</div>
             <div className="text-xs text-ink-500">Revisá <strong>{email}</strong>. Seguí el link para configurar una nueva contraseña.</div>
           </div>
-        )}
-
-        {/* Password form */}
-        {!sentMagic && !sentReset && (
+        ) : (
           <div className="space-y-3 mt-3">
-            {/* Contraseña */}
             <div>
               <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">
                 {creatingAccount ? 'Creá tu contraseña' : 'Contraseña'}
@@ -215,53 +164,34 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
                 onKeyDown={e => e.key === 'Enter' && (creatingAccount ? createAccount() : loginWithPassword())}
                 placeholder={creatingAccount ? 'Mínimo 6 caracteres' : 'Tu contraseña'} />
             </div>
-
             {error && <Alert type="danger"><Icon.AlertCircle /><span>{error}</span></Alert>}
-
             {creatingAccount ? (
-              /* Crear cuenta */
               <>
                 <button className="btn-primary w-full" onClick={createAccount} disabled={loading}>
                   {loading ? <><Spinner /> Creando...</> : 'Crear cuenta e ingresar'}
                 </button>
                 <div className="text-center">
-                  <button className="text-xs text-ink-400 hover:text-ink-600 font-700" onClick={() => setCreatingAccount(false)}>
-                    ← Ya tengo cuenta
-                  </button>
+                  <button className="text-xs text-ink-400 hover:text-ink-600 font-700" onClick={() => setCreatingAccount(false)}>← Ya tengo cuenta</button>
                 </div>
               </>
             ) : (
-              /* Login normal */
               <>
                 <button className="btn-primary w-full" onClick={loginWithPassword} disabled={loading}>
                   {loading ? <><Spinner /> Ingresando...</> : 'Ingresar'}
                 </button>
-                {showGoogle && (
-                  <div className="flex items-center justify-center gap-4 text-xs">
-                    <button className="text-ink-400 hover:text-ink-600 font-700" onClick={() => setCreatingAccount(true)}>
-                      Crear cuenta
-                    </button>
-                    <span className="text-ink-300">·</span>
-                    <button className="text-ink-400 hover:text-ink-600 font-700" onClick={sendResetLink}>
-                      ¿Olvidaste tu contraseña?
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center justify-center gap-4 text-xs">
+                  {showGoogle && (
+                    <>
+                      <button className="text-ink-400 hover:text-ink-600 font-700" onClick={() => setCreatingAccount(true)}>Crear cuenta</button>
+                      <span className="text-ink-300">·</span>
+                    </>
+                  )}
+                  <button className="text-ink-400 hover:text-ink-600 font-700" onClick={sendResetLink}>
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
               </>
             )}
-
-            {/* Separador + magic link */}
-            <div className="pt-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex-1 h-px bg-ink-100 dark:bg-ink-700" />
-                <span className="text-xs text-ink-400">o</span>
-                <div className="flex-1 h-px bg-ink-100 dark:bg-ink-700" />
-              </div>
-              <button className="w-full text-xs text-brand-DEFAULT font-700 hover:underline flex items-center justify-center gap-1 py-2" onClick={sendMagicLink} disabled={loading}>
-                <Icon.Message /> Enviar enlace de acceso
-              </button>
-              <div className="text-xs text-ink-400 text-center mt-1">Sin contraseña. Recibí un link en tu email.</div>
-            </div>
           </div>
         )}
       </div>
