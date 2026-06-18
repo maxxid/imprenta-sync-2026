@@ -94,8 +94,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
       const shopId = getShopId();
       const payload = { ...order, items: order.items || [] };
       if (shopId && !payload.shop_id) payload.shop_id = shopId;
-      const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
-      await sb.from('pedidos').upsert(payload, upsertOpts);
+      await sb.from('pedidos').upsert(payload, { onConflict: 'id' });
       return true;
     } catch (err) {
       console.error('Error persistiendo pedido:', err);

@@ -182,8 +182,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                   });
                   const sb = getSupabase(config);
                   const shopId = getShopId();
-                  const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
-                  const { data: upserted, error } = await sb.from('libros').upsert(migrated, upsertOpts);
+                  const { data: upserted, error } = await sb.from('libros').upsert(migrated, { onConflict: 'id' });
                   if (error) { console.error('Supabase upsert error:', error); alert('Error al importar a Supabase:\n' + (error.message || JSON.stringify(error))); return; }
                   const fresh = await fetchBooksFromSupabase(config);
                   if (fresh && fresh.length > 0) setBooks(fresh);
