@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Icon } from '../Icons';
 import { Spinner } from '../UI';
-import { getSupabase, fetchAllShops, fetchShopStats, createShop, updateShopStatus } from '../../lib/supabase';
+import { getSupabase, fetchAllShops, fetchShopStats, createShop, updateShopStatus, fetchShopAdmins, addShopAdmin, removeShopAdmin } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
 
 export function GlobalAdminDashboard({ config, onLogout }) {
@@ -13,6 +13,11 @@ export function GlobalAdminDashboard({ config, onLogout }) {
   const [form, setForm] = useState({ name: '', slug: '', adminEmail: '' });
   const [createError, setCreateError] = useState('');
   const [createSuccess, setCreateSuccess] = useState(null);
+  const [adminsShop, setAdminsShop] = useState(null);
+  const [adminsList, setAdminsList] = useState([]);
+  const [adminsNewEmail, setAdminsNewEmail] = useState('');
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [adminsError, setAdminsError] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -57,6 +62,40 @@ export function GlobalAdminDashboard({ config, onLogout }) {
     if (ok) loadData();
   }
 
+  async function openAdmins(shop) {
+    setAdminsShop(shop);
+    setAdminsError('');
+    setAdminsNewEmail('');
+    setAdminsLoading(true);
+    const list = await fetchShopAdmins(config, shop.id);
+    setAdminsList(list);
+    setAdminsLoading(false);
+  }
+
+  async function handleAddAdmin() {
+    if (!adminsNewEmail.trim() || !adminsNewEmail.includes('@')) {
+      setAdminsError('Ingresá un email válido.');
+      return;
+    }
+    setAdminsError('');
+    const ok = await addShopAdmin(config, adminsShop.id, adminsNewEmail.trim(), null);
+    if (ok) {
+      setAdminsNewEmail('');
+      const list = await fetchShopAdmins(config, adminsShop.id);
+      setAdminsList(list);
+    } else {
+      setAdminsError('Error al agregar. ¿Ya existe?');
+    }
+  }
+
+  async function handleRemoveAdmin(adminId) {
+    const ok = await removeShopAdmin(config, adminId);
+    if (ok) {
+      const list = await fetchShopAdmins(config, adminsShop.id);
+      setAdminsList(list);
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="card p-6 flex items-center gap-3"><Spinner /> Cargando shops...</div></div>;
   }
@@ -89,7 +128,7 @@ export function GlobalAdminDashboard({ config, onLogout }) {
               <th>Fotocopiadora</th>
               <th>Slug</th>
               <th>Estado</th>
-              <th>Admin</th>
+              <th>Admins</th>
               <th className="text-right">Libros</th>
               <th className="text-right">Pedidos</th>
               <th>Acciones</th>
@@ -120,11 +159,9 @@ export function GlobalAdminDashboard({ config, onLogout }) {
                     </button>
                   </td>
                   <td>
-                    {shop.admin_email ? (
-                      <span className="text-xs text-ink-500">{shop.admin_email}</span>
-                    ) : (
-                      <span className="text-xs text-ink-300">—</span>
-                    )}
+                    <button onClick={() => openAdmins(shop)} className="text-xs font-700 text-brand-DEFAULT hover:text-brand-dark cursor-pointer">
+                      {(adminsShop?.id === shop.id ? adminsList.length : null) ?? '···'} admin{adminsShop?.id === shop.id && adminsList.length !== 1 ? 's' : ''}
+                    </button>
                   </td>
                   <td className="text-right">
                     <span className="font-600 text-sm">{s.bookCount}</span>
@@ -187,6 +224,53 @@ export function GlobalAdminDashboard({ config, onLogout }) {
               <button className="btn-primary w-full" onClick={handleCreate} disabled={creating}>
                 {creating ? <><Spinner /> Creando...</> : 'Crear fotocopiadora'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal administradores */}
+      {adminsShop && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={() => setAdminsShop(null)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+          <div className="relative z-10 bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md border border-border" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <div className="font-800 text-ink-900 text-lg">Administradores</div>
+                <div className="text-xs text-ink-400">{adminsShop.name}</div>
+              </div>
+              <button onClick={() => setAdminsShop(null)} className="text-ink-400 hover:text-ink-700"><Icon.X /></button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <input className="input-field text-sm flex-1" type="email" value={adminsNewEmail} onChange={e => setAdminsNewEmail(e.target.value)} placeholder="admin@fotocopiadora.com" onKeyDown={e => e.key === 'Enter' && handleAddAdmin()} />
+                <button className="btn-primary text-sm px-3 py-1" onClick={handleAddAdmin}>Agregar</button>
+              </div>
+              {adminsError && <div className="text-xs text-danger font-600">{adminsError}</div>}
+              {adminsLoading ? (
+                <div className="flex items-center justify-center py-4"><Spinner /></div>
+              ) : adminsList.length === 0 ? (
+                <div className="text-xs text-ink-400 text-center py-4">Sin administradores.</div>
+              ) : (
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {adminsList.map(a => (
+                    <div key={a.id} className="flex items-center justify-between rounded-lg border border-ink-100 bg-ink-50 dark:bg-ink-800 p-2.5">
+                      <div>
+                        <div className="text-sm font-600 text-ink-900">{a.email}</div>
+                        {a.display_name && <div className="text-xs text-ink-400">{a.display_name}</div>}
+                      </div>
+                      <button onClick={() => handleRemoveAdmin(a.id)} className="text-danger hover:text-red-600 text-sm font-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-50/10 transition-colors" title="Eliminar">
+                        <Icon.X />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {adminsList.length > 0 && (
+                <div className="text-xs text-ink-400 pt-2 border-t border-ink-100">
+                  Los admins entran a <strong>{adminsShop.subdomain}/admin</strong> con email y contraseña.
+                </div>
+              )}
             </div>
           </div>
         </div>

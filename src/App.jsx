@@ -7,7 +7,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { GlobalAdminDashboard } from './components/admin/GlobalAdminDashboard';
 import { FALLBACK_CONFIG, STORAGE } from './lib/constants';
 import { migrateBook } from './lib/utils';
-import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig } from './lib/supabase';
+import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig, isShopAdmin } from './lib/supabase';
 import { setShop as setGlobalShop, getShopId } from './lib/shop';
 
 function getSubdomainSlug() {
@@ -129,6 +129,14 @@ export default function App() {
             saveLocal(STORAGE.admin, false);
             setAdminAuthed(false);
             setSessionExpired(true);
+          } else {
+            // Verificar que el admin pertenece a este shop
+            const allowed = await isShopAdmin(mergedConfig, currentShop?.id || shop.id, savedAdmin.email);
+            if (!allowed) {
+              saveLocal(STORAGE.admin, false);
+              setAdminAuthed(false);
+              setSessionExpired(true);
+            }
           }
         } catch (e) {
           console.warn('Error restaurando sesión admin:', e.message);
@@ -425,7 +433,21 @@ export default function App() {
             )}
             {adminAuthed
               ? <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); }} />
-              : <AdminLogin config={config} onSuccess={v => { setAdminAuthed(v); setSessionExpired(false); }} />
+              : <AdminLogin config={config} showGoogle={false} onSuccess={async v => {
+                const saved = loadLocal(STORAGE.admin, null);
+                if (saved?.email) {
+                  const allowed = await isShopAdmin(config, currentShop?.id, saved.email);
+                  if (!allowed) {
+                    alert('No tenés acceso a esta fotocopiadora. Contactá al administrador.');
+                    const sb = getSupabase(config);
+                    await sb.auth.signOut().catch(() => {});
+                    saveLocal(STORAGE.admin, false);
+                    return;
+                  }
+                }
+                setAdminAuthed(v);
+                setSessionExpired(false);
+              }} />
             }
           </>
         )}

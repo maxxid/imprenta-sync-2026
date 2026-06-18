@@ -118,7 +118,23 @@ CREATE POLICY "authenticated_update_config" ON config
 -- ============ 6. admin_email en shops (panel global) ============
 ALTER TABLE shops ADD COLUMN IF NOT EXISTS admin_email TEXT;
 
--- ============ 7. Índices para queries por shop_id ============
+-- ============ 7. TABLA shop_admins (admins por fotocopiadora) ============
+CREATE TABLE IF NOT EXISTS shop_admins (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  display_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(shop_id, email)
+);
+
+-- Migrar admin_email existente a shop_admins
+INSERT INTO shop_admins (shop_id, email)
+SELECT id, admin_email FROM shops
+WHERE admin_email IS NOT NULL AND admin_email <> ''
+ON CONFLICT (shop_id, email) DO NOTHING;
+
+-- ============ 8. Índices para queries por shop_id ============
 CREATE INDEX IF NOT EXISTS idx_libros_shop_id ON libros(shop_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_shop_id ON pedidos(shop_id);
 CREATE INDEX IF NOT EXISTS idx_config_shop_id ON config(shop_id);

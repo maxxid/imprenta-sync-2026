@@ -503,3 +503,57 @@ export async function updateShopStatus(config, shopId, status) {
     return false;
   }
 }
+
+// ============ SHOP ADMINS ============
+
+export async function fetchShopAdmins(config, shopId) {
+  try {
+    const sb = getSupabase(config);
+    const { data, error } = await sb.from('shop_admins').select('*').eq('shop_id', shopId).order('email');
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Error cargando admins:', err);
+    return [];
+  }
+}
+
+export async function addShopAdmin(config, shopId, email, displayName) {
+  try {
+    const sb = getSupabase(config);
+    const { error } = await sb.from('shop_admins').insert({
+      shop_id: shopId,
+      email: email.trim().toLowerCase(),
+      display_name: displayName || null
+    });
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error agregando admin:', err);
+    return false;
+  }
+}
+
+export async function removeShopAdmin(config, adminId) {
+  try {
+    const sb = getSupabase(config);
+    const { error } = await sb.from('shop_admins').delete().eq('id', adminId);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error eliminando admin:', err);
+    return false;
+  }
+}
+
+export async function isShopAdmin(config, shopId, email) {
+  try {
+    const sb = getSupabase(config);
+    const { count, error } = await sb.from('shop_admins').select('*', { count: 'exact', head: true }).eq('shop_id', shopId).eq('email', email);
+    if (error) throw error;
+    return (count || 0) > 0;
+  } catch (err) {
+    console.error('Error verificando admin:', err);
+    return false;
+  }
+}
