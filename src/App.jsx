@@ -14,7 +14,7 @@ import { setShop as setGlobalShop, getShopId } from './lib/shop';
 function getSubdomainSlug() {
   const hostname = window.location.hostname;
   const parts = hostname.split('.');
-  if (parts[0] === 'www') return null;
+  if (parts[0] === 'www') parts.shift();
   if (parts.length <= 2) return null;
   return parts[0];
 }
