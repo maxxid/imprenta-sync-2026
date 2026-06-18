@@ -159,6 +159,11 @@ CREATE POLICY "authenticated_all_shop_admins" ON shop_admins
   FOR ALL TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "anon_select_shop_admins" ON shop_admins;
+CREATE POLICY "anon_select_shop_admins" ON shop_admins
+  FOR SELECT TO anon
+  USING (true);
+
 -- ============ 9. Índices para queries por shop_id ============
 CREATE INDEX IF NOT EXISTS idx_libros_shop_id ON libros(shop_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_shop_id ON pedidos(shop_id);

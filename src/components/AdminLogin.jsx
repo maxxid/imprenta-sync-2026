@@ -29,14 +29,6 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
       setError('Ingresá un email válido.');
       return false;
     }
-    const shopId = getShopId();
-    if (shopId) {
-      const allowed = await isShopAdmin(config, shopId, email.trim().toLowerCase());
-      if (!allowed) {
-        setError('Ese email no está autorizado para acceder a este sistema.');
-        return false;
-      }
-    }
     return true;
   }
 
@@ -94,6 +86,18 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
         setError(err.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos.' : err.message);
         setLoading(false);
         return;
+      }
+      // Verificar shop_admins post-login (requiere autenticación)
+      const shopId = getShopId();
+      if (shopId) {
+        const allowed = await isShopAdmin(config, shopId, data.user.email);
+        if (!allowed) {
+          await sb.auth.signOut().catch(() => {});
+          saveLocal(STORAGE.admin, false);
+          setError('Ese email no está autorizado para acceder a este sistema.');
+          setLoading(false);
+          return;
+        }
       }
       saveLocal(STORAGE.admin, { email: data.user.email, display_name: data.user.user_metadata?.full_name || email.trim().split('@')[0] });
       onSuccess(true);
