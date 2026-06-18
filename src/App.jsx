@@ -439,7 +439,7 @@ export default function App() {
                 if (saved?.email) {
                   const allowed = await isShopAdmin(config, currentShop?.id, saved.email);
                   if (!allowed) {
-                    alert('No tenés acceso a esta fotocopiadora. Contactá al administrador.');
+                    alert(`No tenés acceso al sistema de ${currentShop?.name || 'esta fotocopiadora'}. Contactá al administrador.`);
                     const sb = getSupabase(config);
                     await sb.auth.signOut().catch(() => {});
                     saveLocal(STORAGE.admin, false);
