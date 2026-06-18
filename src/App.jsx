@@ -448,15 +448,7 @@ export default function App() {
               : <AdminLogin config={config} showGoogle={false} onSuccess={async v => {
                 const saved = loadLocal(STORAGE.admin, null);
                 if (saved?.email) {
-                  const allowed = await isShopAdmin(config, currentShop?.id, saved.email?.toLowerCase());
-                  if (!allowed) {
-                    alert(`No tenés acceso al sistema de ${currentShop?.name || 'esta fotocopiadora'}. Contactá al administrador.`);
-                    const sb = getSupabase(config);
-                    await sb.auth.signOut().catch(() => {});
-                    saveLocal(STORAGE.admin, false);
-                    return;
-                  }
-                  const changed = await checkPasswordChanged(config, currentShop?.id, saved.email);
+                  const changed = await checkPasswordChanged(config, currentShop?.id, saved.email?.toLowerCase());
                   if (!changed) {
                     setNeedsPasswordSetup(true);
                   }
