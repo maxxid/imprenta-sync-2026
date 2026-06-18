@@ -5,9 +5,10 @@ import { Store } from './components/Store';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminPanel } from './components/AdminPanel';
 import { GlobalAdminDashboard } from './components/admin/GlobalAdminDashboard';
+import { PasswordSetup } from './components/admin/PasswordSetup';
 import { FALLBACK_CONFIG, STORAGE } from './lib/constants';
 import { migrateBook } from './lib/utils';
-import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig, isShopAdmin } from './lib/supabase';
+import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig, isShopAdmin, checkPasswordChanged, markPasswordChanged } from './lib/supabase';
 import { setShop as setGlobalShop, getShopId } from './lib/shop';
 
 function getSubdomainSlug() {
@@ -38,6 +39,7 @@ export default function App() {
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [allShops, setAllShops] = useState([]);
   const [loginError, setLoginError] = useState('');
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -137,6 +139,12 @@ export default function App() {
               saveLocal(STORAGE.admin, false);
               setAdminAuthed(false);
               setSessionExpired(true);
+            } else {
+              // Forzar cambio de contraseña si es primer login
+              const changed = await checkPasswordChanged(mergedConfig, currentShop?.id || shop.id, savedAdmin.email);
+              if (!changed) {
+                setNeedsPasswordSetup(true);
+              }
             }
           }
         } catch (e) {
@@ -433,7 +441,10 @@ export default function App() {
               </div>
             )}
             {adminAuthed
-              ? <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); }} />
+              ? (needsPasswordSetup
+                ? <PasswordSetup config={config} onDone={() => setNeedsPasswordSetup(false)} />
+                : <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); setNeedsPasswordSetup(false); }} />
+              )
               : <AdminLogin config={config} showGoogle={false} onSuccess={async v => {
                 const saved = loadLocal(STORAGE.admin, null);
                 if (saved?.email) {
@@ -444,6 +455,10 @@ export default function App() {
                     await sb.auth.signOut().catch(() => {});
                     saveLocal(STORAGE.admin, false);
                     return;
+                  }
+                  const changed = await checkPasswordChanged(config, currentShop?.id, saved.email);
+                  if (!changed) {
+                    setNeedsPasswordSetup(true);
                   }
                 }
                 setAdminAuthed(v);

@@ -124,15 +124,20 @@ CREATE TABLE IF NOT EXISTS shop_admins (
   shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   display_name TEXT,
+  password_changed BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(shop_id, email)
 );
 
 -- Migrar admin_email existente a shop_admins
-INSERT INTO shop_admins (shop_id, email)
-SELECT id, admin_email FROM shops
+INSERT INTO shop_admins (shop_id, email, password_changed)
+SELECT id, admin_email, TRUE FROM shops
 WHERE admin_email IS NOT NULL AND admin_email <> ''
 ON CONFLICT (shop_id, email) DO NOTHING;
+
+-- password_changed para control de primer login
+ALTER TABLE shop_admins ADD COLUMN IF NOT EXISTS password_changed BOOLEAN DEFAULT TRUE;
+UPDATE shop_admins SET password_changed = TRUE WHERE password_changed IS NULL;
 
 -- ============ 8. RLS para shops y shop_admins ============
 ALTER TABLE shops ENABLE ROW LEVEL SECURITY;

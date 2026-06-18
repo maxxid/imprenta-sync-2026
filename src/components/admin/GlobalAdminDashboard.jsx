@@ -16,8 +16,10 @@ export function GlobalAdminDashboard({ config, onLogout }) {
   const [adminsShop, setAdminsShop] = useState(null);
   const [adminsList, setAdminsList] = useState([]);
   const [adminsNewEmail, setAdminsNewEmail] = useState('');
+  const [adminsNewPassword, setAdminsNewPassword] = useState('');
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [adminsError, setAdminsError] = useState('');
+  const [adminsSuccess, setAdminsSuccess] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -69,7 +71,9 @@ export function GlobalAdminDashboard({ config, onLogout }) {
   async function openAdmins(shop) {
     setAdminsShop(shop);
     setAdminsError('');
+    setAdminsSuccess('');
     setAdminsNewEmail('');
+    setAdminsNewPassword('');
     setAdminsLoading(true);
     const list = await fetchShopAdmins(config, shop.id);
     setAdminsList(list);
@@ -81,14 +85,21 @@ export function GlobalAdminDashboard({ config, onLogout }) {
       setAdminsError('Ingresá un email válido.');
       return;
     }
+    if (!adminsNewPassword.trim() || adminsNewPassword.length < 6) {
+      setAdminsError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
     setAdminsError('');
-    const ok = await addShopAdmin(config, adminsShop.id, adminsNewEmail.trim(), null);
+    setAdminsSuccess('');
+    const ok = await addShopAdmin(config, adminsShop.id, adminsNewEmail.trim(), null, adminsNewPassword);
     if (ok) {
+      setAdminsSuccess(`Admin creado. Compartí: usuario ${adminsNewEmail.trim()} — contraseña ${adminsNewPassword}. Deberá cambiarla en su primer login.`);
       setAdminsNewEmail('');
+      setAdminsNewPassword('');
       const list = await fetchShopAdmins(config, adminsShop.id);
       setAdminsList(list);
     } else {
-      setAdminsError('Error al agregar. ¿Ya existe?');
+      setAdminsError('Error al agregar. ¿Ya existe en Supabase Auth?');
     }
   }
 
@@ -246,11 +257,24 @@ export function GlobalAdminDashboard({ config, onLogout }) {
               <button onClick={() => setAdminsShop(null)} className="text-ink-400 hover:text-ink-700"><Icon.X /></button>
             </div>
             <div className="space-y-3">
-              <div className="flex gap-2">
-                <input className="input-field text-sm flex-1" type="email" value={adminsNewEmail} onChange={e => setAdminsNewEmail(e.target.value)} placeholder="admin@fotocopiadora.com" onKeyDown={e => e.key === 'Enter' && handleAddAdmin()} />
-                <button className="btn-primary text-sm px-3 py-1" onClick={handleAddAdmin}>Agregar</button>
+              <div>
+                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Email del nuevo admin</label>
+                <input className="input-field text-sm" type="email" value={adminsNewEmail} onChange={e => setAdminsNewEmail(e.target.value)} placeholder="admin@fotocopiadora.com" />
               </div>
+              <div>
+                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Contraseña inicial</label>
+                <input className="input-field text-sm" type="text" value={adminsNewPassword} onChange={e => setAdminsNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" onKeyDown={e => e.key === 'Enter' && handleAddAdmin()} />
+                <div className="text-xs text-ink-400 mt-1">El admin deberá cambiarla en su primer login.</div>
+              </div>
+              <button className="btn-primary w-full text-sm" onClick={handleAddAdmin}>Agregar administrador</button>
               {adminsError && <div className="text-xs text-danger font-600">{adminsError}</div>}
+              {adminsSuccess && (
+                <div className="rounded-xl bg-ok-muted border border-ok-DEFAULT/30 p-3 text-xs">
+                  <div className="font-700 text-ok-DEFAULT mb-1">✓ Admin creado</div>
+                  <div className="text-ink-600 break-all">{adminsSuccess}</div>
+                </div>
+              )}
+              <div className="border-t border-ink-100 pt-2" />
               {adminsLoading ? (
                 <div className="flex items-center justify-center py-4"><Spinner /></div>
               ) : adminsList.length === 0 ? (

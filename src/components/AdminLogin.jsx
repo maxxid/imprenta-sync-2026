@@ -232,15 +232,17 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
                 <button className="btn-primary w-full" onClick={loginWithPassword} disabled={loading}>
                   {loading ? <><Spinner /> Ingresando...</> : 'Ingresar'}
                 </button>
-                <div className="flex items-center justify-center gap-4 text-xs">
-                  <button className="text-ink-400 hover:text-ink-600 font-700" onClick={() => setCreatingAccount(true)}>
-                    Crear cuenta
-                  </button>
-                  <span className="text-ink-300">·</span>
-                  <button className="text-ink-400 hover:text-ink-600 font-700" onClick={sendResetLink}>
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                </div>
+                {showGoogle && (
+                  <div className="flex items-center justify-center gap-4 text-xs">
+                    <button className="text-ink-400 hover:text-ink-600 font-700" onClick={() => setCreatingAccount(true)}>
+                      Crear cuenta
+                    </button>
+                    <span className="text-ink-300">·</span>
+                    <button className="text-ink-400 hover:text-ink-600 font-700" onClick={sendResetLink}>
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  </div>
+                )}
               </>
             )}
 

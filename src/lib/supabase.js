@@ -518,18 +518,61 @@ export async function fetchShopAdmins(config, shopId) {
   }
 }
 
-export async function addShopAdmin(config, shopId, email, displayName) {
+export async function addShopAdmin(config, shopId, email, displayName, initialPassword) {
   try {
     const sb = getSupabase(config);
-    const { error } = await sb.from('shop_admins').insert({
+    // Crear usuario en Supabase Auth
+    const { error: signUpErr } = await sb.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password: initialPassword,
+      options: { data: { display_name: displayName || null } }
+    });
+    if (signUpErr) {
+      if (signUpErr.message === 'User already registered') {
+        // Ya existe en auth, solo agregamos a shop_admins
+      } else {
+        throw signUpErr;
+      }
+    }
+    // Insertar en shop_admins
+    const { error } = await sb.from('shop_admins').upsert({
       shop_id: shopId,
       email: email.trim().toLowerCase(),
-      display_name: displayName || null
-    });
+      display_name: displayName || null,
+      password_changed: !initialPassword // si no hay password inicial, ya está "cambiado"
+    }, { onConflict: 'shop_id, email' });
     if (error) throw error;
     return true;
   } catch (err) {
     console.error('Error agregando admin:', err);
+    return false;
+  }
+}
+
+export async function checkPasswordChanged(config, shopId, email) {
+  try {
+    const sb = getSupabase(config);
+    const { data, error } = await sb.from('shop_admins')
+      .select('password_changed')
+      .eq('shop_id', shopId)
+      .eq('email', email)
+      .single();
+    if (error) return true; // por defecto, no forzar cambio
+    return data?.password_changed !== false;
+  } catch (err) {
+    return true;
+  }
+}
+
+export async function markPasswordChanged(config, shopId, email) {
+  try {
+    const sb = getSupabase(config);
+    await sb.from('shop_admins')
+      .update({ password_changed: true })
+      .eq('shop_id', shopId)
+      .eq('email', email);
+    return true;
+  } catch (err) {
     return false;
   }
 }
