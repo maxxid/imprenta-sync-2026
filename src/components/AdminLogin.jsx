@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Icon } from './Icons';
 import { Alert, Spinner } from './UI';
 import { STORAGE } from '../lib/constants';
-import { getSupabase, saveLocal } from '../lib/supabase';
+import { getSupabase, saveLocal, isShopAdmin } from '../lib/supabase';
+import { getShopId } from '../lib/shop';
 
 export function AdminLogin({ config, onSuccess, showGoogle = true, initialError = '' }) {
   const [email, setEmail] = useState('');
@@ -22,6 +23,16 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
     setError('');
     try {
       const sb = getSupabase(config);
+      // Verificar que el email pertenece a este shop
+      const shopId = getShopId();
+      if (shopId) {
+        const allowed = await isShopAdmin(config, shopId, email.trim());
+        if (!allowed) {
+          setError('Ese email no está autorizado para acceder a este sistema.');
+          setLoading(false);
+          return;
+        }
+      }
       const redirectTo = `${window.location.origin}${window.location.pathname}`;
       await sb.auth.signInWithOtp({
         email: email.trim(),
