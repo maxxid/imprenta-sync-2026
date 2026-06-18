@@ -47,7 +47,8 @@ export async function saveBookToSupabase(book, config) {
     const sb = getSupabase(config);
     const payload = cleanBookPayload(book);
     const shopId = getShopId();
-    const { error } = await sb.from('libros').upsert(payload, { onConflict: 'id' });
+    const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+    const { error } = await sb.from('libros').upsert(payload, upsertOpts);
     if (error) throw error;
     return true;
   } catch (err) {
@@ -135,7 +136,8 @@ export async function saveOrderToSupabase(order, config) {
     const payload = { ...order, items: order.items || [] };
     const shopId = getShopId();
     if (shopId && !payload.shop_id) payload.shop_id = shopId;
-    const { error } = await sb.from('pedidos').upsert(payload, { onConflict: 'id' });
+    const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+    const { error } = await sb.from('pedidos').upsert(payload, upsertOpts);
     if (error) {
       console.error('Supabase error:', error);
       throw new Error(error.message || JSON.stringify(error));
@@ -173,7 +175,8 @@ export async function saveConfigToSupabase(configData, config) {
     const shopId = getShopId();
     const payload = { id: 1, data: configData, updated_at: new Date().toISOString() };
     if (shopId) payload.shop_id = shopId;
-    const { error } = await sb.from('config').upsert(payload, { onConflict: 'id' });
+    const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
+    const { error } = await sb.from('config').upsert(payload, upsertOpts);
     if (error) throw error;
     return true;
   } catch (err) {
