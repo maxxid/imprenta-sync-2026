@@ -3,7 +3,7 @@ import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
 import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
-import { ORDER_STATES, STATE_STYLES, COMBO_LABELS, DEMO_WHATSAPP } from '../../lib/constants';
+import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
 function parseWhatsAppMessage(text, books, config) {
   const lower = slug(text);
@@ -117,23 +117,30 @@ Responde ÚNICAMENTE un Array JSON:
         if (book) {
           const combos = getBookCombinations(book);
           const formato = p.formato || 'A4';
-          const comboA4 = combos.filter(c => c.formato === 'A4');
-          const comboA5 = combos.filter(c => c.formato === 'A5');
-          const combo = formato === 'A5' && comboA5.length ? comboA5[0] : (comboA4.length ? comboA4[0] : combos[0]);
+          const f = String(formato).toUpperCase();
+          const combo = combos.find(c => c.key === `${f.toLowerCase()}_bn`)
+            || combos.find(c => slug(c.label).includes(slug(f)))
+            || combos[0];
+          const pph = combo?.paginas_por_hoja || book.paginas_por_hoja || 2;
           const precio = combo ? combo.precio : (Number(p.precio) || 0);
-          return { ...book, formato: combo?.formato || formato, color: combo?.color || false, hojas: HOJAS(book.paginas, book.paginas_por_hoja || 2), precio, combosDisponibles: combos };
+          return {
+            ...book,
+            formato: combo?.label || formato,
+            varianteId: combo?.key,
+            color: combo?.color || false,
+            hojas: HOJAS(book.paginas, pph),
+            precio,
+            combosDisponibles: combos
+          };
         }
         const fallbackPaginas = Number(p.paginas) || 100;
         return {
           id: `parser-${Date.now()}-${pedidos.indexOf(p)}`,
           titulo: p.libro, materia: '', carrera: '', id_carrera: '',
           paginas: fallbackPaginas, paginas_por_hoja: 2, pdf_url: '', activo: true,
-          a4_bn_habilitado: true, a4_bn_final: p.precio || 0,
-          a4_color_habilitado: false, a4_color_final: 0,
-          a5_bn_habilitado: false, a5_bn_final: 0,
-          a5_color_habilitado: false, a5_color_final: 0,
+          variantes: [{ id: 'a4_bn', label: 'A4 B/N', paginas_por_hoja: 2, color: false, precio: Number(p.precio) || 0, habilitado: true, sugerido: 0 }],
           imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=' + encodeURIComponent(p.libro),
-          formato: p.formato || 'A4', color: false, hojas: HOJAS(fallbackPaginas, 2),
+          formato: p.formato || 'A4 B/N', color: false, hojas: HOJAS(fallbackPaginas, 2),
           precio: Number(p.precio) || 0, combosDisponibles: [], _manual: true
         };
       });
@@ -165,16 +172,22 @@ Responde ÚNICAMENTE un Array JSON:
     if (!book || !parserPreview) return;
     const updatedLibros = [...parserPreview.libros];
     const current = parserPreview.libros[idx] || {};
-    const parts = (newValue || '').split('|');
-    const formatoVal = parts[0] || current.formato || parserPreview.formato || 'A4';
-    const isColor = parts[1] === 'true';
     const combos = getBookCombinations(book);
-    const combo = combos.find(c => c.formato === formatoVal && c.color === isColor)
-      || combos.find(c => c.formato === formatoVal)
+    const combo = combos.find(c => c.key === newValue)
+      || combos.find(c => c.label === newValue)
+      || combos.find(c => c.key === current.varianteId)
       || combos[0];
-    const precio = combo ? combo.precio : calcPrecioItem(book, formatoVal, 'basica', config, isColor, current.express).total;
-    const hojasObj = HOJAS(book.paginas, book.paginas_por_hoja || 2);
-    updatedLibros[idx] = { ...book, formato: combo?.formato || formatoVal, color: combo?.color || false, hojas: hojasObj, precio, combosDisponibles: combos };
+    const precio = combo ? combo.precio : calcPrecioItem(book, 'a4_bn', 'basica', config, false, Boolean(current.express)).total;
+    const hojasObj = HOJAS(book.paginas, combo?.paginas_por_hoja || book.paginas_por_hoja || 2);
+    updatedLibros[idx] = {
+      ...book,
+      formato: combo?.label || newValue || 'A4 B/N',
+      varianteId: combo?.key,
+      color: combo?.color || false,
+      hojas: hojasObj,
+      precio,
+      combosDisponibles: combos
+    };
     const updatedAiPedidos = [...(parserPreview.aiPedidos || [])];
     if (updatedAiPedidos[idx]) updatedAiPedidos[idx] = { ...updatedAiPedidos[idx], precio, hojas: hojasObj, paginas: book.paginas };
     const newTotal = updatedLibros.reduce((acc, b) => acc + (b.precio || 0), 0);
@@ -209,7 +222,16 @@ Responde ÚNICAMENTE un Array JSON:
       if (match) {
         const combos = getBookCombinations(match);
         const combo = combos[0];
-        updatedLibros[idx] = { ...match, formato: book.formato || combo?.formato || 'A4', color: false, hojas: HOJAS(match.paginas, match.paginas_por_hoja || 2), precio: combo?.precio || book.precio || 0, combosDisponibles: combos, _manual: false };
+        updatedLibros[idx] = {
+          ...match,
+          formato: book.formato || combo?.label || 'A4 B/N',
+          varianteId: combo?.key,
+          color: combo?.color || false,
+          hojas: HOJAS(match.paginas, combo?.paginas_por_hoja || match.paginas_por_hoja || 2),
+          precio: combo?.precio || book.precio || 0,
+          combosDisponibles: combos,
+          _manual: false
+        };
       } else {
         updatedLibros[idx] = { ...book, _manual: false };
       }
@@ -227,10 +249,10 @@ Responde ÚNICAMENTE un Array JSON:
     if (!firstBook) return;
     const combos = getBookCombinations(firstBook);
     const combo = combos[0];
-    const formato = combo ? combo.formato : 'A4';
+    const formato = combo ? combo.label : 'A4 B/N';
     const precio = combo ? combo.precio : 0;
-    const hojas = HOJAS(firstBook.paginas, firstBook.paginas_por_hoja || 2);
-    const newBook = { ...firstBook, formato, color: false, hojas, precio, combosDisponibles: combos };
+    const hojas = HOJAS(firstBook.paginas, combo?.paginas_por_hoja || firstBook.paginas_por_hoja || 2);
+    const newBook = { ...firstBook, formato, varianteId: combo?.key, color: combo?.color || false, hojas, precio, combosDisponibles: combos };
     const updatedLibros = [...parserPreview.libros, newBook];
     const updatedAiPedidos = [...(parserPreview.aiPedidos || []), { precio, hojas, paginas: firstBook.paginas }];
     const newTotal = updatedLibros.reduce((acc, b) => acc + (b.precio || 0), 0);
@@ -250,10 +272,9 @@ Responde ÚNICAMENTE un Array JSON:
       id: `parser-manual-${Date.now()}`,
       titulo: '', materia: '', carrera: '', id_carrera: '',
       paginas: 100, paginas_por_hoja: 2, pdf_url: '', activo: true,
-      a4_bn_habilitado: true, a4_bn_final: 0, a4_color_habilitado: false, a4_color_final: 0,
-      a5_bn_habilitado: false, a5_bn_final: 0, a5_color_habilitado: false, a5_color_final: 0,
+      variantes: [{ id: 'a4_bn', label: 'A4 B/N', paginas_por_hoja: 2, color: false, precio: 0, habilitado: true, sugerido: 0 }],
       imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=Manual',
-      formato: parserPreview.formato || 'A4', color: false, hojas: HOJAS(100, 2),
+      formato: parserPreview.formato || 'A4 B/N', color: false, hojas: HOJAS(100, 2),
       precio: 0, combosDisponibles: [], _manual: true
     };
     const updatedLibros = [...parserPreview.libros, newBook];
@@ -292,6 +313,7 @@ Responde ÚNICAMENTE un Array JSON:
           paginas: book.paginas || 0,
           hojas: book.hojas || HOJAS(book.paginas, book.paginas_por_hoja || 2),
           formato: bookFormato,
+          varianteId: book.varianteId || null,
           encuadernacion: 'basica',
           color: book.color || false,
           express: parserPreview.express,
@@ -322,7 +344,7 @@ Responde ÚNICAMENTE un Array JSON:
         carrera: [...new Set(itemsWithEstado.map(item => item.carrera))].join(' / '),
         id_carrera: career?.id_carrera || '',
         materia: [...new Set(itemsWithEstado.map(item => item.materia))].join(' / '),
-        formato: [...new Set(itemsWithEstado.map(item => `${item.formato} ${item.color ? 'Color' : 'B/N'}`))].join(' / ') + (parserPreview.express ? ' Express' : ''),
+        formato: [...new Set(itemsWithEstado.map(item => `${item.formato || ''}${item.express || parserPreview.express ? ' Express' : ''}`.trim()))].join(' / '),
         paginas: itemsWithEstado.reduce((acc, item) => acc + item.paginas, 0),
         hojas: itemsWithEstado.reduce((acc, item) => acc + item.hojas, 0),
         subtotal: total,
@@ -448,29 +470,29 @@ Responde ÚNICAMENTE un Array JSON:
                           <select
                             className="input-field text-xs py-1.5 flex-1 min-w-[140px]"
                             value={book.id || ''}
-                            onChange={e => updateParserLibro(idx, e.target.value, book.formato ? `${book.formato}|${book.color || false}` : 'A4|false')}
+                            onChange={e => updateParserLibro(idx, e.target.value, book.varianteId || book.formato || '')}
                           >
                             {books.filter(b => b.activo !== false).map(b => {
                               const bc = getBookCombinations(b);
-                              const lines = bc.map(c => `${c.formato}${c.color ? ' Color' : ''}:${fmt(c.precio)}`);
+                              const lines = bc.map(c => `${c.label}:${fmt(c.precio)}`);
                               const info = lines.join(' | ');
                               return <option key={b.id} value={b.id}>{b.titulo} [{info}]</option>;
                             })}
                           </select>
                           {(book.combosDisponibles || []).length > 1 ? (
                             <select
-                              className="input-field text-xs py-1.5 w-[90px]"
-                              value={`${book.formato || 'A4'}|${book.color ? 'true' : 'false'}`}
+                              className="input-field text-xs py-1.5 w-[140px]"
+                              value={book.varianteId || book.combosDisponibles[0]?.key || ''}
                               onChange={e => updateParserLibro(idx, book.id, e.target.value)}
                             >
                               {(book.combosDisponibles || []).map(c => (
-                                <option key={`${c.formato}-${c.color}`} value={`${c.formato}|${c.color}`}>
-                                  {c.formato} {c.color ? 'Color' : 'B/N'} ({fmt(c.precio)})
+                                <option key={c.key} value={c.key}>
+                                  {c.label} ({fmt(c.precio)})
                                 </option>
                               ))}
                             </select>
                           ) : (
-                            <span className="badge bg-ink-100 text-ink-500 text-xs">{book.formato || 'A4'} {book.color ? 'Color' : 'B/N'}</span>
+                            <span className="badge bg-ink-100 text-ink-500 text-xs">{book.formato || 'A4 B/N'}</span>
                           )}
                           <span className="text-xs font-700 text-ink-900 w-[70px] text-right">{book.precio > 0 ? fmt(book.precio) : '—'}</span>
                           <button

@@ -3,7 +3,7 @@ import { Icon } from '../Icons';
 import { statusBadge, Alert, Spinner, fechaLabel, buildWhatsAppMessage } from '../UI';
 import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal } from '../../lib/utils';
 import { ORDER_STATES, STATE_LABELS, STATE_STYLES, STATE_ROW_BG } from '../../lib/constants';
-import { getSupabase, saveOrderToSupabase, syncOrderToSheets, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta } from '../../lib/supabase';
+import { getSupabase, saveOrderToSupabase, syncOrderToSheets, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta, fetchOrdersFromSupabase } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
 import { BookFormPanel } from '../BookFormPanel';
 
@@ -66,6 +66,8 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     modalidad: 'all',
     hojas: 'all'
   });
+  const [hideEntregados, setHideEntregados] = useState(true);
+  const [loadingEntregados, setLoadingEntregados] = useState(false);
   const [excludedStates, setExcludedStates] = useState([]);
   const [filtersVisible, setFiltersVisible] = useState(true);
   const [columnVisibility, setColumnVisibility] = useState({
@@ -140,6 +142,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     let result = itemRows.filter(row => {
       const { order, item } = row;
       const itemEstado = item.estado || order.estado || 'Pendiente de impresión';
+      if (hideEntregados && (itemEstado === 'Entregado' || order.estado === 'Entregado')) return false;
       const estado = excludedStates.length > 0
         ? !excludedStates.includes(itemEstado)
         : (filters.estado === 'all' || itemEstado === filters.estado);
@@ -174,7 +177,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     }
 
     return result;
-  }, [itemRows, excludedStates, filters, editingOrder, sortConfig]);
+  }, [itemRows, hideEntregados, excludedStates, filters, editingOrder, sortConfig]);
 
   const pedidosSummary = useMemo(() => {
     const summary = {};
@@ -195,6 +198,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
 
   const activeFilterLabels = useMemo(() => {
     const labels = [];
+    if (hideEntregados) labels.push('Ocultar Entregados');
     if (excludedStates.length > 0) labels.push('Excluye: ' + excludedStates.map(s => STATE_LABELS[s] || s).join(', '));
     if (filters.estado !== 'all') labels.push('Estado: ' + (STATE_LABELS[filters.estado] || filters.estado));
     if (filters.fecha !== 'all') labels.push('Fecha: ' + filters.fecha);
@@ -205,7 +209,31 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     if (filters.modalidad !== 'all') labels.push('Entrega: ' + filters.modalidad);
     if (filters.hojas !== 'all') labels.push('Hojas: ' + filters.hojas);
     return labels;
-  }, [excludedStates, filters]);
+  }, [hideEntregados, excludedStates, filters]);
+
+  async function toggleHideEntregados() {
+    if (loadingEntregados) return;
+    if (hideEntregados) {
+      setLoadingEntregados(true);
+      try {
+        const all = await fetchOrdersFromSupabase(config, { includeEntregados: true });
+        if (all) {
+          setOrders(prev => {
+            const map = new Map(prev.map(o => [o.id, o]));
+            for (const o of all) map.set(o.id, o);
+            return [...map.values()];
+          });
+        }
+        setHideEntregados(false);
+        setExcludedStates(current => current.filter(s => s !== 'Entregado'));
+      } finally {
+        setLoadingEntregados(false);
+      }
+    } else {
+      setOrders(prev => prev.filter(o => o.estado !== 'Entregado'));
+      setHideEntregados(true);
+    }
+  }
 
   function handleSort(key) {
     setSortConfig(current => {
@@ -326,28 +354,20 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
             <Icon.Filter /> Multi-filtros
             {excludedStates.length > 0 && <span className="badge bg-accent-muted text-accent text-xs ml-2">Excluyendo {excludedStates.length}</span>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${excludedStates.includes('Entregado') && excludedStates.includes('Pendiente de pago') && excludedStates.includes('Listo') ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-600 hover:bg-brand-muted hover:text-brand-DEFAULT'}`}
-              onClick={() => {
-                const target = ['Entregado', 'Pendiente de pago', 'Listo'];
-                const isActive = excludedStates.includes('Entregado') && excludedStates.includes('Pendiente de pago') && excludedStates.includes('Listo');
-                if (isActive) {
-                  setExcludedStates([]);
-                } else {
-                  setExcludedStates(target);
-                  setFilters(current => ({ ...current, estado: 'all' }));
-                }
-              }}
-              title="Mostrar solo pedidos que requieren acción (excluye Terminado, Entregado y Pendiente de pago)"
+              className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${hideEntregados ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-600 hover:bg-brand-muted hover:text-brand-DEFAULT'}`}
+              onClick={toggleHideEntregados}
+              disabled={loadingEntregados}
+              title={hideEntregados ? 'Entregados ocultos (no se descargan). Click para cargarlos.' : 'Mostrando entregados. Click para ocultarlos y liberar memoria.'}
             >
-              POR HACER
+              {loadingEntregados ? 'Cargando…' : 'Ocultar Entregados'}
             </button>
             <button
-              className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${excludedStates.length === 1 && excludedStates.includes('Entregado') ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-600 hover:bg-brand-muted hover:text-brand-DEFAULT'}`}
+              className={`badge text-xs px-2.5 py-1.5 font-700 transition-colors ${excludedStates.includes('Pendiente de pago') && excludedStates.includes('Listo') ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-600 hover:bg-brand-muted hover:text-brand-DEFAULT'}`}
               onClick={() => {
-                const target = ['Entregado'];
-                const isActive = excludedStates.length === 1 && excludedStates.includes('Entregado');
+                const target = ['Pendiente de pago', 'Listo'];
+                const isActive = excludedStates.includes('Pendiente de pago') && excludedStates.includes('Listo');
                 if (isActive) {
                   setExcludedStates([]);
                 } else {
@@ -355,9 +375,9 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
                   setFilters(current => ({ ...current, estado: 'all' }));
                 }
               }}
-              title="Mostrar pedidos pendientes de entrega (excluye solo Entregado)"
+              title="Mostrar solo pedidos que requieren acción (excluye Terminado y Pendiente de pago; Entregados ya van con Ocultar Entregados)"
             >
-              POR ENTREGAR
+              POR HACER
             </button>
             <button
               className="btn-ghost text-xs px-2 py-1.5"
@@ -365,7 +385,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
                 setFilters({ estado: 'all', fecha: 'all', ventana: 'all', alumno: '', libro: '', formato: 'all', modalidad: 'all', hojas: 'all' });
                 setExcludedStates([]);
               }}
-              title="Resetear filtros"
+              title="Resetear filtros (mantiene Ocultar Entregados)"
             >
               Resetear
             </button>
@@ -556,7 +576,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
                   <td style={!columnVisibility.formato ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                     {columnVisibility.formato ? (
                       <>
-                        <div className="font-700 text-ink-900">{item.formato || order.formato}{item.color ? ' Color' : ' B/N'}</div>
+                        <div className="font-700 text-ink-900">{item.formato || order.formato}</div>
                         <div className="text-xs text-ink-400">
                           {order.excede_capacidad
                             ? `${order.hojas_primera_entrega} + ${order.hojas_segunda_entrega} = ${order.hojas} hojas`

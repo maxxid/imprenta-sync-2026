@@ -21,14 +21,120 @@ export function HOJAS(paginas, paginasPorHoja = 2) {
   return Math.ceil(Number(paginas || 0) / (Number(paginasPorHoja) || 2));
 }
 
-export function getBookFormats(book) {
-  if (Array.isArray(book.formatos_disponibles) && book.formatos_disponibles.length) return book.formatos_disponibles;
-  if ('a4_bn_habilitado' in book) {
-    const fmts = new Set();
-    if (book.a4_bn_habilitado || book.a4_color_habilitado) fmts.add('A4');
-    if (book.a5_bn_habilitado || book.a5_color_habilitado) fmts.add('A5');
-    return [...fmts];
+export function normalizeVariante(v, fallbackPph = 2) {
+  const id = String(v?.id || slug(v?.label) || `var-${Date.now()}`).slice(0, 64);
+  return {
+    id,
+    label: String(v?.label || id).trim() || id,
+    paginas_por_hoja: Number(v?.paginas_por_hoja) || fallbackPph || 2,
+    color: Boolean(v?.color),
+    precio: Number(v?.precio) || 0,
+    habilitado: v?.habilitado !== false,
+    sugerido: Number(v?.sugerido) || 0
+  };
+}
+
+export function variantesFromLegacyColumns(book) {
+  const pph = Number(book.paginas_por_hoja) || 2;
+  return COMBO_KEYS.map(key => ({
+    id: key,
+    label: COMBO_LABELS[key],
+    paginas_por_hoja: pph,
+    color: key.endsWith('color'),
+    precio: Number(book[`${key}_final`]) || 0,
+    habilitado: Boolean(book[`${key}_habilitado`]),
+    sugerido: Number(book[`${key}_sugerido`]) || 0
+  }));
+}
+
+export function seedDefaultVariantes(paginas, config, paginasPorHoja = 2) {
+  const pph = Number(paginasPorHoja) || 2;
+  const a4s = calcSugerido(paginas, 'A4', config, pph);
+  const a5s = calcSugerido(paginas, 'A5', config, pph);
+  return [
+    { id: 'a4_bn', label: 'A4 B/N', paginas_por_hoja: pph, color: false, precio: a4s, habilitado: true, sugerido: a4s },
+    { id: 'a4_color', label: 'A4 Color', paginas_por_hoja: pph, color: true, precio: 0, habilitado: false, sugerido: 0 },
+    { id: 'a5_bn', label: 'A5 B/N', paginas_por_hoja: pph, color: false, precio: a5s, habilitado: true, sugerido: a5s },
+    { id: 'a5_color', label: 'A5 Color', paginas_por_hoja: pph, color: true, precio: 0, habilitado: false, sugerido: 0 }
+  ];
+}
+
+/** Mirror variantes clasicas hacia columnas a4_* y a5_* (compat Sheets / lecturas viejas). */
+export function mirrorLegacyColumns(book) {
+  const variantes = Array.isArray(book.variantes) ? book.variantes : [];
+  const next = { ...book, variantes };
+  for (const key of COMBO_KEYS) {
+    const v = variantes.find(x => x.id === key);
+    if (v) {
+      next[`${key}_habilitado`] = Boolean(v.habilitado);
+      next[`${key}_final`] = Number(v.precio) || 0;
+      next[`${key}_sugerido`] = Number(v.sugerido) || 0;
+      if (key === 'a4_bn' || key === 'a5_bn') {
+        next[`${key}_ajuste`] = (Number(v.precio) || 0) - (Number(v.sugerido) || 0);
+      }
+    } else {
+      next[`${key}_habilitado`] = false;
+      next[`${key}_final`] = 0;
+      if (key === 'a4_bn' || key === 'a5_bn') {
+        next[`${key}_sugerido`] = next[`${key}_sugerido`] || 0;
+        next[`${key}_ajuste`] = next[`${key}_ajuste`] || 0;
+      }
+    }
   }
+  return next;
+}
+
+export function prepareBookForSave(book) {
+  return mirrorLegacyColumns(ensureBookVariantes(book));
+}
+
+/** Aplica parches de columnas a4_* y a5_* (edicion rapida) sobre variantes. */
+export function applyClassicColumnPatchesToVariantes(orig, changes = {}) {
+  const merged = { ...orig, ...changes };
+  const ensured = ensureBookVariantes(merged);
+  let variantes = [...ensured.variantes];
+  for (const key of COMBO_KEYS) {
+    const touched = [`${key}_habilitado`, `${key}_final`, `${key}_sugerido`, `${key}_ajuste`].some(k => k in changes);
+    if (!touched) continue;
+    const idx = variantes.findIndex(v => v.id === key);
+    const patch = normalizeVariante({
+      id: key,
+      label: (idx >= 0 ? variantes[idx].label : null) || COMBO_LABELS[key],
+      paginas_por_hoja: Number(merged.paginas_por_hoja) || (idx >= 0 ? variantes[idx].paginas_por_hoja : 2),
+      color: key.endsWith('color'),
+      precio: `${key}_final` in changes || `${key}_final` in merged ? Number(merged[`${key}_final`]) || 0 : (idx >= 0 ? variantes[idx].precio : 0),
+      habilitado: `${key}_habilitado` in changes || `${key}_habilitado` in merged ? Boolean(merged[`${key}_habilitado`]) : (idx >= 0 ? variantes[idx].habilitado : false),
+      sugerido: Number(merged[`${key}_sugerido`]) || (idx >= 0 ? variantes[idx].sugerido : 0)
+    });
+    if (idx >= 0) variantes[idx] = patch;
+    else variantes.push(patch);
+  }
+  return mirrorLegacyColumns({ ...ensured, ...changes, variantes });
+}
+
+/** Fuente de verdad: book.variantes[]. Si falta, deriva de columnas legacy. */
+export function ensureBookVariantes(book, config = null) {
+  if (!book) return book;
+  const pph = Number(book.paginas_por_hoja) || 2;
+  if (Array.isArray(book.variantes) && book.variantes.length > 0) {
+    return { ...book, paginas_por_hoja: pph, variantes: book.variantes.map(v => normalizeVariante(v, pph)) };
+  }
+  if ('a4_bn_habilitado' in book || 'a4_bn_final' in book) {
+    return { ...book, paginas_por_hoja: pph, variantes: variantesFromLegacyColumns(book) };
+  }
+  const seeded = config
+    ? seedDefaultVariantes(book.paginas, config, pph)
+    : [
+        { id: 'a4_bn', label: 'A4 B/N', paginas_por_hoja: pph, color: false, precio: 0, habilitado: true, sugerido: 0 },
+        { id: 'a5_bn', label: 'A5 B/N', paginas_por_hoja: pph, color: false, precio: 0, habilitado: false, sugerido: 0 }
+      ];
+  return { ...book, paginas_por_hoja: pph, variantes: seeded };
+}
+
+export function getBookFormats(book) {
+  const variantes = ensureBookVariantes(book).variantes.filter(v => v.habilitado && v.precio > 0);
+  if (variantes.length) return [...new Set(variantes.map(v => v.label))];
+  if (Array.isArray(book.formatos_disponibles) && book.formatos_disponibles.length) return book.formatos_disponibles;
   return [
     book.formato_a4 !== false ? 'A4' : null,
     book.formato_a5 ? 'A5' : null
@@ -36,14 +142,46 @@ export function getBookFormats(book) {
 }
 
 export function getBookCombinations(book) {
-  return COMBO_KEYS
-    .filter(key => book[`${key}_habilitado`] && Number(book[`${key}_final`]) > 0)
-    .map(key => ({ key, label: COMBO_LABELS[key], formato: key.startsWith('a4') ? 'A4' : 'A5', color: key.endsWith('color'), precio: Number(book[`${key}_final`]) }));
+  return ensureBookVariantes(book).variantes
+    .filter(v => v.habilitado && Number(v.precio) > 0)
+    .map(v => ({
+      key: v.id,
+      id: v.id,
+      label: v.label,
+      formato: v.label,
+      color: Boolean(v.color),
+      precio: Number(v.precio) || 0,
+      paginas_por_hoja: Number(v.paginas_por_hoja) || 2,
+      variante: v
+    }));
 }
 
 export function getMinPrice(book) {
   const combos = getBookCombinations(book);
   return combos.length ? Math.min(...combos.map(c => c.precio)) : 0;
+}
+
+export function findVariante(book, idOrVariante) {
+  if (idOrVariante && typeof idOrVariante === 'object' && idOrVariante.id) return normalizeVariante(idOrVariante);
+  const variantes = ensureBookVariantes(book).variantes;
+  return variantes.find(v => v.id === idOrVariante) || null;
+}
+
+/** Resuelve una variante por su label libre ("A4 B/N", "A4 vertical", "A5"). */
+function resolveVarianteByLabel(book, token, wantsColor = null) {
+  const target = slug(String(token || '').toLowerCase());
+  if (!target) return null;
+  const variantes = ensureBookVariantes(book).variantes;
+  const matches = variantes.filter(v => {
+    const label = slug(String(v.label || '').toLowerCase());
+    return label === target || label.includes(target) || target.includes(label);
+  });
+  if (!matches.length) return null;
+  if (wantsColor !== null) {
+    const byColor = matches.filter(v => Boolean(v.color) === Boolean(wantsColor));
+    if (byColor.length) return byColor[0];
+  }
+  return matches.find(v => v.habilitado && Number(v.precio) > 0) || matches[0];
 }
 
 export function calcSugerido(paginas, formato, config, paginasPorHoja = 2) {
@@ -60,39 +198,54 @@ export function calcSugerido(paginas, formato, config, paginasPorHoja = 2) {
   return sub;
 }
 
-export function migrateBook(book, config) {
-  if ('a4_bn_habilitado' in book) {
-    const migrated = { ...book };
-    if (!('paginas_por_hoja' in migrated)) migrated.paginas_por_hoja = 2;
-    if (!('pdf_url' in migrated)) migrated.pdf_url = '';
-    return migrated;
+function sugeridoForVariante(variante, paginas, config) {
+  const pph = Number(variante.paginas_por_hoja) || 2;
+  if (variante.id === 'a4_bn' || (/^a4/i.test(variante.id) && !variante.color)) {
+    return calcSugerido(paginas, 'A4', config, pph);
   }
-  const a4s = calcSugerido(book.paginas, 'A4', config);
-  const a5s = calcSugerido(book.paginas, 'A5', config);
-  return {
-    ...book,
-    paginas_por_hoja: 2,
-    pdf_url: '',
-    activo: book.activo !== false,
-    a4_bn_habilitado: book.formato_a4 !== false,
-    a4_bn_sugerido: a4s, a4_bn_ajuste: 0, a4_bn_final: a4s,
-    a4_color_habilitado: (book.formato_a4 !== false) && Number(book.precio_color) > 0,
-    a4_color_final: Number(book.precio_color) || 0,
-    a5_bn_habilitado: Boolean(book.formato_a5),
-    a5_bn_sugerido: a5s, a5_bn_ajuste: 0, a5_bn_final: a5s,
-    a5_color_habilitado: false, a5_color_final: 0
-  };
+  if (variante.id === 'a5_bn' || (/^a5/i.test(variante.id) && !variante.color)) {
+    return calcSugerido(paginas, 'A5', config, pph);
+  }
+  return Number(variante.sugerido) || 0;
+}
+
+export function migrateBook(book, config) {
+  let base = { ...book };
+  if (!('paginas_por_hoja' in base)) base.paginas_por_hoja = 2;
+  if (!('pdf_url' in base)) base.pdf_url = '';
+  if (!('a4_bn_habilitado' in base) && !(Array.isArray(base.variantes) && base.variantes.length)) {
+    const a4s = calcSugerido(base.paginas, 'A4', config);
+    const a5s = calcSugerido(base.paginas, 'A5', config);
+    base = {
+      ...base,
+      activo: base.activo !== false,
+      a4_bn_habilitado: base.formato_a4 !== false,
+      a4_bn_sugerido: a4s, a4_bn_ajuste: 0, a4_bn_final: a4s,
+      a4_color_habilitado: (base.formato_a4 !== false) && Number(base.precio_color) > 0,
+      a4_color_final: Number(base.precio_color) || 0,
+      a5_bn_habilitado: Boolean(base.formato_a5),
+      a5_bn_sugerido: a5s, a5_bn_ajuste: 0, a5_bn_final: a5s,
+      a5_color_habilitado: false, a5_color_final: 0
+    };
+  }
+  return mirrorLegacyColumns(ensureBookVariantes(base, config));
 }
 
 export function recalcBookSugeridos(book, config) {
-  const pph = Number(book.paginas_por_hoja) || 2;
-  const a4s = calcSugerido(book.paginas, 'A4', config, pph);
-  const a5s = calcSugerido(book.paginas, 'A5', config, pph);
-  return {
-    ...book,
-    a4_bn_sugerido: a4s,
-    a5_bn_sugerido: a5s
-  };
+  const ensured = ensureBookVariantes(book, config);
+  const variantes = ensured.variantes.map(v => {
+    if (v.id !== 'a4_bn' && v.id !== 'a5_bn') return v;
+    const sugerido = sugeridoForVariante(v, ensured.paginas, config);
+    const oldSugerido = Number(v.sugerido) || 0;
+    const ajuste = (Number(v.precio) || 0) - oldSugerido;
+    return { ...v, sugerido, precio: sugerido + (Number.isFinite(ajuste) ? ajuste : 0) };
+  });
+  return mirrorLegacyColumns({ ...ensured, variantes });
+}
+
+export function newVarianteId(label = 'custom') {
+  const base = slug(label).replace(/\s+/g, '-').slice(0, 24) || 'custom';
+  return `${base}-${Date.now().toString(36).slice(-4)}`;
 }
 
 export function bookCareerId(book) {
@@ -156,32 +309,61 @@ export function roundTotal(value, config) {
   return Math.ceil(base / multiple) * multiple;
 }
 
-export function calcPrecioItem(libro, formato, encuadernacion, config, color, express = false) {
-  const pph = Number(libro.paginas_por_hoja) || 2;
-  const hojas = HOJAS(libro.paginas, pph);
-  if ('a4_bn_habilitado' in libro) {
-    const comboKey = `${formato.toLowerCase()}_${color ? 'color' : 'bn'}`;
-    let precioFinal = Number(libro[`${comboKey}_final`] || 0);
-    if (!precioFinal && libro.paginas > 0) {
-      precioFinal = calcSugerido(libro.paginas, formato, config, pph);
+/**
+ * Precio de un ítem.
+ * - Nuevo: calcPrecioItem(libro, varianteObjeto|varianteId, encuadernacion, config, express?)
+ *   (si el 2do arg es un objeto variante, el 5to es express)
+ * - Legacy: calcPrecioItem(libro, 'A4'|'A5'|label, encuadernacion, config, color, express?)
+ *   (si el 2do arg es string, el 5to es color y el 6to express)
+ */
+export function calcPrecioItem(libro, formatoOrVariante, encuadernacion, config, colorOrExpress = false, express = false) {
+  const book = ensureBookVariantes(libro, config);
+  let variante = null;
+  let isExpress = express;
+
+  if (formatoOrVariante && typeof formatoOrVariante === 'object') {
+    variante = normalizeVariante(formatoOrVariante, Number(book.paginas_por_hoja) || 2);
+    isExpress = Boolean(colorOrExpress) || express;
+  } else if (typeof formatoOrVariante === 'string') {
+    const token = String(formatoOrVariante).trim();
+    // Firma legacy: string ('A4', 'A5', 'A4 B/N', id de variante) → 5to arg = color, 6to = express
+    const wantsColor = Boolean(colorOrExpress);
+    isExpress = express;
+
+    variante = findVariante(book, token) || resolveVarianteByLabel(book, token, wantsColor);
+    if (!variante && /^a[45]/i.test(token)) {
+      const fmtKey = /^a5/i.test(token) ? 'a5' : 'a4';
+      const comboKey = `${fmtKey}_${wantsColor ? 'color' : 'bn'}`;
+      variante = findVariante(book, comboKey);
+      if (!variante) {
+        const pph = Number(book.paginas_por_hoja) || 2;
+        const hojas = HOJAS(book.paginas, pph);
+        let subtotal = wantsColor && Number(book.precio_color) > 0
+          ? Number(book.precio_color)
+          : calcSugerido(book.paginas, fmtKey.toUpperCase(), config, pph);
+        const tipo = hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado';
+        if (isExpress) subtotal = Math.round(subtotal * (1 + (Number(config.produccion?.recargo_express_pct) || 20) / 100));
+        return { hojas, subtotal, total: subtotal, tipo, varianteId: comboKey };
+      }
     }
-    const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
-    return { hojas, subtotal: precioFinal, total: precioFinal, tipo };
   }
-  let subtotal = 0;
-  if (color && Number(libro.precio_color) > 0) {
-    subtotal = Number(libro.precio_color);
-  } else if (formato === 'A5') {
-    subtotal = hojas * Number(config.precios?.A5?.unico || config.precios?.A5?.mas_50 || 49);
-  } else {
-    const key = hojas >= 50 ? 'mas_50' : 'menos_50';
-    subtotal = hojas * Number(config.precios?.A4?.[key] || 0);
+
+  if (!variante) {
+    const combos = getBookCombinations(book);
+    variante = combos[0]?.variante || null;
   }
-  const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
-  if (tipo === 'anillado') {
-    subtotal += Number(config.encuadernacion.basica || 0);
+
+  const pph = Number(variante?.paginas_por_hoja) || Number(book.paginas_por_hoja) || 2;
+  const hojas = HOJAS(book.paginas, pph);
+  let precioFinal = Number(variante?.precio) || 0;
+  if (!precioFinal && book.paginas > 0 && variante) {
+    precioFinal = sugeridoForVariante(variante, book.paginas, config);
   }
-  return { hojas, subtotal, total: subtotal, tipo };
+  if (isExpress) {
+    precioFinal = Math.round(precioFinal * (1 + (Number(config.produccion?.recargo_express_pct) || 20) / 100));
+  }
+  const tipo = hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado';
+  return { hojas, subtotal: precioFinal, total: precioFinal, tipo, varianteId: variante?.id || null };
 }
 
 export function computeOrderStatus(montoPagado) {
@@ -214,7 +396,7 @@ export function buildOrder(items, form, slot, config, career, metodoPago = 'talo
     carrera: [...new Set(items.map(item => item.carrera))].join(' / '),
     id_carrera: career?.id_carrera || items[0]?.id_carrera || '',
     materia: [...new Set(items.map(item => item.materia))].join(' / '),
-    formato: [...new Set(items.map(item => `${item.formato} ${item.color ? 'Color' : 'B/N'}${item.express ? ' Express' : ''}`))].join(' / '),
+    formato: [...new Set(items.map(item => `${item.formato || ''}${item.express ? ' Express' : ''}`.trim()))].join(' / '),
     paginas: pages,
     hojas,
     subtotal,

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone } from './utils.js';
+import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone, prepareBookForSave } from './utils.js';
 import { STATE_STYLES, STATE_LABELS, FALLBACK_CONFIG } from './constants.js';
 import { getShopId } from './shop.js';
 
@@ -29,7 +29,7 @@ export async function fetchBooksFromSupabase(config) {
   }
 }
 
-export const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url','encuadernacion','shop_id'];
+export const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url','encuadernacion','shop_id','variantes'];
 
 export function cleanBookPayload(book) {
   const cleaned = {};
@@ -45,7 +45,7 @@ export function cleanBookPayload(book) {
 export async function saveBookToSupabase(book, config) {
   try {
     const sb = getSupabase(config);
-    const payload = cleanBookPayload(book);
+    const payload = cleanBookPayload(prepareBookForSave(book));
     const shopId = getShopId();
     const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
     const { error } = await sb.from('libros').upsert(payload, upsertOpts);
@@ -115,17 +115,36 @@ export async function subirPortada(file, bookId, config) {
   return `${config.supabase.url}/storage/v1/object/public/pdfs/${path}`;
 }
 
-export async function fetchOrdersFromSupabase(config) {
+export async function fetchOrdersFromSupabase(config, { includeEntregados = false } = {}) {
   try {
     const sb = getSupabase(config);
     const query = sb.from('pedidos').select('*');
+    const shopId = getShopId();
+    if (shopId) query.eq('shop_id', shopId);
+    if (!includeEntregados) query.neq('estado', 'Entregado');
+    const { data, error } = await query.order('ts', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(o => normalizeOrder(o, config));
+  } catch (err) {
+    console.error('Error cargando pedidos desde Supabase:', err);
+    return null;
+  }
+}
+
+/** Tracking: pedidos de un teléfono incluyendo Entregado. */
+export async function fetchOrdersByPhoneFromSupabase(config, phone) {
+  try {
+    const norm = normalizePhone(phone);
+    if (norm.length < 8) return [];
+    const sb = getSupabase(config);
+    const query = sb.from('pedidos').select('*').eq('whatsapp', norm);
     const shopId = getShopId();
     if (shopId) query.eq('shop_id', shopId);
     const { data, error } = await query.order('ts', { ascending: false });
     if (error) throw error;
     return (data || []).map(o => normalizeOrder(o, config));
   } catch (err) {
-    console.error('Error cargando pedidos desde Supabase:', err);
+    console.error('Error cargando pedidos por teléfono:', err);
     return null;
   }
 }

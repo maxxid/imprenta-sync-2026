@@ -1,36 +1,65 @@
 import React, { useState } from 'react';
 import { Icon } from './Icons';
 import { Alert } from './UI';
-import { fmt, slug, HOJAS, getBookCombinations, recalcBookSugeridos, careerLabel } from '../lib/utils';
+import {
+  fmt, HOJAS, getBookCombinations, recalcBookSugeridos, careerLabel,
+  ensureBookVariantes, mirrorLegacyColumns, newVarianteId, normalizeVariante
+} from '../lib/utils';
 
 export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
-  const [form, setForm] = useState({ ...book });
-  const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+  const [form, setForm] = useState(() => ensureBookVariantes({ ...book }, config));
+
+  function setFormBook(next) {
+    setForm(mirrorLegacyColumns(ensureBookVariantes(next, config)));
+  }
+
+  function update(key, val) {
+    setFormBook({ ...form, [key]: val });
+  }
 
   function handlePagesChange(val) {
     const paginas = Number(val) || 0;
-    const updated = recalcBookSugeridos({ ...form, paginas }, config);
-    setForm(updated);
+    setFormBook(recalcBookSugeridos({ ...form, paginas }, config));
   }
-
-  const hojas = HOJAS(form.paginas, form.paginas_por_hoja || 2);
 
   function handleCareerChange(id) {
     const career = careers.find(c => c.id_carrera === id);
-    setForm(prev => ({ ...prev, id_carrera: id, carrera: career?.nombre || '' }));
+    setFormBook({ ...form, id_carrera: id, carrera: career?.nombre || '' });
   }
 
-  function handleAjuste(comboBase, val) {
-    const ajuste = Number(val) || 0;
-    const sugerido = Number(form[`${comboBase}_sugerido`]) || 0;
-    setForm(prev => ({ ...prev, [`${comboBase}_ajuste`]: ajuste, [`${comboBase}_final`]: sugerido + ajuste }));
+  function updateVariante(id, patch) {
+    const variantes = form.variantes.map(v => v.id === id ? normalizeVariante({ ...v, ...patch }, v.paginas_por_hoja) : v);
+    setFormBook({ ...form, variantes });
+  }
+
+  function addVariante() {
+    const label = 'Nueva opción';
+    const variantes = [
+      ...form.variantes,
+      normalizeVariante({
+        id: newVarianteId(label),
+        label,
+        paginas_por_hoja: 1,
+        color: false,
+        precio: 0,
+        habilitado: true,
+        sugerido: 0
+      })
+    ];
+    setFormBook({ ...form, variantes });
+  }
+
+  function removeVariante(id) {
+    if (form.variantes.length <= 1) return;
+    setFormBook({ ...form, variantes: form.variantes.filter(v => v.id !== id) });
   }
 
   function recalc() {
-    setForm(prev => recalcBookSugeridos(prev, config));
+    setFormBook(recalcBookSugeridos(form, config));
   }
 
-  const tipo = hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
+  const hojasDefault = HOJAS(form.paginas, form.paginas_por_hoja || 2);
+  const tipo = hojasDefault >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado';
   const combos = getBookCombinations(form);
   const minPrice = combos.length ? Math.min(...combos.map(c => c.precio)) : 0;
   const canSave = form.titulo.trim().length >= 2 && form.paginas > 0 && combos.length > 0;
@@ -64,19 +93,18 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
               <div>
                 <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Páginas</label>
                 <input className="input-field" type="number" min="1" value={form.paginas} onChange={e => handlePagesChange(e.target.value)} />
-                <div className="text-xs text-ink-400 mt-1">{hojas} hojas · {tipo}</div>
+                <div className="text-xs text-ink-400 mt-1">{hojasDefault} hojas (pph default {form.paginas_por_hoja || 2}) · {tipo}</div>
               </div>
               <div>
-                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Páginas por hoja</label>
+                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Páginas por hoja (default libro)</label>
                 <select className="input-field" value={form.paginas_por_hoja || 2} onChange={e => {
                   const pph = Number(e.target.value) || 2;
-                  const updated = recalcBookSugeridos({ ...form, paginas_por_hoja: pph }, config);
-                  setForm(updated);
+                  setFormBook(recalcBookSugeridos({ ...form, paginas_por_hoja: pph }, config));
                 }}>
                   <option value={2}>2 páginas por hoja (estándar)</option>
+                  <option value={1}>1 página por hoja (letra grande)</option>
                   <option value={4}>4 páginas por hoja (compacto)</option>
                 </select>
-                <div className="text-xs text-ink-400 mt-1">{form.paginas_por_hoja === 4 ? '4 pág/hoja · letra reducida' : '2 pág/hoja · letra normal'}</div>
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">URL de portada</label>
@@ -91,46 +119,101 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
           </div>
 
           <div className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="font-700 text-sm text-ink-800">Precios por combinación</div>
-              <button className="btn-ghost text-xs" onClick={recalc}><Icon.Zap /> Recalcular sugeridos</button>
+            <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+              <div>
+                <div className="font-700 text-sm text-ink-800">Variantes de impresión</div>
+                <div className="text-xs text-ink-400">Título libre, papel, pph y precio por opción</div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" className="btn-ghost text-xs" onClick={recalc}><Icon.Zap /> Recalcular A4/A5 B/N</button>
+                <button type="button" className="btn-secondary text-xs" onClick={addVariante}>+ Agregar variante</button>
+              </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {[['a4_bn', 'A4 Blanco y Negro', true], ['a4_color', 'A4 Color', false], ['a5_bn', 'A5 Blanco y Negro', true], ['a5_color', 'A5 Color', false]].map(([key, label, hasCalc]) => (
-                <div key={key} className={`rounded-xl border p-4 ${form[`${key}_habilitado`] ? 'border-brand bg-brand-muted/30' : 'border-ink-100 bg-ink-50'}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-700 text-sm text-ink-800">{label}</span>
-                    <button onClick={() => update(`${key}_habilitado`, !form[`${key}_habilitado`])}
-                      className={`w-10 h-6 rounded-full transition-colors flex items-center ${form[`${key}_habilitado`] ? 'bg-brand-DEFAULT justify-end' : 'bg-ink-200 justify-start'}`}>
-                      <span className="w-5 h-5 bg-white rounded-full shadow-sm mx-0.5" />
-                    </button>
-                  </div>
-                  {form[`${key}_habilitado`] && (
-                    <div className="space-y-2">
-                      {hasCalc ? (
-                        <>
-                          <div className="flex justify-between text-xs"><span className="text-ink-500">Sugerido</span><span className="font-600">{fmt(form[`${key}_sugerido`] || 0)}</span></div>
-                          <div>
-                            <label className="text-xs text-ink-500">Ajuste (+/-)</label>
-                            <input className="input-field mt-1" type="number" value={form[`${key}_ajuste`] || 0} onChange={e => handleAjuste(key, e.target.value)} />
-                          </div>
-                          <div className="flex justify-between text-sm font-700 border-t border-ink-100 pt-2"><span>Final</span><span>{fmt(form[`${key}_final`] || 0)}</span></div>
-                        </>
-                      ) : (
-                        <div>
-                          <label className="text-xs text-ink-500">Precio total (manual)</label>
-                          <input className="input-field mt-1" type="number" value={form[`${key}_final`] || 0} onChange={e => update(`${key}_final`, Number(e.target.value) || 0)} />
-                        </div>
-                      )}
+            <div className="space-y-3">
+              {form.variantes.map(v => {
+                const hojasV = HOJAS(form.paginas, v.paginas_por_hoja || 2);
+                const isClassicBn = v.id === 'a4_bn' || v.id === 'a5_bn';
+                return (
+                  <div key={v.id} className={`rounded-xl border p-4 ${v.habilitado ? 'border-brand bg-brand-muted/30' : 'border-ink-100 bg-ink-50'}`}>
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <input
+                        className="input-field font-700 text-sm flex-1"
+                        value={v.label}
+                        onChange={e => updateVariante(v.id, { label: e.target.value })}
+                        placeholder="Ej: A4 vertical (letra grande)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateVariante(v.id, { habilitado: !v.habilitado })}
+                        className={`w-10 h-6 rounded-full transition-colors flex items-center flex-shrink-0 ${v.habilitado ? 'bg-brand-DEFAULT justify-end' : 'bg-ink-200 justify-start'}`}
+                        title="Habilitada en tienda"
+                      >
+                        <span className="w-5 h-5 bg-white rounded-full shadow-sm mx-0.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="text-danger text-lg font-700 px-1 disabled:opacity-30"
+                        disabled={form.variantes.length <= 1}
+                        onClick={() => removeVariante(v.id)}
+                        title="Eliminar variante"
+                      >×</button>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {v.habilitado && (
+                      <div className="grid gap-3 sm:grid-cols-4">
+                        <div>
+                          <label className="text-xs text-ink-500">Pág. por hoja</label>
+                          <select
+                            className="input-field mt-1"
+                            value={v.paginas_por_hoja || 2}
+                            onChange={e => {
+                              const pph = Number(e.target.value) || 2;
+                              if (isClassicBn) {
+                                const next = { ...form, variantes: form.variantes.map(x => x.id === v.id ? { ...x, paginas_por_hoja: pph } : x) };
+                                setFormBook(recalcBookSugeridos(next, config));
+                              } else {
+                                updateVariante(v.id, { paginas_por_hoja: pph });
+                              }
+                            }}
+                          >
+                            <option value={1}>1 (letra grande)</option>
+                            <option value={2}>2 (estándar)</option>
+                            <option value={4}>4 (compacto)</option>
+                          </select>
+                          <div className="text-[10px] text-ink-400 mt-1">{hojasV} hojas</div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-ink-500">Color</label>
+                          <button
+                            type="button"
+                            className={`mt-1 w-full input-field text-left font-600 ${v.color ? 'text-accent' : 'text-ink-700'}`}
+                            onClick={() => updateVariante(v.id, { color: !v.color })}
+                          >
+                            {v.color ? 'Color' : 'B/N'}
+                          </button>
+                        </div>
+                        <div>
+                          <label className="text-xs text-ink-500">{isClassicBn ? 'Sugerido' : 'Ref.'}</label>
+                          <div className="input-field mt-1 bg-ink-50 text-ink-500">{fmt(v.sugerido || 0)}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-ink-500">Precio final</label>
+                          <input
+                            className="input-field mt-1"
+                            type="number"
+                            value={v.precio || 0}
+                            onChange={e => updateVariante(v.id, { precio: Number(e.target.value) || 0 })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           <div className="flex gap-3">
-            <button className="btn-primary flex-1" disabled={!canSave} onClick={() => onSave(form)}>Guardar libro</button>
+            <button className="btn-primary flex-1" disabled={!canSave} onClick={() => onSave(mirrorLegacyColumns(form))}>Guardar libro</button>
             <button className="btn-secondary" onClick={onCancel}>Cancelar</button>
           </div>
         </div>
@@ -145,11 +228,11 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
             <div className="text-xs text-ink-400 mb-3">{form.autor || 'Autor'}</div>
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <span className={`badge ${tipo === 'anillado' ? 'tag-link' : 'tag-staple'}`}>{tipo === 'anillado' ? 'Anillado' : 'Abrochado'}</span>
-              <span className="badge bg-ink-100 text-ink-500">{form.paginas} págs · {hojas} hojas</span>
+              <span className="badge bg-ink-100 text-ink-500">{form.paginas} págs</span>
               {combos.map(c => <span key={c.key} className={`badge ${c.color ? 'bg-accent-muted text-accent' : 'bg-brand-muted text-brand-dark'}`}>{c.label}</span>)}
             </div>
             {minPrice > 0 && <div className="font-800 text-lg text-ink-900">Desde {fmt(minPrice)}</div>}
-            {combos.length === 0 && <Alert type="warn"><span>Habilitá al menos una combinación con precio &gt; 0 para que el alumno vea este libro.</span></Alert>}
+            {combos.length === 0 && <Alert type="warn"><span>Habilitá al menos una variante con precio &gt; 0 para que el alumno vea este libro.</span></Alert>}
           </div>
         </div>
       </div>

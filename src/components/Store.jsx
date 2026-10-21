@@ -2,9 +2,9 @@ import React from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
 import { Cover, Alert, Spinner, CareerCombobox, fechaLabel, buildWhatsAppMessage } from './UI';
-import { fmt, slug, normalizePhone, getBookFormats, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId } from '../lib/utils';
-import { COMBO_LABELS, STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
-import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard } from '../lib/supabase';
+import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante } from '../lib/utils';
+import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
+import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
 function isDeliveryDay(order) {
   if (!order.fecha) return false;
@@ -168,7 +168,17 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
             <div className="font-700 text-sm text-ink-800">¿Tu material no está en el catálogo?</div>
             <div className="text-xs text-ink-400 mt-0.5">Subí tu PDF propio, elegí formato y lo sumamos al carrito como cualquier libro.</div>
           </div>
-          <button className="btn-secondary text-xs px-3 py-2" onClick={() => onSelectLibro({ id: `pdf-${Date.now()}`, titulo: 'PDF propio', materia: 'Material del alumno', carrera: selectedCareer?.nombre || 'Carrera a seleccionar', id_carrera: selectedCareer?.id_carrera || '', autor: 'Archivo subido', paginas: 80, paginas_por_hoja: 2, pdf_url: '', activo: true, a4_bn_habilitado: true, a4_bn_sugerido: 0, a4_bn_ajuste: 0, a4_bn_final: 0, a4_color_habilitado: false, a4_color_final: 0, a5_bn_habilitado: true, a5_bn_sugerido: 0, a5_bn_ajuste: 0, a5_bn_final: 0, a5_color_habilitado: false, a5_color_final: 0, imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=PDF+Propio', isPdfPropio: true })}>
+          <button className="btn-secondary text-xs px-3 py-2" onClick={() => {
+            const paginas = 80;
+            const pph = 2;
+            onSelectLibro({
+              id: `pdf-${Date.now()}`, titulo: 'PDF propio', materia: 'Material del alumno',
+              carrera: selectedCareer?.nombre || 'Carrera a seleccionar', id_carrera: selectedCareer?.id_carrera || '',
+              autor: 'Archivo subido', paginas, paginas_por_hoja: pph, pdf_url: '', activo: true,
+              variantes: seedDefaultVariantes(paginas, config, pph).map(v => ({ ...v, habilitado: v.id === 'a4_bn' || v.id === 'a5_bn' })),
+              imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=PDF+Propio', isPdfPropio: true
+            });
+          }}>
             <Icon.Upload /> Subir PDF
           </button>
         </div>
@@ -181,7 +191,8 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
         {filtered.map(book => {
           const combos = getBookCombinations(book);
           const minPrice = getMinPrice(book);
-          const hojas = HOJAS(book.paginas, book.paginas_por_hoja || 2);
+          const minCombo = combos.length ? combos.reduce((a, b) => (a.precio <= b.precio ? a : b)) : null;
+          const hojas = HOJAS(book.paginas, minCombo?.paginas_por_hoja || book.paginas_por_hoja || 2);
           const tipo = book.encuadernacion || (hojas >= config.encuadernacion.umbral_anillado_hojas ? 'anillado' : 'abrochado');
           return (
             <button key={book.id} onClick={() => onSelectLibro(book)} className="card p-4 text-left hover:bg-surface-hover hover:border-brand hover:shadow-lg hover:shadow-brand-DEFAULT/20 transition-all btn-press">
@@ -194,7 +205,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
                   <div className="text-xs text-ink-400 mb-3">{book.autor}</div>
                   <div className="flex items-center gap-2 mb-3 flex-wrap">
                     <span className={`badge ${tipo === 'anillado' ? 'tag-link' : 'tag-staple'}`}>{tipo === 'anillado' ? '🪢 Anillado' : '📎 Abrochado'}</span>
-                    <span className="badge bg-ink-100 text-ink-500">{book.paginas} pags · {hojas} hojas · {book.paginas_por_hoja === 4 ? '4' : '2'} pág/hoja</span>
+                    <span className="badge bg-ink-100 text-ink-500">{book.paginas} pags · {hojas} hojas{minCombo ? ` · ${minCombo.paginas_por_hoja} pág/hoja` : ''}</span>
                     {combos.map(c => <span key={c.key} className={`badge ${c.color ? 'bg-accent-muted text-accent' : 'bg-brand-muted text-brand-dark'}`}>{c.label}</span>)}
                   </div>
                   <div className="flex items-center justify-between">
@@ -212,8 +223,6 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
 }
 
 function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
-  const combos = book.isPdfPropio ? [] : getBookCombinations(book);
-  const [selectedCombo, setSelectedCombo] = React.useState(combos[0]?.key || 'a4_bn');
   const [pdfPages, setPdfPages] = React.useState(book.paginas || 80);
   const [pdfDetected, setPdfDetected] = React.useState(null);
   const [showPdfModal, setShowPdfModal] = React.useState(false);
@@ -222,14 +231,44 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
   const [expressSlotSel, setExpressSlotSel] = React.useState(null);
   const [expressCartWarn, setExpressCartWarn] = React.useState(false);
 
+  const workingBook = React.useMemo(() => {
+    if (!book.isPdfPropio) return book;
+    const b = { ...book, paginas: pdfPages };
+    return recalcBookSugeridos(b, config);
+  }, [book, pdfPages, config]);
+
+  const combos = React.useMemo(() => {
+    if (book.isPdfPropio) {
+      return getBookCombinations(workingBook).filter(c => c.key === 'a4_bn' || c.key === 'a5_bn');
+    }
+    return getBookCombinations(book);
+  }, [book, workingBook]);
+
+  const [selectedCombo, setSelectedCombo] = React.useState(combos[0]?.key || 'a4_bn');
+
+  React.useEffect(() => {
+    if (combos.length && !combos.some(c => c.key === selectedCombo)) {
+      setSelectedCombo(combos[0].key);
+    }
+  }, [combos, selectedCombo]);
+
   function handleAgregar(item, isExpress) {
     setToast({ msg: isExpress ? '⚡ Libro express agregado al pedido!' : '📚 Libro agregado al pedido!', type: 'ok' });
     setTimeout(() => setToast(null), 3700);
     setTimeout(() => onAgregar(item, isExpress), isExpress ? 600 : 400);
   }
 
-  function handleComprarAhora() {
-    onAgregar({
+  const combo = combos.find(c => c.key === selectedCombo) || combos[0];
+  const variante = combo?.variante || findVariante(workingBook, selectedCombo);
+  const formato = combo?.label || combo?.formato || 'A4 B/N';
+  const color = Boolean(combo?.color);
+  const pricing = calcPrecioItem(workingBook, variante, 'basica', config);
+
+  function buildCartItem(express = false) {
+    const price = express
+      ? calcPrecioItem(workingBook, variante, 'basica', config, true)
+      : pricing;
+    return {
       id: `${workingBook.id}-${selectedCombo}-${Date.now()}`,
       libroId: book.id,
       titulo: workingBook.titulo,
@@ -237,28 +276,22 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
       carrera: workingBook.carrera,
       id_carrera: bookCareerId(workingBook),
       paginas: workingBook.paginas,
-      hojas: pricing.hojas,
+      hojas: price.hojas,
       formato,
+      varianteId: combo?.key || selectedCombo,
       encuadernacion: 'basica',
       color,
-      express: false,
-      precio: pricing.total,
-      tipo: pricing.tipo,
+      express,
+      precio: price.total,
+      tipo: price.tipo,
       imagen_url: workingBook.imagen_url,
       origen: book.isPdfPropio ? 'pdf-propio' : 'catalogo'
-    }, true);
+    };
   }
 
-  const workingBook = React.useMemo(() => {
-    if (!book.isPdfPropio) return book;
-    const b = { ...book, paginas: pdfPages };
-    return recalcBookSugeridos(b, config);
-  }, [book, pdfPages, config]);
-
-  const combo = combos.find(c => c.key === selectedCombo) || combos[0];
-  const formato = combo ? combo.formato : (selectedCombo.startsWith('a5') ? 'A5' : 'A4');
-  const color = combo ? combo.color : selectedCombo.endsWith('color');
-  const pricing = calcPrecioItem(workingBook, formato, 'basica', config, color);
+  function handleComprarAhora() {
+    onAgregar(buildCartItem(false), true);
+  }
 
   async function handlePdfFile(event) {
     const file = event.target.files?.[0];
@@ -295,7 +328,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
               <span className="badge text-xs bg-ink-100 text-ink-500">
                 <Icon.Book /> {workingBook.carrera || 'Sin carrera'}
               </span>
-              <span className="badge text-xs bg-ink-100 text-ink-500">{workingBook.paginas} pags · {HOJAS(workingBook.paginas, workingBook.paginas_por_hoja)} hojas</span>
+              <span className="badge text-xs bg-ink-100 text-ink-500">{workingBook.paginas} pags · {pricing.hojas} hojas</span>
             </div>
             <h1 className="text-xl font-800 text-ink-900 dark:text-white mb-1 leading-tight">{workingBook.titulo}</h1>
             <p className="text-sm text-ink-500 mb-2">{workingBook.materia || 'Sin materia'}</p>
@@ -345,29 +378,20 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
             </div>
 
             <div className="mb-4">
-              <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Combinación</label>
-              <div className={`grid gap-3 ${book.isPdfPropio ? 'grid-cols-2' : `grid-cols-${Math.min(combos.length, 4)}`}`}>
-                {book.isPdfPropio ? (
-                  ['a4_bn', 'a5_bn'].map(key => (
-                    <button key={key} onClick={() => setSelectedCombo(key)} className={`radio-tile ${selectedCombo === key ? 'active' : ''}`}>
-                      <div className="font-700 text-sm">{COMBO_LABELS[key]}</div>
-                      <div className="text-xs text-ink-400 mt-1">{fmt(Number(workingBook[`${key}_final`] || 0))}</div>
-                    </button>
-                  ))
-                ) : (
-                  combos.map(c => (
-                    <button key={c.key} onClick={() => setSelectedCombo(c.key)} className={`radio-tile ${selectedCombo === c.key ? 'active' : ''}`}>
-                      <div className="font-700 text-sm">{c.label}</div>
-                      <div className="text-xs text-ink-400 mt-1">{fmt(c.precio)}</div>
-                    </button>
-                  ))
-                )}
+              <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Opción de impresión</label>
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+                {combos.map(c => (
+                  <button key={c.key} onClick={() => setSelectedCombo(c.key)} className={`radio-tile ${selectedCombo === c.key ? 'active' : ''}`}>
+                    <div className="font-700 text-sm">{c.label}</div>
+                    <div className="text-xs text-ink-400 mt-1">{fmt(c.precio)}</div>
+                  </button>
+                ))}
               </div>
             </div>
 
             <div className="bg-ink-50 rounded-xl p-4 mb-2 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-ink-500">{pricing.hojas} hojas · {formato} · {color ? 'Color' : 'B/N'}</span>
+                <span className="text-ink-500">{pricing.hojas} hojas · {formato}</span>
                 <span className="font-600">{fmt(pricing.total)}</span>
               </div>
               <div className="flex justify-between font-800 text-lg border-t border-ink-200 pt-2">
@@ -386,24 +410,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
                 Comprar ahora - {fmt(pricing.total)}
               </button>
               <button
-                onClick={() => handleAgregar({
-                  id: `${workingBook.id}-${selectedCombo}-${Date.now()}`,
-                  libroId: book.id,
-                  titulo: workingBook.titulo,
-                  materia: workingBook.materia,
-                  carrera: workingBook.carrera,
-                  id_carrera: bookCareerId(workingBook),
-                  paginas: workingBook.paginas,
-                  hojas: pricing.hojas,
-                  formato,
-                  encuadernacion: 'basica',
-                  color,
-                  express: false,
-                  precio: pricing.total,
-                  tipo: pricing.tipo,
-                  imagen_url: workingBook.imagen_url,
-                  origen: book.isPdfPropio ? 'pdf-propio' : 'catalogo'
-                })}
+                onClick={() => handleAgregar(buildCartItem(false))}
                 className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl border-2 border-brand-DEFAULT bg-brand-muted hover:bg-brand-muted/70 dark:bg-brand-muted dark:hover:bg-brand-muted/80 text-brand-dark dark:text-brand-light font-700 text-sm transition-all btn-press"
                 disabled={pricing.total <= 0}
               >
@@ -523,24 +530,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
                                   return;
                                 }
                                 setShowExpressModal(false);
-                                handleAgregar({
-                                  id: `${workingBook.id}-${selectedCombo}-EXPRESS-${Date.now()}`,
-                                  libroId: book.id,
-                                  titulo: workingBook.titulo,
-                                  materia: workingBook.materia,
-                                  carrera: workingBook.carrera,
-                                  id_carrera: bookCareerId(workingBook),
-                                  paginas: workingBook.paginas,
-                                  hojas: pricing.hojas,
-                                  formato,
-                                  encuadernacion: 'basica',
-                                  color,
-                                  express: true,
-                                  precio: precioExpress,
-                                  tipo: pricing.tipo,
-                                  imagen_url: workingBook.imagen_url,
-                                  origen: book.isPdfPropio ? 'pdf-propio' : 'catalogo'
-                                }, true);
+                                handleAgregar({ ...buildCartItem(true), id: `${workingBook.id}-${selectedCombo}-EXPRESS-${Date.now()}`, precio: precioExpress }, true);
                               }}
                             >
                               {hasCartItems && !expressCartWarn ? 'Continuar con pedido prioritario' : 'Solicitar prioridad'}
@@ -892,7 +882,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                   <Cover src={item.imagen_url} alt={item.titulo} />
                   <div className="min-w-0">
                     <div className="text-sm font-700 text-ink-900 truncate">{item.titulo}</div>
-                    <div className="text-xs text-ink-400">{item.formato} · {item.hojas} hojas · {item.color ? 'Color' : 'B/N'} · {item.tipo === 'anillado' ? 'Anillado' : 'Abrochado'}{item.express ? ' · Express' : ''}</div>
+                    <div className="text-xs text-ink-400">{item.formato} · {item.hojas} hojas · {item.tipo === 'anillado' ? 'Anillado' : 'Abrochado'}{item.express ? ' · Express' : ''}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <span className={`font-700 text-sm ${item.express ? 'text-accent' : ''}`}>
@@ -1236,6 +1226,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
 function OrderTracker({ orders, setOrders, books, config, onVolver }) {
   const [phone, setPhone] = React.useState('');
   const [searched, setSearched] = React.useState(false);
+  const [searching, setSearching] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState(null);
   const [rescheduleMode, setRescheduleMode] = React.useState(false);
   const [rescheduleSlot, setRescheduleSlot] = React.useState(null);
@@ -1248,11 +1239,23 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
   const career = getCareer(config, books, matchedOrders[0]?.id_carrera || '');
   const slots = getNextSlots(config, orders, career);
 
-  function handleSearch() {
-    if (normalizePhone(phone).length >= 8) {
+  async function handleSearch() {
+    if (normalizePhone(phone).length < 8) return;
+    setSearching(true);
+    setSelectedOrder(null);
+    setRescheduleMode(false);
+    try {
+      const remote = await fetchOrdersByPhoneFromSupabase(config, phone);
+      if (remote && remote.length > 0) {
+        setOrders(prev => {
+          const map = new Map(prev.map(o => [o.id, o]));
+          for (const o of remote) map.set(o.id, o);
+          return [...map.values()];
+        });
+      }
+    } finally {
       setSearched(true);
-      setSelectedOrder(null);
-      setRescheduleMode(false);
+      setSearching(false);
     }
   }
 
@@ -1329,8 +1332,8 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <button className="btn-primary flex-shrink-0" onClick={handleSearch} disabled={normalizePhone(phone).length < 8}>
-            <Icon.Search /> Buscar
+          <button className="btn-primary flex-shrink-0" onClick={handleSearch} disabled={normalizePhone(phone).length < 8 || searching}>
+            <Icon.Search /> {searching ? 'Buscando…' : 'Buscar'}
           </button>
         </div>
       </div>

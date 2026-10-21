@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
-import { fmt, slug, HOJAS, getBookCombinations, recalcBookSugeridos, migrateBook, bookCareerId, getCareers, careerLabel } from '../../lib/utils';
-import { COMBO_KEYS, COMBO_LABELS } from '../../lib/constants';
-import { getSupabase, saveBookToSupabase, deleteBookFromSupabase, uploadPdfToStorage, subirPortada, fetchBooksFromSupabase } from '../../lib/supabase';
+import { fmt, slug, HOJAS, getBookCombinations, getMinPrice, recalcBookSugeridos, migrateBook, bookCareerId, getCareers, careerLabel, seedDefaultVariantes, applyClassicColumnPatchesToVariantes, prepareBookForSave } from '../../lib/utils';
+import { getSupabase, saveBookToSupabase, deleteBookFromSupabase, uploadPdfToStorage, subirPortada, fetchBooksFromSupabase, cleanBookPayload } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
 import { BookFormPanel } from '../BookFormPanel';
+
+function getMinPriceSafe(book) {
+  try { return getMinPrice(book) || 0; } catch { return 0; }
+}
 
 export function AdminCatalogo({ books, setBooks, config }) {
   const [editingBook, setEditingBook] = useState(null);
@@ -16,8 +19,8 @@ export function AdminCatalogo({ books, setBooks, config }) {
   const [abmStatus, setAbmStatus] = useState('all');
   const [catSortConfig, setCatSortConfig] = useState({ key: null, direction: 'asc' });
   const [catColumnVisibility, setCatColumnVisibility] = useState({
-    libro: true, carrera: true, paginas: true, a4bn: true, a4color: true,
-    a5bn: true, a5color: true, estado: true, pdf: true, portada: true, acciones: true
+    libro: true, carrera: true, paginas: true, variantes: true,
+    estado: true, pdf: true, portada: true, acciones: true
   });
   const [resizing, setResizing] = useState(null);
   const [savingBulk, setSavingBulk] = useState(false);
@@ -74,10 +77,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
     { key: 'libro', label: 'Libro' },
     { key: 'carrera', label: 'Carrera' },
     { key: 'paginas', label: 'Págs' },
-    { key: 'a4bn', label: 'A4 B/N' },
-    { key: 'a4color', label: 'A4 Color' },
-    { key: 'a5bn', label: 'A5 B/N' },
-    { key: 'a5color', label: 'A5 Color' },
+    { key: 'variantes', label: 'Variantes' },
     { key: 'estado', label: 'Estado' },
     { key: 'pdf', label: 'PDF' },
     { key: 'portada', label: 'Port' },
@@ -98,10 +98,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
       if (catSortConfig.key === 'libro') { aVal = a.titulo; bVal = b.titulo; }
       else if (catSortConfig.key === 'carrera') { aVal = a.carrera; bVal = b.carrera; }
       else if (catSortConfig.key === 'paginas') { aVal = a.paginas; bVal = b.paginas; }
-      else if (catSortConfig.key === 'a4bn') { aVal = a.a4_bn_final; bVal = b.a4_bn_final; }
-      else if (catSortConfig.key === 'a4color') { aVal = a.a4_color_final; bVal = b.a4_color_final; }
-      else if (catSortConfig.key === 'a5bn') { aVal = a.a5_bn_final; bVal = b.a5_bn_final; }
-      else if (catSortConfig.key === 'a5color') { aVal = a.a5_color_final; bVal = b.a5_color_final; }
+      else if (catSortConfig.key === 'variantes') { aVal = getMinPriceSafe(a); bVal = getMinPriceSafe(b); }
       else if (catSortConfig.key === 'estado') { aVal = a.activo !== false ? 1 : 0; bVal = b.activo !== false ? 1 : 0; }
       else if (catSortConfig.key === 'pdf') { aVal = a.pdf_url ? 1 : 0; bVal = b.pdf_url ? 1 : 0; }
       else if (catSortConfig.key === 'portada') { aVal = a.imagen_url && !a.imagen_url.startsWith('https://placehold.co/') ? 1 : 0; bVal = b.imagen_url && !b.imagen_url.startsWith('https://placehold.co/') ? 1 : 0; }
@@ -131,14 +128,14 @@ export function AdminCatalogo({ books, setBooks, config }) {
                 for (const [id, changes] of entries) {
                   const orig = books.find(b => b.id === id);
                   if (!orig) continue;
-                  const merged = recalcBookSugeridos({ ...orig, ...changes }, config);
+                  const merged = recalcBookSugeridos(applyClassicColumnPatchesToVariantes(orig, changes), config);
                   const ok = await saveBookToSupabase(merged, config);
                   if (ok) saved++;
                 }
                 setBooks(prev => prev.map(b => {
                   const changes = bulkChanges[b.id];
                   if (!changes) return b;
-                  return recalcBookSugeridos({ ...b, ...changes }, config);
+                  return recalcBookSugeridos(applyClassicColumnPatchesToVariantes(b, changes), config);
                 }));
                 setSavingBulk(false);
                 if (saved > 0) alert(`✓ ${saved} libro${saved > 1 ? 's' : ''} guardado${saved > 1 ? 's' : ''}`);
@@ -150,14 +147,14 @@ export function AdminCatalogo({ books, setBooks, config }) {
             {savingBulk ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : (bulkEdit ? (Object.keys(bulkChanges).length > 0 ? <><Icon.Check /> Guardar ({Object.keys(bulkChanges).length})</> : <><Icon.X /> Cerrar edición</>) : <><Icon.Edit /> Edición rápida</>)}
           </button>
           <button className="btn-primary text-xs px-3 py-2" onClick={() => {
+            const id = `lib-${String(Date.now()).slice(-6)}`;
+            const paginas = 100;
+            const pph = 2;
             const newBook = {
-              id: `lib-${String(Date.now()).slice(-6)}`, id_libro: `lib-${String(Date.now()).slice(-6)}`,
+              id, id_libro: id,
               titulo: '', materia: '', id_carrera: config.carreras[0]?.id_carrera || '', carrera: config.carreras[0]?.nombre || '',
-              autor: '', paginas: 100, paginas_por_hoja: 2, pdf_url: '', activo: true,
-              a4_bn_habilitado: true, a4_bn_sugerido: 0, a4_bn_ajuste: 0, a4_bn_final: 0,
-              a4_color_habilitado: false, a4_color_final: 0,
-              a5_bn_habilitado: false, a5_bn_sugerido: 0, a5_bn_ajuste: 0, a5_bn_final: 0,
-              a5_color_habilitado: false, a5_color_final: 0,
+              autor: '', paginas, paginas_por_hoja: pph, pdf_url: '', activo: true,
+              variantes: seedDefaultVariantes(paginas, config, pph),
               imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=Nuevo+Libro'
             };
             setEditingBook(recalcBookSugeridos(newBook, config));
@@ -175,10 +172,10 @@ export function AdminCatalogo({ books, setBooks, config }) {
                   const data = JSON.parse(ev.target.result);
                   if (!Array.isArray(data)) { alert('El archivo debe contener un array de libros.'); return; }
                   const migrated = data.map(b => {
-                    const book = migrateBook(b, config);
+                    const book = prepareBookForSave(migrateBook(b, config));
                     const shopId = getShopId();
                     if (shopId) book.shop_id = shopId;
-                    return book;
+                    return cleanBookPayload(book);
                   });
                   const sb = getSupabase(config);
                   const shopId = getShopId();
@@ -431,17 +428,20 @@ export function AdminCatalogo({ books, setBooks, config }) {
                       </div>
                     ) : <span className="text-xs opacity-50">#</span>}
                   </td>
-                  <td style={!catColumnVisibility.a4bn ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
-                    {catColumnVisibility.a4bn ? (b.a4_bn_habilitado ? <span className="badge bg-ok-muted text-ok-DEFAULT">{fmt(b.a4_bn_final)}</span> : <span className="text-xs text-ink-300">—</span>) : <span className="text-xs opacity-50">A4</span>}
-                  </td>
-                  <td style={!catColumnVisibility.a4color ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
-                    {catColumnVisibility.a4color ? (b.a4_color_habilitado ? <span className="badge bg-accent-muted text-accent">{fmt(b.a4_color_final)}</span> : <span className="text-xs text-ink-300">—</span>) : <span className="text-xs opacity-50">C</span>}
-                  </td>
-                  <td style={!catColumnVisibility.a5bn ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
-                    {catColumnVisibility.a5bn ? (b.a5_bn_habilitado ? <span className="badge bg-ok-muted text-ok-DEFAULT">{fmt(b.a5_bn_final)}</span> : <span className="text-xs text-ink-300">—</span>) : <span className="text-xs opacity-50">A5</span>}
-                  </td>
-                  <td style={!catColumnVisibility.a5color ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
-                    {catColumnVisibility.a5color ? (b.a5_color_habilitado ? <span className="badge bg-accent-muted text-accent">{fmt(b.a5_color_final)}</span> : <span className="text-xs text-ink-300">—</span>) : <span className="text-xs opacity-50">C</span>}
+                  <td style={!catColumnVisibility.variantes ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
+                    {catColumnVisibility.variantes ? (
+                      <div className="flex flex-wrap gap-1 max-w-[280px]">
+                        {(() => {
+                          const cs = getBookCombinations(b);
+                          if (!cs.length) return <span className="text-xs text-ink-300">—</span>;
+                          return cs.map(c => (
+                            <span key={c.key} className={`badge text-[10px] ${c.color ? 'bg-accent-muted text-accent' : 'bg-ok-muted text-ok-DEFAULT'}`} title={c.label}>
+                              {c.label}: {fmt(c.precio)}
+                            </span>
+                          ));
+                        })()}
+                      </div>
+                    ) : <span className="text-xs opacity-50">V</span>}
                   </td>
                   <td style={!catColumnVisibility.estado ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                     {catColumnVisibility.estado ? (
@@ -491,7 +491,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
               ));
             })()}
             {books.length === 0 && (
-              <tr><td colSpan={bulkEdit ? 10 : 11} className="text-center text-ink-400 py-10">No hay libros en el catálogo. Creá uno o importá desde JSON.</td></tr>
+              <tr><td colSpan={bulkEdit ? 12 : 8} className="text-center text-ink-400 py-10">No hay libros en el catálogo. Creá uno o importá desde JSON.</td></tr>
             )}
           </tbody>
         </table>
