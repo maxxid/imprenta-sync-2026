@@ -180,7 +180,7 @@ export function AdminConfig({ config, setConfig }) {
 
       <div className="card p-5">
         <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
-          <div className="font-700 text-sm text-ink-800">Prompt de Gemini (parser WhatsApp)</div>
+          <div className="font-700 text-sm text-ink-800">Prompt y catálogo de Gemini (parser WhatsApp)</div>
           <div className="flex gap-2">
             <button
               className="btn-secondary text-xs px-3 py-1.5"
@@ -193,6 +193,31 @@ export function AdminConfig({ config, setConfig }) {
           Se usa en <span className="font-700">Pedidos → Parsear con Gemini</span>. Editá las reglas y, sobre todo,
           la regla 8 (redacción del <span className="font-700">msj_ws</span>, el mensaje que le llega al cliente).
           <span className="font-700 text-ink-500"> Vacío = prompt por defecto.</span>
+        </div>
+
+        <div className="text-xs font-700 text-ink-500 uppercase tracking-wide mb-1.5">Catálogo que se le manda</div>
+        <div className="grid gap-3 sm:grid-cols-2 mb-4">
+          {[
+            ['compacto', 'Filtrado previo (sin IA)', 'Ficha completa solo de los ~10 libros más probables según el mensaje + índice de títulos. Menos ruido (−55% de tokens) y score local con IDs y títulos.'],
+            ['completo', 'Catálogo completo (como antes)', 'Una ficha detallada por cada libro activo. Más contexto para Gemini, pero ~7.000 chars de catálogo con 69 libros.']
+          ].map(([valor, titulo, detalle]) => {
+            const activo = (configDraft.prompts?.catalogo_modo || 'compacto') === valor;
+            return (
+              <button
+                key={valor}
+                type="button"
+                onClick={() => setConfigDraft(current => ({ ...current, prompts: { ...(current.prompts || {}), catalogo_modo: valor } }))}
+                className={`radio-tile text-left ${activo ? 'active' : ''}`}
+              >
+                <div className="font-700 text-sm">{titulo}</div>
+                <div className="text-[11px] text-ink-400 mt-1 leading-snug">{detalle}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[11px] text-ink-400 -mt-2 mb-4">
+          En ambos modos Gemini ve todos los títulos del catálogo: la diferencia es cuánta ficha detallada recibe.
+          Cambio que impacta solo en parseos futuros.
         </div>
         <textarea
           className="input-field font-mono text-xs leading-relaxed w-full"

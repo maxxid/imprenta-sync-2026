@@ -436,6 +436,21 @@ export function deriveOrderEstado(items) {
   return states[0];
 }
 
+/**
+ * CatáLOGO COMPLETO (modo "completo" del toggle de Ajustes): la versión
+ * anterior, una ficha por libro activo con todo el detalle. Es lo que se le
+ * mandaba a Gemini antes del filtrado previo: ~7.000 chars con 69 libros.
+ */
+export function buildParserCatalogFull(books) {
+  const activos = (books || []).filter(b => b && b.activo !== false && b.titulo);
+  return activos.map(book => {
+    const combos = getBookCombinations(book);
+    const hojas = HOJAS(book.paginas, book.paginas_por_hoja || 2);
+    const formatos = combos.length ? combos.map(c => c.label).join(', ') : 'sin variantes';
+    return `- [${book.titulo}] | Hojas: ${hojas} | Págs: ${book.paginas || 0} | Formatos: ${formatos} | Precio desde: ${fmt(getMinPrice(book))}`;
+  }).join('\n');
+}
+
 /** Tokens del mensaje (sin acentos). Palabras cortas salvo números, que suelen ser clave ("42"). */
 function parserTokens(text) {
   return String(text || '')
@@ -531,6 +546,16 @@ export function buildParserCatalog(books, mensaje = '', { maxDetalle = 10 } = {}
   const partes = [`FICHAS (elegí por título exacto):\n${fichas.join('\n')}`];
   if (indice.length) partes.push(`ÍNDICE (resto de títulos):\n${indice.join('\n')}`);
   return { texto: partes.join('\n\n'), seleccionados, conFicha: fichas.length, enIndice: indice.length };
+}
+
+/**
+ * Selector de modo (toggle de Ajustes → `config.prompts.catalogo_modo`):
+ * - 'compacto' (default): filtrado previo sin IA, 10 fichas + índice.
+ * - 'completo': todo el catálogo con ficha completa (como antes del filtrado).
+ */
+export function buildParserCatalogForMode(books, mensaje = '', modo = 'compacto') {
+  if (modo === 'completo') return { texto: buildParserCatalogFull(books), modo: 'completo', conFicha: 0, enIndice: 0 };
+  return { ...buildParserCatalog(books, mensaje), modo: 'compacto' };
 }
 
 /**

@@ -89,14 +89,17 @@ Fuente de verdad: `libro.variantes[]` (JSONB en Supabase).
 - `calcPrecioItem(libro, ref, encuadernacion, config, ...)`: si `ref` es **objeto variante**, el 5to arg es `express`; si es **string** (id, 'A4', 'A5' o label libre), el 5to es `color` y el 6to `express`. Resuelve por id → por label (slug incluido) → fallback clásico A4/A5.
 - Ítem de carrito/pedido guarda `varianteId` + `formato` (= label de la variante).
 
-## Prompt de Gemini (parser WhatsApp)
+## Prompt y catálogo de Gemini (parser WhatsApp)
 
-- **Dónde se edita:** Admin → Ajustes → card "Prompt de Gemini (parser WhatsApp)". Botón "Usar el default" lo deja vacío (= default).
+- **Dónde se edita:** Admin → Ajustes → card "Prompt y catálogo de Gemini (parser WhatsApp)". Botón "Usar el default" deja el prompt vacío (= default), y el toggle "Catálogo que se le manda" elige entre `compacto` (filtrado previo, default) y `completo` (como antes).
 - **Persistencia:** `config.prompts.parser_wa` → JSONB de la tabla `config` (más `saveLocal`). Editable por shop.
 - **Tokens:** `{{fecha}}` (fecha larga es-AR), `{{mensaje}}` (crudo del alumno), `{{catalogo}}` (libros activos). Se reemplazan en `buildParserPrompt` (`src/lib/utils.js`).
 - **Redes de seguridad:** si borrás un token, esa parte se anexa igual al final; si borrás el bloque JSON de salida, se re-anexa (`PARSER_OUTPUT_SCHEMA` en `constants.js`) — sin ese bloque el parser no puede leer la respuesta.
 - Default: `DEFAULT_PARSER_PROMPT` en `src/lib/constants.js` (regla 8 = redacción del `msj_ws`, el mensaje al cliente).
-- **Catálogo compacto:** `buildParserCatalog(books, mensaje)` manda ficha completa solo de los ~10 libros con más probabilidad (score local con IDF: palabras genéricas como "libro"/"materia" no puntúan; título completo en el mensaje = +10) y el resto como índice de títulos. Medido sobre `libros.json` (69 activos): **7.039 → 3.187 chars (−55%)**. Sin esto Gemini recibía 70+ fichas completas aunque el alumno mencionara un libro.
+- **Catálogo (toggle en Ajustes → "Catálogo que se le manda", `config.prompts.catalogo_modo`):**
+  - `'compacto'` (default) → `buildParserCatalog(books, mensaje)`: ficha completa solo de los ~10 libros con más probabilidad (score local con IDF: palabras genéricas como "libro"/"materia" no puntúan; título completo en el mensaje = +10) y el resto como índice de títulos. Medido sobre `libros.json` (69 activos): **7.168 → 3.187 chars (−56%)**. Sin esto Gemini recibía 70+ fichas completas aunque el alumno mencionara un libro.
+  - `'completo'` → `buildParserCatalogFull(books)`: una ficha por libro activo, la versión anterior.
+  - `buildParserCatalogForMode(books, mensaje, modo)` es el selector que usa `AdminParserWA`.
 - **`mensajeSinRuidoParaScore()`**: antes de puntuar saca teléfonos, horarios, montos y estados de pago. Con mensajes reales, `+54 9 388 581-1006` o `$9.600` matcheaban dígitos de títulos ("Fallos - 19 Fallos", libros de Medicina) y ensuciaban las fichas.
 - **Formatos:** si el alumno escribe "A4 vertical", la regla 1 del prompt pide devolver el **nombre exacto de la variante**; `AdminParserWA` lo matchea por `slug(label).includes(...)`. "A4" solo → primer combo A4.
 - **Fixtures:** los mensajes reales de la fotocopiadora (separados por `/`, tipo "Daniela Puca. CCC A4 vertical. Miercoles 18hs. pagado.") están en `npm run smoke` y en `scripts/test-msgs-reales.mjs`.

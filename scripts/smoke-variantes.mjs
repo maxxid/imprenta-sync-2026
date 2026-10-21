@@ -131,7 +131,7 @@ check('sin bloque JSON → se re-anexa el schema', out3.includes(PARSER_OUTPUT_S
 check('default trae el schema integrado', DEFAULT_PARSER_PROMPT.includes('"libro"'), true);
 check('regla de formato pide variante exacta', DEFAULT_PARSER_PROMPT.includes('A4 vertical'), true);
 
-// 15. "A4 vertical" en el mensaje → variante exacta (misma lógica que AdminParserWA)
+// 16. "A4 vertical" en el mensaje → variante exacta (misma lógica que AdminParserWA)
 const libroConVariante = {
   id: 'l1', titulo: 'CCC', paginas: 100, paginas_por_hoja: 2, activo: true,
   variantes: [
@@ -145,7 +145,7 @@ check('formato "A4 vertical" → variante exacta', elegido?.id, 'a4_vert');
 check('formato "A4" → sigue cayendo en A4 B/N', combosVar.find(c => slug(c.label).includes(slug('A4')))?.id, 'a4_bn');
 
 // 14. buildParserCatalog (catálogo compacto para Gemini)
-import { buildParserCatalog, mensajeSinRuidoParaScore, HOJAS as _HOJAS } from '../src/lib/utils.js';
+import { buildParserCatalog, buildParserCatalogForMode, buildParserCatalogFull, mensajeSinRuidoParaScore } from '../src/lib/utils.js';
 import { readFileSync } from 'node:fs';
 
 const fakeBooks = Array.from({ length: 76 }, (_, i) => ({
@@ -165,15 +165,26 @@ check('catálogo: genéricos ("libro", "materia") no deciden solos', buildParser
 check('catálogo: título completo manda', buildParserCatalog(fakeBooks, 'quiero Libro 63 de Materia 0').seleccionados[0].titulo, 'Libro 63 de Materia 0');
 check('catálogo: libros inactivos no cuentan', buildParserCatalog(fakeBooks, '').conFicha + buildParserCatalog(fakeBooks, '').enIndice, 75);
 
+// 15. Modo de catálogo (toggle de Ajustes): 'compacto' vs 'completo'
+const modoCompleto = buildParserCatalogForMode(fakeBooks, 'hola, necesito Libro 42', 'completo');
+check('modo completo → todas las fichas', (modoCompleto.texto.match(/Hojas:/g) || []).length, 75);
+check('modo completo → todos los títulos activos', fakeBooks.filter(b => b.activo !== false).every(b => modoCompleto.texto.includes(b.titulo)), true);
+check('modo completo → inactivos fuera', modoCompleto.texto.includes('Libro 5 de Materia 5'), false);
+check('modo completo → formato de ficha original', modoCompleto.texto.startsWith('- [Libro 0 de Materia 0] | Hojas:'), true);
+
+const modoCompacto = buildParserCatalogForMode(fakeBooks, 'hola, necesito Libro 42', 'compacto');
+check('modo compacto → acotado', modoCompacto.conFicha <= 10, true);
+check('modo por defecto = compacto', buildParserCatalogForMode(fakeBooks, 'Libro 42').modo, 'compacto');
+check('modo basura → cae a compacto', buildParserCatalogForMode(fakeBooks, 'Libro 42', 'otra-cosa').modo, 'compacto');
+check('buildParserCatalogFull = versión anterior', buildParserCatalogFull(fakeBooks).split('\n').length, 75);
+
 // Medición real contra libros.json + regresión con mensajes reales de WhatsApp
 let reales = null;
 try { reales = JSON.parse(readFileSync(new URL('../libros.json', import.meta.url), 'utf8')); } catch { /* noop */ }
 
 if (reales) {
   const activos = reales.filter(b => b.activo !== false);
-  const viejo = activos.map(b =>
-    `- [${b.titulo}] | Hojas: ${_HOJAS(b.paginas, b.paginas_por_hoja)} | Págs: ${b.paginas} | Formatos: ${getBookFormats(b).join(', ')} | Precio desde: ${(() => { const bc = getBookCombinations(b); return bc.length ? Math.min(...bc.map(c => c.precio)) : 0; })()}`
-  ).join('\n');
+  const viejo = buildParserCatalogFull(reales);
   const catReal = buildParserCatalog(reales, 'hola, quiero los apuntes de Constitucional Bidart');
   check('bench: catálogo nuevo < 50% del viejo', catReal.texto.length < viejo.length * 0.5, true);
   console.log(`\n  [bench] catálogo real: ${activos.length} libros · viejo ${viejo.length} chars → nuevo ${catReal.texto.length} chars (-${Math.round((1 - catReal.texto.length / viejo.length) * 100)}%)`);

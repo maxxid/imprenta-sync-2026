@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalog } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -56,7 +56,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
     }
     setParserLoading(true);
     setParserError('');
-    const catalogo = buildParserCatalog(books, mensaje);
+    const catalogo = buildParserCatalogForMode(books, mensaje, config.prompts?.catalogo_modo);
     const fechaHoyStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const prompt = buildParserPrompt(config.prompts?.parser_wa, {
       fecha: fechaHoyStr,
