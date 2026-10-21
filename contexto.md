@@ -96,6 +96,8 @@ Fuente de verdad: `libro.variantes[]` (JSONB en Supabase).
 - **Tokens:** `{{fecha}}` (fecha larga es-AR), `{{mensaje}}` (crudo del alumno), `{{catalogo}}` (libros activos). Se reemplazan en `buildParserPrompt` (`src/lib/utils.js`).
 - **Redes de seguridad:** si borrás un token, esa parte se anexa igual al final; si borrás el bloque JSON de salida, se re-anexa (`PARSER_OUTPUT_SCHEMA` en `constants.js`) — sin ese bloque el parser no puede leer la respuesta.
 - Default: `DEFAULT_PARSER_PROMPT` en `src/lib/constants.js` (regla 8 = redacción del `msj_ws`, el mensaje al cliente).
+- **Catálogo compacto:** `buildParserCatalog(books, mensaje)` manda ficha completa solo de los ~10 libros con más probabilidad (score local con IDF: palabras genéricas como "libro"/"materia" no puntúan; título completo en el mensaje = +10) y el resto como índice de títulos. Medido sobre `libros.json` (69 activos): **7.039 → 3.187 chars (−55%)**. Sin esto Gemini recibía 70+ fichas completas aunque el alumno mencionara un libro.
+- El emparejamiento final contra la DB lo hace la app por slug (`books.find(...)` en `AdminParserWA`), por eso `hojas`/`paginas` y `precio` del JSON de Gemini solo afectan a libros que no existen en el catálogo.
 - Ojo: el **otro** prompt de Gemini (`?mode=generate-wa`, mensaje de seguimiento desde Pedidos/Checkout) vive en el **Apps Script de Google Sheets**, no en este repo.
 
 ## Directivas para el agente

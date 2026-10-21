@@ -436,6 +436,80 @@ export function deriveOrderEstado(items) {
   return states[0];
 }
 
+/** Tokens del mensaje (sin acentos). Palabras cortas salvo números, que suelen ser clave ("42"). */
+function parserTokens(text) {
+  return String(text || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(t => t && (t.length >= 3 || /^\d+$/.test(t)));
+}
+
+/**
+ * Catálogo compacto para el parser IA.
+ *
+ * Hoy el 100% del catálogo se mandaba con ficha completa (título, materia,
+ * hojas, páginas, formatos, precio). Con 70+ libros eso es miles de tokens de
+ * ruido cuando el alumno menciona uno solo, y Gemini se confunde más.
+ *
+ * Estrategia: score local por palabras del mensaje y mandar
+ *   1. "FICHAS": detalle de los `maxDetalle` candidatos más probables.
+ *   2. "ÍNDICE": el resto solo como `título` (sigue pudiendo elegir cualquiera,
+ *      pero sin ficha larga; el precio no hace falta: el app recalcula todo lo
+ *      que matchea contra su catálogo local). El emparejamiento final contra la
+ *      DB lo hace la app por slug, así que hojas/páginas tampoco dependen de Gemini.
+ *
+ * El score usa IDF liviano: un token que aparece en casi todos los libros
+ * ("libro", "materia", "apuntes") no aporta puntos; uno raro ("42",
+ * "constitucional") vale más. Bonus fuerte si el título completo está en el
+ * mensaje.
+ */
+export function buildParserCatalog(books, mensaje = '', { maxDetalle = 10 } = {}) {
+  const activos = (books || []).filter(b => b && b.activo !== false && b.titulo);
+  if (!activos.length) return { texto: '', seleccionados: [], conFicha: 0, enIndice: 0 };
+
+  const tokens = parserTokens(mensaje);
+  const msgSlug = slug(mensaje);
+  const haystacks = activos.map(book => slug([book.titulo, book.materia, book.carrera, book.autor].filter(Boolean).join(' ')));
+
+  // IDF: cuántos libros contienen cada token (0 = no aparece → no aporta)
+  const df = new Map();
+  for (const t of tokens) df.set(t, haystacks.reduce((n, hay) => (hay.includes(t) ? n + 1 : n), 0));
+
+  const scored = activos.map((book, i) => {
+    const hay = haystacks[i];
+    let score = 0;
+    for (const t of tokens) {
+      if (!hay.includes(t)) continue;
+      const ratio = df.get(t) / activos.length;
+      if (ratio >= 0.6) continue; // token genérico del catálogo
+      score += (1 - ratio) * (t.length >= 5 ? 2 : 1);
+    }
+    const tituloSlug = slug(book.titulo);
+    if (tituloSlug.length >= 6 && msgSlug.includes(tituloSlug)) score += 10;
+    return { book, score };
+  }).sort((a, b) => b.score - a.score || String(a.book.titulo).localeCompare(String(b.book.titulo), 'es'));
+
+  const porScore = scored.filter(s => s.score > 0).slice(0, maxDetalle).map(s => s.book);
+  const seleccionados = porScore.length ? porScore : scored.slice(0, maxDetalle).map(s => s.book);
+  const usados = new Set(seleccionados.map(b => b.id || b.titulo));
+
+  const fichas = seleccionados.map(book => {
+    const combos = getBookCombinations(book);
+    const hojas = HOJAS(book.paginas, book.paginas_por_hoja || 2);
+    const formatos = combos.length ? combos.map(c => c.label).join(', ') : 'sin variantes';
+    return `- ${book.titulo}${book.materia ? ` (${book.materia})` : ''} | Hojas: ${hojas} | Formatos: ${formatos} | desde ${fmt(getMinPrice(book))}`;
+  });
+
+  const indice = activos
+    .filter(b => !usados.has(b.id || b.titulo))
+    .map(b => `- ${b.titulo}`);
+
+  const partes = [`FICHAS (elegí por título exacto):\n${fichas.join('\n')}`];
+  if (indice.length) partes.push(`ÍNDICE (resto de títulos):\n${indice.join('\n')}`);
+  return { texto: partes.join('\n\n'), seleccionados, conFicha: fichas.length, enIndice: indice.length };
+}
+
 /**
  * Arma el prompt final del Parser WhatsApp desde el template editable
  * (Ajustes → Prompt de Gemini). Tokens: {{fecha}}, {{mensaje}}, {{catalogo}}.

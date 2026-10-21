@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage, buildParserPrompt } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalog } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -56,14 +56,12 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
     }
     setParserLoading(true);
     setParserError('');
-    const booksContext = books.filter(b => b.activo !== false).map(b =>
-      `- [${b.titulo}] | Hojas: ${HOJAS(b.paginas, b.paginas_por_hoja)} | Págs: ${b.paginas} | Formatos: ${getBookFormats(b).join(', ')} | Precio desde: $${(() => { const bc = getBookCombinations(b); return bc.length > 0 ? Math.min(...bc.map(c => c.precio)) : 0; })()}`
-    ).join('\n');
+    const catalogo = buildParserCatalog(books, mensaje);
     const fechaHoyStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const prompt = buildParserPrompt(config.prompts?.parser_wa, {
       fecha: fechaHoyStr,
       mensaje,
-      catalogo: booksContext
+      catalogo: catalogo.texto
     });
 
     const sheetsUrl = config.integraciones?.SHEETS_API_URL;

@@ -130,5 +130,38 @@ const out3 = buildParserPrompt(sinJson, ctx);
 check('sin bloque JSON → se re-anexa el schema', out3.includes(PARSER_OUTPUT_SCHEMA), true);
 check('default trae el schema integrado', DEFAULT_PARSER_PROMPT.includes('"libro"'), true);
 
+// 14. buildParserCatalog (catálogo compacto para Gemini)
+import { buildParserCatalog, HOJAS as _HOJAS } from '../src/lib/utils.js';
+import { readFileSync } from 'node:fs';
+
+const fakeBooks = Array.from({ length: 76 }, (_, i) => ({
+  id: `lib-${i}`, titulo: `Libro ${i} de Materia ${i % 7}`, materia: `Materia ${i % 7}`,
+  autor: '', carrera: 'Lic. Química', activo: i !== 5, paginas: 100, paginas_por_hoja: 2,
+  a4_bn_habilitado: true, a4_bn_final: 3000, a5_bn_habilitado: false, a5_bn_final: 0
+}));
+
+const cat = buildParserCatalog(fakeBooks, 'hola, necesito Libro 42 de Materia 0 porfa');
+check('catálogo: fichas acotadas (<=10)', cat.conFicha <= 10 && cat.conFicha > 0, true);
+check('catálogo: el mencionado tiene ficha', cat.seleccionados.some(b => b.titulo.includes('Libro 42')), true);
+check('catálogo: inactivos fuera de fichas y índice', /(^|\n)- Libro 5 de Materia 5/m.test(cat.texto), false);
+check('catálogo: activos = fichas + índice', cat.conFicha + cat.enIndice, 75);
+check('catálogo: "Hojas:" solo en fichas', (cat.texto.match(/Hojas:/g) || []).length, cat.conFicha);
+check('catálogo: sin mensaje → fichas de reserva', buildParserCatalog(fakeBooks, '').conFicha, 10);
+check('catálogo: genéricos ("libro", "materia") no deciden solos', buildParserCatalog(fakeBooks, 'necesito los libros de la materia').conFicha + buildParserCatalog(fakeBooks, 'necesito los libros de la materia').enIndice, 75);
+check('catálogo: título completo manda', buildParserCatalog(fakeBooks, 'quiero Libro 63 de Materia 0').seleccionados[0].titulo, 'Libro 63 de Materia 0');
+check('catálogo: libros inactivos no cuentan', buildParserCatalog(fakeBooks, '').conFicha + buildParserCatalog(fakeBooks, '').enIndice, 75);
+
+// Medición real contra libros.json
+try {
+  const reales = JSON.parse(readFileSync(new URL('../libros.json', import.meta.url), 'utf8'));
+  const activos = reales.filter(b => b.activo !== false);
+  const viejo = activos.map(b =>
+    `- [${b.titulo}] | Hojas: ${_HOJAS(b.paginas, b.paginas_por_hoja)} | Págs: ${b.paginas} | Formatos: ${getBookFormats(b).join(', ')} | Precio desde: ${(() => { const bc = getBookCombinations(b); return bc.length ? Math.min(...bc.map(c => c.precio)) : 0; })()}`
+  ).join('\n');
+  const nuevo = buildParserCatalog(reales, 'hola, quiero los apuntes de Constitucional Bidart').texto;
+  check('bench: catálogo nuevo < 50% del viejo', nuevo.length < viejo.length * 0.5, true);
+  console.log(`\n  [bench] catálogo real: ${activos.length} libros · viejo ${viejo.length} chars → nuevo ${nuevo.length} chars (-${Math.round((1 - nuevo.length / viejo.length) * 100)}%)`);
+} catch { console.log('\n  [bench] libros.json no disponible, se omite'); }
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);
