@@ -89,7 +89,18 @@ const item = {
 const order = buildOrder([item], { nombre: 'Ana', whatsapp: '3811234567', modalidad: 'colegio' }, null, config, { id_carrera: 'q', nombre: 'Lic. Química' });
 check('buildOrder formato', order.formato, 'A4 vertical (letra grande)');
 
-// 11. Helpers
+// 11. Labels: espacios internos se conservan; trim recién al guardar
+const conEspacios = prepareBookForSave({
+  id: 'lib-3', titulo: 'X', paginas: 10, paginas_por_hoja: 2,
+  variantes: [
+    { id: 'v1', label: 'A4 vertical (letra grande)', paginas_por_hoja: 1, color: false, precio: 5000, habilitado: true },
+    { id: 'v2', label: '   ', paginas_por_hoja: 2, color: false, precio: 1000, habilitado: true }
+  ]
+});
+check('label con espacios internos', conEspacios.variantes.find(v => v.id === 'v1').label, 'A4 vertical (letra grande)');
+check('label vacío al guardar → id', conEspacios.variantes.find(v => v.id === 'v2').label, 'v2');
+
+// 12. Helpers
 check('seedDefaultVariantes ids', seedDefaultVariantes(100, config, 2).map(v => v.id), ['a4_bn', 'a4_color', 'a5_bn', 'a5_color']);
 check('normalizeVariante default', normalizeVariante({ label: 'Nueva opción' }).id, 'nueva opcion');
 check('varianteId string + express (6 args)', calcPrecioItem(libre, 'a4_vert', 'basica', config, false, true).total, Math.round(6200 * 1.2));

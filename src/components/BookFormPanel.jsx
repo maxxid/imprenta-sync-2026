@@ -3,14 +3,24 @@ import { Icon } from './Icons';
 import { Alert } from './UI';
 import {
   fmt, HOJAS, getBookCombinations, recalcBookSugeridos, careerLabel,
-  ensureBookVariantes, mirrorLegacyColumns, newVarianteId, normalizeVariante
+  ensureBookVariantes, mirrorLegacyColumns, prepareBookForSave, newVarianteId, normalizeVariante
 } from '../lib/utils';
 
 export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
   const [form, setForm] = useState(() => ensureBookVariantes({ ...book }, config));
 
+  /**
+   * Normaliza el form, pero conserva los labels de variantes tal como los está
+   * escribiendo el usuario (si no, el trim de normalizeVariante borra los
+   * espacios mientras tipea). El trim definitivo ocurre al guardar.
+   */
   function setFormBook(next) {
-    setForm(mirrorLegacyColumns(ensureBookVariantes(next, config)));
+    const labels = new Map((form.variantes || []).map(v => [v.id, v.label]));
+    const ensured = ensureBookVariantes(next, config);
+    setForm(mirrorLegacyColumns({
+      ...ensured,
+      variantes: ensured.variantes.map(v => (labels.has(v.id) ? { ...v, label: labels.get(v.id) } : v))
+    }));
   }
 
   function update(key, val) {
@@ -28,8 +38,7 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
   }
 
   function updateVariante(id, patch) {
-    const variantes = form.variantes.map(v => v.id === id ? normalizeVariante({ ...v, ...patch }, v.paginas_por_hoja) : v);
-    setFormBook({ ...form, variantes });
+    setFormBook({ ...form, variantes: form.variantes.map(v => (v.id === id ? { ...v, ...patch } : v)) });
   }
 
   function addVariante() {
@@ -213,7 +222,7 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
           </div>
 
           <div className="flex gap-3">
-            <button className="btn-primary flex-1" disabled={!canSave} onClick={() => onSave(mirrorLegacyColumns(form))}>Guardar libro</button>
+            <button className="btn-primary flex-1" disabled={!canSave} onClick={() => onSave(prepareBookForSave(form))}>Guardar libro</button>
             <button className="btn-secondary" onClick={onCancel}>Cancelar</button>
           </div>
         </div>
