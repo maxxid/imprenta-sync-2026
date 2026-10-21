@@ -8,6 +8,7 @@ import { STORAGE, DEFAULT_PARSER_PROMPT } from '../../lib/constants';
 export function AdminConfig({ config, setConfig }) {
   const [configDraft, setConfigDraft] = useState(null);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [saveMsg, setSaveMsg] = useState(null); // 'ok' | 'local' | null
   const [newHoliday, setNewHoliday] = useState({ fecha: '', motivo: '', universidad: '' });
 
   const universities = [...new Set(
@@ -20,33 +21,80 @@ export function AdminConfig({ config, setConfig }) {
 
   if (!configDraft) return null;
 
+  const hayCambios = JSON.stringify(config) !== JSON.stringify(configDraft);
+
+  function descartar() {
+    setConfigDraft(JSON.parse(JSON.stringify(config)));
+    setSaveMsg(null);
+  }
+
+  async function guardar() {
+    setSavingConfig(true);
+    setSaveMsg(null);
+    await new Promise(r => setTimeout(r, 300));
+    const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft);
+    let ok = false;
+    try {
+      saveLocal(STORAGE.config, finalConfig);
+      ok = await saveConfigToSupabase(finalConfig, finalConfig);
+    } catch (e) {
+      console.error('SAVE ERROR:', e);
+      ok = false;
+    }
+    setConfig(finalConfig);
+    setSavingConfig(false);
+    setSaveMsg(ok ? 'ok' : 'local');
+    setTimeout(() => setSaveMsg(null), 4000);
+  }
+
+  function irA(id) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const secciones = [
+    ['local', 'Local'],
+    ['capacidad', 'Producción'],
+    ['precios', 'Precios'],
+    ['espirales', 'Espirales'],
+    ['pagos', 'Pagos'],
+    ['feriados', 'Feriados'],
+    ['gemini', 'Gemini'],
+    ['turnos', 'Turnos']
+  ];
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-ink-400">Editando en borrador. Guardá para aplicar los cambios.</div>
-        <div className="flex gap-2">
-          <button className="btn-secondary text-xs px-3 py-2" onClick={() => setConfigDraft(JSON.parse(JSON.stringify(config)))} disabled={savingConfig}>Descartar</button>
-          <button className="btn-primary text-xs px-3 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); let saved = false; try { saveLocal(STORAGE.config, finalConfig); saved = await saveConfigToSupabase(finalConfig, finalConfig); } catch(e) { console.error('SAVE ERROR:', e); } setConfig(finalConfig); setSavingConfig(false); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="font-800 text-lg text-ink-900">Ajustes</div>
+          <div className="text-xs text-ink-400">Configuración general de la tienda. Los cambios se aplican recién al guardar.</div>
+        </div>
+        <div className="flex items-center gap-2 h-7">
+          {saveMsg === 'ok' && <span className="badge bg-emerald-50 text-emerald-700 text-xs flex items-center gap-1"><Icon.Check /> Guardado</span>}
+          {saveMsg === 'local' && <span className="badge bg-amber-50 text-amber-700 text-xs">Guardado solo local · falló la nube</span>}
+          {!saveMsg && <span className={`badge text-xs ${hayCambios ? 'bg-amber-50 text-amber-700' : 'bg-ink-100 text-ink-500'}`}>{hayCambios ? 'Cambios sin guardar' : 'Sin cambios'}</span>}
         </div>
       </div>
 
-      <div className="card p-5">
-        <div className="font-700 text-sm text-ink-800 mb-4">Control de capacidad y entregas</div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Capacidad diaria</label>
-            <input className="input-field" type="number" value={configDraft.produccion.capacidad_diaria_paginas} onChange={event => setConfigDraft(current => ({ ...current, produccion: { ...current.produccion, capacidad_diaria_paginas: Number(event.target.value || 0) } }))} />
-          </div>
-          <div>
-            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Precio promedio hoja</label>
-            <input className="input-field" type="number" value={configDraft.produccion.precio_promedio_hoja} onChange={event => setConfigDraft(current => ({ ...current, produccion: { ...current.produccion, precio_promedio_hoja: Number(event.target.value || 0) } }))} />
-          </div>
-        </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {secciones.map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => irA(id)}
+            className="whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-700 text-ink-600 border border-ink-100 bg-ink-50 hover:bg-ink-100 hover:text-ink-800 transition-colors"
+          >{label}</button>
+        ))}
       </div>
 
-      <div className="card p-5">
+      <div id="local" className="card p-5 scroll-mt-6">
         <div className="font-700 text-sm text-ink-800 mb-1">Local físico</div>
-        <div className="text-xs text-ink-400 mb-4">Lugar donde los alumnos retiran sus pedidos. Se usa en el checkout, en el seguimiento y en los mensajes de WhatsApp. Dejalo vacío hasta que tengas los datos.</div>
+        <div className="text-xs text-ink-400 mb-4">Lugar donde los alumnos retiran sus pedidos. Se usa en el checkout, en el seguimiento y en los mensajes de WhatsApp.</div>
+        {!(configDraft.local?.nombre || '').trim() && !(configDraft.local?.direccion || '').trim() && (
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800">
+            <span className="flex-shrink-0 mt-0.5 text-amber-500"><Icon.AlertCircle /></span>
+            <span>Todavía no cargaste el local: por ahora los mensajes y el checkout muestran la dirección de la facultad como referencia.</span>
+          </div>
+        )}
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Nombre del local</label>
@@ -59,7 +107,21 @@ export function AdminConfig({ config, setConfig }) {
         </div>
       </div>
 
-      <div className="card p-5">
+      <div id="capacidad" className="card p-5 scroll-mt-6">
+        <div className="font-700 text-sm text-ink-800 mb-4">Capacidad de impresión</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Capacidad diaria</label>
+            <input className="input-field" type="number" value={configDraft.produccion.capacidad_diaria_paginas} onChange={event => setConfigDraft(current => ({ ...current, produccion: { ...current.produccion, capacidad_diaria_paginas: Number(event.target.value || 0) } }))} />
+          </div>
+          <div>
+            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Precio promedio hoja</label>
+            <input className="input-field" type="number" value={configDraft.produccion.precio_promedio_hoja} onChange={event => setConfigDraft(current => ({ ...current, produccion: { ...current.produccion, precio_promedio_hoja: Number(event.target.value || 0) } }))} />
+          </div>
+        </div>
+      </div>
+
+      <div id="precios" className="card p-5 scroll-mt-6">
         <div className="font-700 text-sm text-ink-800 mb-4">Precios y redondeo</div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {[
@@ -77,7 +139,7 @@ export function AdminConfig({ config, setConfig }) {
         </div>
       </div>
 
-      <div className="card p-5">
+      <div id="espirales" className="card p-5 scroll-mt-6">
         <div className="font-700 text-sm text-ink-800 mb-4">Espirales (umbral en hojas)</div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           {((configDraft.encuadernacion?.espirales) || [
@@ -103,7 +165,7 @@ export function AdminConfig({ config, setConfig }) {
         </div>
       </div>
 
-      <div className="card p-5">
+      <div id="pagos" className="card p-5 scroll-mt-6">
         <div className="font-700 text-sm text-ink-800 mb-4">Configuración de pagos</div>
         <div className="space-y-4">
           <div className="flex items-center gap-4 flex-wrap">
@@ -150,14 +212,14 @@ export function AdminConfig({ config, setConfig }) {
         </div>
       </div>
 
-      <div className="card p-5">
+      <div id="feriados" className="card p-5 scroll-mt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="font-700 text-sm text-ink-800">Feriados y días inhabilitados</div>
           <span className="text-xs text-ink-400">{(configDraft.feriados || []).length} registrados</span>
         </div>
         <div className="space-y-2 mb-4">
           {(configDraft.feriados || []).length === 0 && (
-            <div className="text-xs text-ink-400 py-2">No hay feriados registrados. Agregá fechas para bloquear entregas.</div>
+            <div className="text-xs text-ink-400 py-2">No hay feriados cargados. Agregá fechas para bloquear días de retiro.</div>
           )}
           {(configDraft.feriados || []).map((f, idx) => (
             <div key={idx} className="flex items-center gap-3 rounded-lg border border-ink-100 bg-ink-50 p-3">
@@ -189,7 +251,7 @@ export function AdminConfig({ config, setConfig }) {
         </div>
       </div>
 
-      <div className="card p-5">
+      <div id="gemini" className="card p-5 scroll-mt-6">
         <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
           <div className="font-700 text-sm text-ink-800">Prompt y catálogo de Gemini (parser WhatsApp)</div>
           <div className="flex gap-2">
@@ -251,7 +313,7 @@ export function AdminConfig({ config, setConfig }) {
         </div>
       </div>
 
-      <div className="card p-5">
+      <div id="turnos" className="card p-5 scroll-mt-6">
         <div className="font-700 text-sm text-ink-800 mb-4">Universidades y turnos de retiro</div>
         <div className="text-xs text-ink-400 -mt-2 mb-4">Cada turno es un horario en el que el alumno retira en el local. Activá los días y horas que querés ofrecer.</div>
         <div className="space-y-6">
@@ -301,9 +363,14 @@ export function AdminConfig({ config, setConfig }) {
       </div>
 
       <div className="flex items-center justify-end gap-3 sticky bottom-4 bg-surface-hover/80 backdrop-blur-sm p-3 rounded-xl border border-ink-100 shadow-sm z-10">
-        <span className="text-xs text-ink-400 mr-auto">{JSON.stringify(config) !== JSON.stringify(configDraft) ? 'Hay cambios sin guardar' : 'Sin cambios'}</span>
-        <button className="btn-secondary text-sm px-4 py-2" onClick={() => setConfigDraft(JSON.parse(JSON.stringify(config)))} disabled={savingConfig}>Descartar</button>
-        <button className="btn-primary text-sm px-4 py-2" disabled={savingConfig} onClick={async () => { setSavingConfig(true); await new Promise(r => setTimeout(r, 400)); const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft); let saved = false; try { saveLocal(STORAGE.config, finalConfig); saved = await saveConfigToSupabase(finalConfig, finalConfig); } catch(e) { console.error('SAVE ERROR:', e); } setConfig(finalConfig); setSavingConfig(false); }}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
+        <span className="text-xs mr-auto">
+          {saveMsg === 'ok' ? <span className="text-emerald-600 font-700">Cambios guardados ✓</span>
+            : saveMsg === 'local' ? <span className="text-amber-600 font-700">Guardado solo local · falló la nube</span>
+            : hayCambios ? <span className="text-amber-600 font-700">Cambios sin guardar</span>
+            : <span className="text-ink-400">Sin cambios</span>}
+        </span>
+        <button className="btn-secondary text-sm px-4 py-2" onClick={descartar} disabled={savingConfig || !hayCambios}>Descartar</button>
+        <button className="btn-primary text-sm px-4 py-2" disabled={savingConfig || !hayCambios} onClick={guardar}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
       </div>
     </div>
   );
