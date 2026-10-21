@@ -2,7 +2,7 @@
 import {
   ensureBookVariantes, getBookCombinations, calcPrecioItem, recalcBookSugeridos,
   applyClassicColumnPatchesToVariantes, prepareBookForSave, getMinPrice, getBookFormats,
-  buildOrder, seedDefaultVariantes, normalizeVariante, newVarianteId
+  buildOrder, seedDefaultVariantes, normalizeVariante, newVarianteId, slug
 } from '../src/lib/utils.js';
 import { FALLBACK_CONFIG } from '../src/lib/constants.js';
 
@@ -129,9 +129,23 @@ const sinJson = 'Desglosa {{mensaje}}\n{{catalogo}}';
 const out3 = buildParserPrompt(sinJson, ctx);
 check('sin bloque JSON → se re-anexa el schema', out3.includes(PARSER_OUTPUT_SCHEMA), true);
 check('default trae el schema integrado', DEFAULT_PARSER_PROMPT.includes('"libro"'), true);
+check('regla de formato pide variante exacta', DEFAULT_PARSER_PROMPT.includes('A4 vertical'), true);
+
+// 15. "A4 vertical" en el mensaje → variante exacta (misma lógica que AdminParserWA)
+const libroConVariante = {
+  id: 'l1', titulo: 'CCC', paginas: 100, paginas_por_hoja: 2, activo: true,
+  variantes: [
+    { id: 'a4_bn', label: 'A4 B/N', paginas_por_hoja: 2, color: false, precio: 3000, habilitado: true },
+    { id: 'a4_vert', label: 'A4 vertical (letra grande)', paginas_por_hoja: 1, color: false, precio: 6200, habilitado: true }
+  ]
+};
+const combosVar = getBookCombinations(libroConVariante);
+const elegido = combosVar.find(c => slug(c.label).includes(slug('A4 VERTICAL')));
+check('formato "A4 vertical" → variante exacta', elegido?.id, 'a4_vert');
+check('formato "A4" → sigue cayendo en A4 B/N', combosVar.find(c => slug(c.label).includes(slug('A4')))?.id, 'a4_bn');
 
 // 14. buildParserCatalog (catálogo compacto para Gemini)
-import { buildParserCatalog, HOJAS as _HOJAS } from '../src/lib/utils.js';
+import { buildParserCatalog, mensajeSinRuidoParaScore, HOJAS as _HOJAS } from '../src/lib/utils.js';
 import { readFileSync } from 'node:fs';
 
 const fakeBooks = Array.from({ length: 76 }, (_, i) => ({
@@ -151,17 +165,37 @@ check('catálogo: genéricos ("libro", "materia") no deciden solos', buildParser
 check('catálogo: título completo manda', buildParserCatalog(fakeBooks, 'quiero Libro 63 de Materia 0').seleccionados[0].titulo, 'Libro 63 de Materia 0');
 check('catálogo: libros inactivos no cuentan', buildParserCatalog(fakeBooks, '').conFicha + buildParserCatalog(fakeBooks, '').enIndice, 75);
 
-// Medición real contra libros.json
-try {
-  const reales = JSON.parse(readFileSync(new URL('../libros.json', import.meta.url), 'utf8'));
+// Medición real contra libros.json + regresión con mensajes reales de WhatsApp
+let reales = null;
+try { reales = JSON.parse(readFileSync(new URL('../libros.json', import.meta.url), 'utf8')); } catch { /* noop */ }
+
+if (reales) {
   const activos = reales.filter(b => b.activo !== false);
   const viejo = activos.map(b =>
     `- [${b.titulo}] | Hojas: ${_HOJAS(b.paginas, b.paginas_por_hoja)} | Págs: ${b.paginas} | Formatos: ${getBookFormats(b).join(', ')} | Precio desde: ${(() => { const bc = getBookCombinations(b); return bc.length ? Math.min(...bc.map(c => c.precio)) : 0; })()}`
   ).join('\n');
-  const nuevo = buildParserCatalog(reales, 'hola, quiero los apuntes de Constitucional Bidart').texto;
-  check('bench: catálogo nuevo < 50% del viejo', nuevo.length < viejo.length * 0.5, true);
-  console.log(`\n  [bench] catálogo real: ${activos.length} libros · viejo ${viejo.length} chars → nuevo ${nuevo.length} chars (-${Math.round((1 - nuevo.length / viejo.length) * 100)}%)`);
-} catch { console.log('\n  [bench] libros.json no disponible, se omite'); }
+  const catReal = buildParserCatalog(reales, 'hola, quiero los apuntes de Constitucional Bidart');
+  check('bench: catálogo nuevo < 50% del viejo', catReal.texto.length < viejo.length * 0.5, true);
+  console.log(`\n  [bench] catálogo real: ${activos.length} libros · viejo ${viejo.length} chars → nuevo ${catReal.texto.length} chars (-${Math.round((1 - catReal.texto.length / viejo.length) * 100)}%)`);
+
+  // Mensajes reales (los formatos que manda la fotocopiadora)
+  const ccc = buildParserCatalog(reales, 'Daniela Puca. CCC A4 vertical. Miercoles 18hs. pagado.');
+  check('msg real CCC → las3 fichas tienen CCC', ccc.seleccionados.every(b => /CCC/i.test(b.titulo)), true);
+  check('msg real CCC → no arrastra otras materias', ccc.conFicha >= 1 && ccc.conFicha <= 3, true);
+
+  const nicolas = buildParserCatalog(reales, 'Nicolás Arias. CCC A4, Leticia Barrera. Seña 8mil. Viernes 16:30. +54 9 388 581-1006');
+  check('msg real → sin "Fallos" por números de teléfono', nicolas.seleccionados.some(b => /Fallos/i.test(b.titulo)), false);
+  check('msg real → incluye el libro de Leticia Barrera', nicolas.seleccionados.some(b => /Leticia Barrera/i.test(b.titulo)), true);
+  check('msg real → sigue incluyendo CCC', nicolas.seleccionados.some(b => /CCC/i.test(b.titulo)), true);
+
+  const carmen = buildParserCatalog(reales, 'Carmen Gomez. Administracion de Recursos Humanos - Chivenato $9.600 Direccion Estrategica de Recursos Humanos - Alles $4.500. PAGADO. hoy 18hs.+54 9 3886 51-7246');
+  check('msg real → montos/teléfono no arrastran Medicina', carmen.seleccionados.some(b => /Medicina/i.test(b.titulo)), false);
+
+  const limpio = mensajeSinRuidoParaScore('Seña 5mil. Viernes 16:30. +54 9 388 586-4133 pagado');
+  check('limpieza: quedan solo palabras', /388|4133|16:30|5mil|pagado/i.test(limpio), false);
+} else {
+  console.log('\n  [bench] libros.json no disponible, se omite');
+}
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

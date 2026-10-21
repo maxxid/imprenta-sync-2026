@@ -446,6 +446,28 @@ function parserTokens(text) {
 }
 
 /**
+ * Saca del mensaje lo que no es nombre de libro antes de puntuar: teléfonos,
+ * horarios, montos y cantidades. Sin esto, "16:30" o "+54 9 388 581-1006"
+ * matchean dígitos que tienen títulos como "Fallos - 19 Fallos" y entran en
+ * las fichas libros de Medicina que nadie pidió.
+ */
+export function mensajeSinRuidoParaScore(text) {
+  return String(text || '')
+    // horarios: 16:30, 18.30
+    .replace(/\b\d{1,2}[:.]\d{2}\b/g, ' ')
+    // "18hs", "16 hs", "18 horas"
+    .replace(/\b\d{1,2}\s?(?:hs|horas)\b/gi, ' ')
+    // teléfonos / números largos: +54 9 388 586-4133, 3886 51-7246, 3885864133
+    .replace(/\+?\d[\d\s\-().]{7,}\d/g, ' ')
+    // montos con separador de miles: $9.600 / 12.500 / 1,200
+    .replace(/[$]?\s?\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?/g, ' ')
+    // "5mil", "5000 pesos", "2 copias"
+    .replace(/\b\d+\s?(?:mil|k|pesos|copias|copia|hojas|paginas|páginas)\b/gi, ' ')
+    // estados de pago que aportan ruido
+    .replace(/\b(?:pagado|pago|seña|sena|transferi|transferido|abonado)\b/gi, ' ');
+}
+
+/**
  * Catálogo compacto para el parser IA.
  *
  * Hoy el 100% del catálogo se mandaba con ficha completa (título, materia,
@@ -468,8 +490,9 @@ export function buildParserCatalog(books, mensaje = '', { maxDetalle = 10 } = {}
   const activos = (books || []).filter(b => b && b.activo !== false && b.titulo);
   if (!activos.length) return { texto: '', seleccionados: [], conFicha: 0, enIndice: 0 };
 
-  const tokens = parserTokens(mensaje);
-  const msgSlug = slug(mensaje);
+  const limpio = mensajeSinRuidoParaScore(mensaje);
+  const tokens = parserTokens(limpio);
+  const msgSlug = slug(limpio);
   const haystacks = activos.map(book => slug([book.titulo, book.materia, book.carrera, book.autor].filter(Boolean).join(' ')));
 
   // IDF: cuántos libros contienen cada token (0 = no aparece → no aporta)

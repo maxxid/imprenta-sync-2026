@@ -133,8 +133,8 @@ CATÁLOGO:
 {{catalogo}}
 
 REGLAS DE ORO:
-1. FORMATO: A4 por defecto. Si no se especifica, usá A4.
-2. TRABAJO: Usá el nombre EXACTO del catálogo. Si no coincide exacto, usá el más cercano.
+1. FORMATO: A4 por defecto. Si el alumno menciona otro ("A5", "A4 vertical", "papel fotográfico"), copiá en "formato" el nombre EXACTO de la variante del catálogo (ej: "A4 vertical (letra grande)").
+2. TRABAJO: Usá el nombre EXACTO del catálogo. Si no coincide exacto, usá el más cercano. Si el catálogo trae un ÍNDICE y el alumno se refiere a uno de esos títulos, usá ese título igual.
 3. VARIOS: Generá un objeto por cada libro mencionado.
 4. OBSERVACIONES (N): Resumí con emojis (🕒hora, 📍lugar, 🚨otro). Solo mencionar lugar si es diferente a la facultad. Si no hay hora, omitir. Estado de pago no es necesario decirlo.
 5. SEÑA (REGLA DE ORO): Si el mensaje NO menciona explícitamente un monto de pago, la seña SIEMPRE es 0. Jamás asumas que está pagado. Solo sena > 0 si ves un número junto a palabras como seña, pagué, transferí, pago, pagado. Ejemplos validos: seña 7400, dejo $6000 de seña, pagué 5000, transferí 3000, pago total, pagado completo. Interpreta tres mil como 3000, 5mil como 5000. Si solo dice seña sin numero, sena = 0. Si dice seña del 50%, calcula el 50% del precio del primer libro.
@@ -148,8 +148,8 @@ REGLAS DE ORO:
    - NO uses emojis excesivos. Profesional pero cercano. El emoji que siempre uso es este, usar al menos una vez 😊
 
 Responde ÚNICAMENTE un Array JSON:
-[{"alumno":"NOMBRE","formato":"A4/A5","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
+[{"alumno":"NOMBRE","formato":"A4/A5 o variante","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
 
 /** Salida JSON mínima que consume el parser (se anexa si el prompt editado la borró). */
 export const PARSER_OUTPUT_SCHEMA = `Responde ÚNICAMENTE un Array JSON:
-[{"alumno":"NOMBRE","formato":"A4/A5","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
+[{"alumno":"NOMBRE","formato":"A4/A5 o variante","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
