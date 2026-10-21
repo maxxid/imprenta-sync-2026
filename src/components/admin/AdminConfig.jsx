@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '../Icons';
 import { Alert } from '../UI';
-import { getCareers, careerLabel } from '../../lib/utils';
+import { getCareers, careerLabel, DIAS, DIAS_ORDER, buildVentana, normalizeVentanas, turnoFromHorario, nextHorario, slug } from '../../lib/utils';
 import { saveConfigToSupabase, saveLocal, loadLocal, deepMerge } from '../../lib/supabase';
 import { STORAGE, DEFAULT_PARSER_PROMPT } from '../../lib/constants';
 
@@ -10,6 +10,8 @@ export function AdminConfig({ config, setConfig }) {
   const [savingConfig, setSavingConfig] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null); // 'ok' | 'local' | null
   const [newHoliday, setNewHoliday] = useState({ fecha: '', motivo: '', universidad: '' });
+  const [bulkTime, setBulkTime] = useState('19:00');
+  const [addTimes, setAddTimes] = useState({}); // horario tipeado en "Agregar" por (carrera|día)
 
   const universities = [...new Set(
     (config.carreras || []).filter(c => c.universidad).map(c => c.universidad)
@@ -32,7 +34,9 @@ export function AdminConfig({ config, setConfig }) {
     setSavingConfig(true);
     setSaveMsg(null);
     await new Promise(r => setTimeout(r, 300));
-    const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), configDraft);
+    const draft = JSON.parse(JSON.stringify(configDraft));
+    (draft.carreras || []).forEach(c => { c.ventanas = normalizeVentanas(c.ventanas); });
+    const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), draft);
     let ok = false;
     try {
       saveLocal(STORAGE.config, finalConfig);
@@ -49,6 +53,80 @@ export function AdminConfig({ config, setConfig }) {
 
   function irA(id) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ─── Edición de la agenda de turnos (configDraft.carreras[].ventanas) ───
+  const careerKeyOf = c => (c && (c.id_carrera || slug(c.nombre))) || '';
+
+  function mutarVentanas(careerKey, updater) {
+    setConfigDraft(cur => ({
+      ...cur,
+      carreras: (cur.carreras || []).map(c => (careerKeyOf(c) === careerKey
+        ? { ...c, ventanas: updater([...(c.ventanas || [])]) }
+        : c))
+    }));
+  }
+
+  function setHora(careerKey, gi, horario) {
+    mutarVentanas(careerKey, arr => {
+      if (!arr[gi]) return arr;
+      arr[gi] = { ...arr[gi], horario, turno: turnoFromHorario(horario) };
+      return arr;
+    });
+  }
+
+  function toggleTurno(careerKey, gi) {
+    mutarVentanas(careerKey, arr => {
+      if (!arr[gi]) return arr;
+      arr[gi] = { ...arr[gi], activa: arr[gi].activa === false };
+      return arr;
+    });
+  }
+
+  function quitarTurno(careerKey, gi) {
+    mutarVentanas(careerKey, arr => { arr.splice(gi, 1); return arr; });
+  }
+
+  function agregarTurno(careerKey, dia, horario) {
+    mutarVentanas(careerKey, arr => {
+      const delDia = arr.filter(v => Number(v.dia) === dia);
+      let base = String(horario || '').trim();
+      if (!base) {
+        if (delDia.length) {
+          const last = delDia.reduce((a, b) => {
+            const ma = (+String(a.horario).split(':')[0]) * 60 + (+String(a.horario).split(':')[1] || 0);
+            const mb = (+String(b.horario).split(':')[0]) * 60 + (+String(b.horario).split(':')[1] || 0);
+            return mb > ma ? b : a;
+          });
+          base = nextHorario(last.horario);
+        } else {
+          base = '19:00';
+        }
+      }
+      if (!/^\d{1,2}:\d{2}$/.test(base)) return arr;
+      if (delDia.some(v => String(v.horario) === base)) return arr;
+      arr.push(buildVentana(dia, base));
+      return arr;
+    });
+  }
+
+  function toggleDia(careerKey, dia, open) {
+    mutarVentanas(careerKey, arr => arr.map(v => (Number(v.dia) === dia ? { ...v, activa: open !== false } : v)));
+  }
+
+  function bulkAdd(dias, horario) {
+    const h = String(horario || '').trim();
+    if (!/^\d{1,2}:\d{2}$/.test(h)) return;
+    setConfigDraft(cur => ({
+      ...cur,
+      carreras: (cur.carreras || []).map(c => {
+        const arr = [...(c.ventanas || [])];
+        dias.forEach(dia => {
+          if (!arr.some(v => Number(v.dia) === dia && String(v.horario) === h)) arr.push(buildVentana(dia, h));
+        });
+        return { ...c, ventanas: normalizeVentanas(arr) };
+      })
+    }));
   }
 
   const secciones = [
@@ -314,51 +392,113 @@ export function AdminConfig({ config, setConfig }) {
       </div>
 
       <div id="turnos" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-4">Universidades y turnos de retiro</div>
-        <div className="text-xs text-ink-400 -mt-2 mb-4">Cada turno es un horario en el que el alumno retira en el local. Activá los días y horas que querés ofrecer.</div>
-        <div className="space-y-6">
-          {getCareers(configDraft).map(career => (
-            <div key={career.id_carrera} className="rounded-xl border border-ink-100 bg-ink-50 p-4">
-              <div className="flex items-start justify-between gap-4 mb-3">
+        <div className="font-700 text-sm text-ink-800 mb-1">Universidades y horarios de retiro</div>
+        <div className="text-xs text-ink-400 -mt-1 mb-4">
+          Horarios en los que el alumno pasa a retirar el pedido por el local. Cargá, editá o quitá horarios por día.
+          El punto verde activa/desactiva y el ✕ quita el turno.
+        </div>
+
+        {/* Carga masiva */}
+        <div className="flex flex-wrap items-center gap-2 mb-4 rounded-xl border border-ink-100 bg-ink-50 p-3">
+          <span className="text-xs font-700 text-ink-600">Agregar un mismo horario a varios días:</span>
+          <input type="time" value={bulkTime} onChange={e => setBulkTime(e.target.value)} className="input-field text-xs w-auto py-1" />
+          <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => bulkAdd([1, 2, 3, 4, 5], bulkTime)}>Lun a Vie</button>
+          <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => bulkAdd([1, 2, 3, 4, 5, 6], bulkTime)}>Lun a Sáb</button>
+          <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => bulkAdd(DIAS_ORDER, bulkTime)}>Todos</button>
+          <span className="text-[11px] text-ink-400 ml-auto">No duplica horarios existentes.</span>
+        </div>
+
+        <div className="space-y-5">
+          {getCareers(configDraft).map(career => {
+            const careerKey = careerKeyOf(career);
+            const ventanas = career.ventanas || [];
+            const activasCount = ventanas.filter(v => v.activa !== false).length;
+            const sinConfig = ventanas.length === 0;
+            return (
+              <div key={careerKey} className="rounded-xl border border-ink-100 bg-ink-50 p-4">
+                <div className="flex items-start justify-between gap-4 mb-1">
+                  <div>
+                    <div className="font-800 text-sm text-ink-900">{careerLabel(career)}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">{career.universidad}</div>
+                  </div>
+                  <span className={`badge text-[11px] shrink-0 ${sinConfig ? 'bg-ink-100 text-ink-500' : activasCount ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                    {sinConfig ? 'Turnos por defecto' : `${activasCount} de ${ventanas.length} activos`}
+                  </span>
+                </div>
+                <div className="mb-2 text-[11px] text-ink-400">
+                  {sinConfig && 'Sin horarios cargados: se usan los de por defecto (Lun a Vie · 10:00 y 19:00). Cargá horarios para personalizar.'}
+                  {!sinConfig && activasCount === 0 && <span className="text-amber-600 font-700">Sin turnos activos: el alumno no podrá elegir turno de retiro.</span>}
+                </div>
+
                 <div>
-                  <div className="font-800 text-sm text-ink-900">{careerLabel(career)}</div>
-                  <div className="text-xs text-ink-500 mt-0.5">{career.universidad}</div>
+                  {DIAS_ORDER.map(dia => {
+                    const delDia = ventanas.map((v, gi) => ({ v, gi })).filter(({ v }) => Number(v.dia) === dia);
+                    const diaAbierto = delDia.some(({ v }) => v.activa !== false);
+                    const addKey = `${careerKey}|${dia}`;
+                    const addVal = addTimes[addKey] || '';
+                    return (
+                      <div key={dia} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2 border-t border-ink-100 first:border-t-0">
+                        <div className="w-[136px] flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              if (delDia.length === 0) agregarTurno(careerKey, dia, '19:00');
+                              else toggleDia(careerKey, dia, !diaAbierto);
+                            }}
+                            className={`w-2.5 h-2.5 rounded-full shrink-0 transition-colors ${diaAbierto ? 'bg-emerald-500' : 'bg-gray-300 hover:bg-gray-400'}`}
+                            title={delDia.length === 0 ? 'Abrir este día (agrega 19:00)' : diaAbierto ? 'Cerrar este día' : 'Abrir este día'}
+                          />
+                          <span className={`text-xs font-700 ${diaAbierto ? 'text-ink-800' : 'text-ink-400'}`}>{DIAS[dia]}</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-[180px]">
+                          {delDia.length === 0 && <span className="text-[11px] text-ink-400">Cerrado</span>}
+                          {delDia.map(({ v, gi }) => {
+                            const isActive = v.activa !== false;
+                            return (
+                              <span
+                                key={gi}
+                                className={`inline-flex items-center gap-1 rounded-lg border pl-1.5 pr-1 py-1 transition-all ${isActive ? 'bg-white border-ink-200' : 'bg-ink-100 border-ink-200'}`}
+                              >
+                                <button
+                                  onClick={() => toggleTurno(careerKey, gi)}
+                                  className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                                  title={isActive ? 'Clic para desactivar' : 'Clic para activar'}
+                                />
+                                <input
+                                  type="time"
+                                  value={v.horario || ''}
+                                  onChange={e => setHora(careerKey, gi, e.target.value)}
+                                  className={`bg-transparent text-xs font-700 outline-none w-[58px] ${isActive ? 'text-ink-800' : 'text-ink-400'}`}
+                                />
+                                <button
+                                  onClick={() => quitarTurno(careerKey, gi)}
+                                  className="text-ink-400 hover:text-red-500 leading-none px-0.5 text-sm"
+                                  title="Quitar turno"
+                                >×</button>
+                              </span>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="time"
+                            value={addVal}
+                            onChange={e => setAddTimes(cur => ({ ...cur, [addKey]: e.target.value }))}
+                            className="input-field text-xs w-auto py-1"
+                          />
+                          <button
+                            className="btn-secondary text-xs px-2 py-1"
+                            onClick={() => { agregarTurno(careerKey, dia, addVal); setAddTimes(cur => ({ ...cur, [addKey]: '' })); }}
+                          >+ Agregar</button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {(career.ventanas || []).map((window, wIdx) => {
-                  const isActive = window.activa !== false;
-                  return (
-                    <button
-                      key={`${career.id_carrera}-${wIdx}`}
-                      onClick={() => setConfigDraft(current => ({
-                        ...current,
-                        carreras: current.carreras.map(c => {
-                          if (c.id_carrera !== career.id_carrera) return c;
-                          const ventanas = [...(c.ventanas || [])];
-                          if (!ventanas[wIdx]) return c;
-                          ventanas[wIdx] = { ...ventanas[wIdx], activa: ventanas[wIdx].activa === false ? true : false };
-                          return { ...c, ventanas };
-                        })
-                      }))}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-700 border transition-all ${
-                        isActive
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
-                      }`}
-                      title={isActive ? 'Clic para desactivar' : 'Clic para activar'}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                      {window.label} · {window.horario}
-                    </button>
-                  );
-                })}
-                {(career.ventanas || []).length === 0 && (
-                  <span className="text-xs text-ink-400">Sin ventanas configuradas</span>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

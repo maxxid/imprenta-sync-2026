@@ -126,6 +126,7 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `buildParserCatalogFull(books)` — Modo `completo`: una ficha por libro activo (la versión anterior)
 - `buildParserCatalogForMode(books, mensaje, modo)` — Selector según `config.prompts.catalogo_modo` ('compacto' default | 'completo'), toggle en Ajustes
 - `geminiEndpoint(config)` — URL del proxy de Gemini (Supabase Edge Function); usa `integraciones.GEMINI_ENDPOINT` y cae a la legacy `SHEETS_API_URL`
+- **Agenda de turnos de retiro:** `DIAS` / `DIAS_CORTO` / `DIAS_ORDER` (orden Lun→Dom), `turnoFromHorario(h)`, `buildVentana(dia, h, activa)`, `normalizeVentanas(ventanas)` (valida/deduplica/deriva/ordena `career.ventanas[]`), `nextHorario(h)`. `career.ventanas[] = { dia, horario, turno, label, activa }` es el modelo de horarios de retiro por carrera (editor completo en Ajustes).
 
 ## Estado global (App.jsx)
 

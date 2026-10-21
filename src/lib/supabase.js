@@ -258,7 +258,15 @@ export function getNextSlots(config, pedidos, career, isExpress = false) {
   const horasAnticipacion = isExpress
     ? (config.produccion.horas_anticipacion_express || 2)
     : (config.produccion.horas_anticipacion || 20);
-  const windows = (career?.ventanas || []).filter(window => window.activa !== false);
+  const allWindows = Array.isArray(career?.ventanas) ? career.ventanas : [];
+  const windows = allWindows.filter(window => window && window.activa !== false);
+  // Sin NINGUNA ventana configurada (carrera nueva / legacy) se usan los turnos por defecto
+  // de lunes a viernes. Si hay ventanas cargadas, un día sin turnos activos queda CERRADO.
+  const sinConfig = allWindows.length === 0;
+  const defaultWindows = [
+    { label: 'Manana', turno: 'manana', horario: '10:00', activa: true },
+    { label: 'Tarde', turno: 'tarde', horario: '19:00', activa: true }
+  ];
   const slots = [];
 
   for (let offset = 0; offset < 14; offset += 1) {
@@ -268,24 +276,14 @@ export function getNextSlots(config, pedidos, career, isExpress = false) {
     const fecha = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const used = getDayUsage(pedidos, fecha, isExpress);
     const remaining = dailyCap - used;
-    let dayWindows = windows.length
-      ? windows.filter(window => Number(window.dia) === day)
-      : (isWeekend(date) ? [] : [
-        { label: 'Manana', turno: 'manana', horario: '10:00', activa: true },
-        { label: 'Tarde', turno: 'tarde', horario: '19:00', activa: true }
-      ]);
-
-    if (dayWindows.length === 0 && !isWeekend(date)) {
-      dayWindows = [
-        { label: 'Manana', turno: 'manana', horario: '10:00', activa: true },
-        { label: 'Tarde', turno: 'tarde', horario: '19:00', activa: true }
-      ];
-    }
+    const dayWindows = sinConfig
+      ? (isWeekend(date) ? [] : defaultWindows)
+      : windows.filter(window => Number(window.dia) === day);
 
     const feriado = isFeriado(config, fecha, career?.universidad);
     dayWindows.forEach(window => {
-      const turno = window.turno || 'tarde';
-      const horario = window.horario || (turno === 'manana' ? '10:00' : '19:00');
+      const horario = window.horario || (window.turno === 'manana' ? '10:00' : '19:00');
+      const turno = window.turno || (Number(String(horario).split(':')[0]) < 13 ? 'manana' : 'tarde');
       let disponible = remaining > 0 && !feriado;
       let bloqueado = feriado ? `Feriado: ${feriado.motivo || 'No laborable'}` : '';
 

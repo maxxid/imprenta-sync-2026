@@ -293,6 +293,52 @@ export function careerAddress(career, config) {
   return career?.direccion_entrega || config.carreras?.[0]?.direccion_entrega || config.facultad?.lugar || 'Dirección de facultad según carrera';
 }
 
+// ─── Agenda de turnos de retiro (ventanas por día) ──────────────────
+// `career.ventanas[]` = horarios en los que el alumno pasa a retirar en el local.
+// Cada item: { dia: 0-6 (numeración getDay, 0 = domingo), horario: 'HH:MM', turno, label, activa }.
+export const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+export const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+// Orden de lectura en la UI (lunes primero). `dia` sigue getDay(): 1..6, 0 = domingo.
+export const DIAS_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+/** 'manana' si la hora es antes de las 13:00, si no 'tarde'. */
+export function turnoFromHorario(horario) {
+  const hora = Number(String(horario || '').split(':')[0]);
+  return Number.isFinite(hora) && hora < 13 ? 'manana' : 'tarde';
+}
+
+export function buildVentana(dia, horario, activa = true) {
+  const d = Number(dia);
+  const h = String(horario || '').trim();
+  return { dia: d, horario: h, turno: turnoFromHorario(h), label: DIAS[d] || '', activa: activa !== false };
+}
+
+/** Valida, deduplica (día+hora), deriva turno/label y ordena (día, luego hora) las ventanas. */
+export function normalizeVentanas(ventanas) {
+  const seen = new Set();
+  const out = [];
+  for (const v of (Array.isArray(ventanas) ? ventanas : [])) {
+    if (!v) continue;
+    const dia = Number(v.dia);
+    if (!(Number.isInteger(dia) && dia >= 0 && dia <= 6)) continue;
+    const horario = String(v.horario || '').trim();
+    if (!/^\d{1,2}:\d{2}$/.test(horario)) continue;
+    const key = `${dia}|${horario}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(buildVentana(dia, horario, v.activa));
+  }
+  out.sort((a, b) => DIAS_ORDER.indexOf(a.dia) - DIAS_ORDER.indexOf(b.dia) || a.horario.localeCompare(b.horario));
+  return out;
+}
+
+/** Suma 1 hora a un 'HH:MM' (sugiere el siguiente turno al agregar). */
+export function nextHorario(horario) {
+  const [h, m] = String(horario || '19:00').split(':').map(Number);
+  const total = (((Number.isFinite(h) ? h : 19) * 60) + (Number.isFinite(m) ? m : 0) + 60) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
 /** Modalidad única actual: el alumno retira en el local físico (cerca de la facultad). */
 export const RETIRO_LOCAL = 'Retiro en local';
 /** Legacy: la modalidad "Retiro facultad" del modelo anterior (retiro en la facultad). */

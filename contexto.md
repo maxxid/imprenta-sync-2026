@@ -118,7 +118,24 @@ Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumn
 - **`config.entrega.cadete_minimo`** se eliminó del código y de Ajustes (ya no hay cadete). Puede seguir existiendo en configs viejas de DB; es inofensivo.
 - **Mensajes:** el `DEFAULT_PARSER_PROMPT` (regla 8, y reglas 4/6) y `buildWhatsAppMessage()` (fallback) ahora dicen **"pasá a retirarlo por el local"** en vez de "te llevamos a la facultad". *Si el usuario llegara a guardar un prompt custom en Ajustes, hay que tocar "Usar el default" para que aplique el nuevo (verificado: hoy `config.prompts` está vacío → aplica el default).*
 - **Landing (App.jsx):** copy de "entrega en facultad" → "retiro en tu local".
-- **Smoke:** sección 17 (`npm run smoke`) cubre `isRetiroLocal` / `localPlace` / `deliveryPlaceFor` / `buildOrder` / `normalizeOrder` con el local configurado; sección 18 cubre `geminiEndpoint` (84 checks).
+- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18) y la agenda de turnos (19) — 103 checks.
+
+## Horarios de retiro (agenda en Ajustes, 2026-10-21)
+
+Rediseño de la card **"Universidades y horarios de retiro"** (antes en `AdminConfig` solo dejaba **activar/desactivar** turnos pre-cargados; no se podían agregar, quitar ni editar).
+
+- **Ahora es un editor de agenda semanal** por carrera: 7 filas (Lun→Dom) y por día:
+  - **Agregar** un horario (`<input type="time">` + "+ Agregar"; si lo dejás vacío sugiere el siguiente turno, o `19:00` si el día está vacío).
+  - **Editar** el horario in-situ (el chip contiene el `input type="time"`).
+  - **Activar/desactivar** cada turno (punto verde del chip).
+  - **Quitar** el turno (✕).
+  - **Abrir/cerrar el día** con el punto del día (si el día está vacío, el clic agrega `19:00`).
+- **Carga masiva** arriba de la card: un horario + botones **"Lun a Vie" / "Lun a Sáb" / "Todos"** (aplica a todas las carreras; no duplica horarios ya existentes).
+- **Ayuda en la UI:** badge con `"N de M activos"`, aviso ámbar si una carrera queda **sin turnos activos**, e indicador "Turnos por defecto" si no cargó ninguno.
+- **Helpers nuevos en `utils.js`:** `DIAS`, `DIAS_CORTO`, `DIAS_ORDER`, `turnoFromHorario(h)`, `buildVentana(dia, h, activa)`, `normalizeVentanas(ventanas)`, `nextHorario(h)`.
+- **Al guardar** se normaliza `career.ventanas[]` con `normalizeVentanas()`: valida (`dia` 0-6, `HH:MM`), **deduplica** día+hora, deriva `turno` y `label`, y **ordena** día→hora. El orden en pantalla se mantiene estable mientras editás (para que el input no salte); el orden cronológico se aplica recién al guardar.
+- **Modelo de dato sin cambios** (compat con lo ya guardado, sin migración): `career.ventanas[] = { dia, horario, turno, label, activa }` (`dia` = `getDay()`; 0 = domingo).
+- **Fix en `getNextSlots` (`supabase.js`):** los turnos por defecto (Lun–Vie 10:00 y 19:00) ahora **solo** se usan si la carrera **no tiene** `ventanas` cargadas. Antes, un día hábil sin turnos activos igual caía a esos defaults → era imposible cerrar un día. Ahora un día sin turnos activos queda **cerrado** (sin slots). `turno` ahora se deriva del `horario` si falta.
 
 ## Proxy de Gemini → Supabase Edge Function (2026-10-21)
 
@@ -169,3 +186,4 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 - Implementado: Ocultar Entregados (fetch lazy) + variantes libres de impresión.
 - Pendiente usuario: correr `migration_variantes.sql` en Supabase; commit/push cuando lo pida.
 - Migrado el proxy de Gemini a Supabase Edge Function (`supabase/functions/gemini`); baja del sync de Sheets. **Pendiente del usuario:** deployar la function + `secrets set GEMINI_API_KEY` + setear `integraciones.GEMINI_ENDPOINT` (pasos en la sección "Proxy de Gemini → Supabase Edge Function").
+- Rediseñada la agenda de horarios en Ajustes (editor semanal completo, ya no solo on/off) + fix de `getNextSlots` para poder cerrar días. Pendiente: probarla con el usuario y deployar Gemini.

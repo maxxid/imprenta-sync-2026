@@ -3,7 +3,8 @@ import {
   ensureBookVariantes, getBookCombinations, calcPrecioItem, recalcBookSugeridos,
   applyClassicColumnPatchesToVariantes, prepareBookForSave, getMinPrice, getBookFormats,
   buildOrder, seedDefaultVariantes, normalizeVariante, newVarianteId, slug,
-  RETIRO_LOCAL, isRetiroLocal, localPlace, deliveryPlaceFor, normalizeOrder, geminiEndpoint
+  RETIRO_LOCAL, isRetiroLocal, localPlace, deliveryPlaceFor, normalizeOrder, geminiEndpoint,
+  DIAS_ORDER, turnoFromHorario, buildVentana, normalizeVentanas, nextHorario
 } from '../src/lib/utils.js';
 import { FALLBACK_CONFIG } from '../src/lib/constants.js';
 
@@ -239,6 +240,34 @@ check('geminiEndpoint fallback a SHEETS_API_URL', geminiEndpoint({ integraciones
 check('geminiEndpoint prioriza GEMINI_ENDPOINT', geminiEndpoint({ integraciones: { GEMINI_ENDPOINT: 'https://nuevo', SHEETS_API_URL: 'https://viejo' } }), 'https://nuevo');
 check('geminiEndpoint sin config → vacío', geminiEndpoint({}), '');
 check('geminiEndpoint integraciones vacías → vacío', geminiEndpoint({ integraciones: {} }), '');
+
+// 19. Agenda de turnos de retiro (ventanas)
+check('turnoFromHorario 10:00 → manana', turnoFromHorario('10:00'), 'manana');
+check('turnoFromHorario 12:59 → manana', turnoFromHorario('12:59'), 'manana');
+check('turnoFromHorario 13:00 → tarde', turnoFromHorario('13:00'), 'tarde');
+check('turnoFromHorario 19:00 → tarde', turnoFromHorario('19:00'), 'tarde');
+check('buildVentana deriva label/turno', buildVentana(6, '10:00'), { dia: 6, horario: '10:00', turno: 'manana', label: 'Sábado', activa: true });
+check('buildVentana inactiva', buildVentana(1, '19:00', false).activa, false);
+
+const desordenadas = [
+  { dia: 5, horario: '19:00', activa: true },
+  { dia: 1, horario: '19:00', activa: true },
+  { dia: 1, horario: '19:00', activa: false }, // duplicado → colapsa en la 1ª ocurrencia
+  { dia: 1, horario: '10:00', activa: true },
+  { dia: 9, horario: '10:00' },                // día inválido → se cae
+  { dia: 2, horario: 'x' },                    // hora inválida → se cae
+  null                                         // basura → se cae
+];
+const norm = normalizeVentanas(desordenadas);
+check('normalize: descarta inválidos y duplicados', norm.length, 3);
+check('normalize: orden día/hora', norm.map(v => `${v.dia}:${v.horario}`), ['1:10:00', '1:19:00', '5:19:00']);
+check('normalize: deriva label', norm[0].label, 'Lunes');
+check('normalize: deriva turno', norm.map(v => v.turno), ['manana', 'tarde', 'tarde']);
+check('normalize: conserva activa (1ª ocurrencia)', norm[1].activa, true);
+check('normalize: array vacío', normalizeVentanas([]), []);
+check('nextHorario 19:00 → 20:00', nextHorario('19:00'), '20:00');
+check('nextHorario 23:00 → 00:00', nextHorario('23:00'), '00:00');
+check('DIAS_ORDER lunes..domingo', DIAS_ORDER, [1, 2, 3, 4, 5, 6, 0]);
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);
