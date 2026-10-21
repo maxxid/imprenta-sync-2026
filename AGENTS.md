@@ -76,12 +76,15 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 ## Funciones clave por dominio
 
 ### Catálogo (src/lib/utils.js)
+- Modelo de opciones: `libro.variantes[]` = `{ id, label, paginas_por_hoja, color, precio, habilitado, sugerido }`
+- `ensureBookVariantes(book)` / `prepareBookForSave(book)` / `mirrorLegacyColumns(book)` — variantes ↔ columnas a4_*/a5_*
+- `seedDefaultVariantes(paginas, config, pph)` — seed clásico A4/A5
 - `HOJAS(paginas, pph)` — Calcula cantidad de hojas
-- `calcSugerido(paginas, formato, config, pph)` — Precio sugerido por formato
-- `calcPrecioItem(libro, formato, encuadernacion, config, color)` — Precio final
-- `getBookFormats(book)`, `getBookCombinations(book)` — Formatos y combos disponibles
-- `migrateBook(book, config)` — Migra libros de formato legacy al modelo actual
-- `recalcBookSugeridos(book, config)` — Recalcula precios sugeridos
+- `calcSugerido(paginas, formato, config, pph)` — Precio sugerido A4/A5
+- `calcPrecioItem(libro, varianteObj|varianteId|'A4'|'A5'|label, encuadernacion, config, ...)` — Precio final. Si el 2do arg es **objeto variante**, el 5to es `express`; si es **string**, el 5to es `color` y el 6to `express`.
+- `getBookFormats(book)`, `getBookCombinations(book)` — opciones habilitadas (desde variantes)
+- `migrateBook(book, config)` — Migra legacy + asegura variantes
+- `recalcBookSugeridos(book, config)` — Recalcula sugeridos de a4_bn / a5_bn
 
 ### Pedidos (src/lib/utils.js)
 - `buildOrder(items, form, slot, config, career, metodoPago)` — Crea nuevo pedido
@@ -95,7 +98,8 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `fetchBooksFromSupabase(config)` — Carga libros
 - `saveBookToSupabase(book, config)` — Upsert libro
 - `deleteBookFromSupabase(id, config)` — Elimina libro
-- `fetchOrdersFromSupabase(config)` — Carga pedidos
+- `fetchOrdersFromSupabase(config, { includeEntregados = false })` — Carga pedidos (por defecto **sin** `Entregado`)
+- `fetchOrdersByPhoneFromSupabase(config, phone)` — Pedidos de un teléfono **incluyendo** entregados (tracking alumno)
 - `saveOrderToSupabase(order, config)` — Guarda pedido
 - `updateOrderInSupabase(order, config)` — Actualiza pedido
 - `uploadPdfToStorage(file, bookId, config)` — Sube PDF
@@ -145,6 +149,7 @@ El tema oscuro se maneja con variables CSS (`:root` / `.dark`) y Tailwind `darkM
 npm run dev       # Servidor de desarrollo (HMR)
 npm run build     # Build de producción
 npm run preview   # Preview del build
+npm run smoke     # Smoke test de la capa de variantes/precios (node, sin build)
 ```
 
 ## Multi-tenant (subdominios)
