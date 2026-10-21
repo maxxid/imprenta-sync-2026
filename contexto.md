@@ -49,15 +49,16 @@ Docs profundas: `AGENTS.md` (arquitectura/código) · `ONBOARDING.md` (alta de f
 
 ```
 src/App.jsx                 Auth, routing, shop detection, estado global
-src/lib/supabase.js         Cliente + CRUD + Sheets + shops/admins
+src/lib/supabase.js         Cliente + CRUD + shops/admins
 src/lib/utils.js            Precios, pedidos, carreras, helpers
 src/lib/shop.js             getShopId / setGlobalShop
 src/lib/constants.js        STORAGE, ORDER_STATES, fallbacks
 src/components/Store.jsx    Tienda alumno
 src/components/AdminPanel.jsx + admin/*   Panel por shop
 src/components/admin/GlobalAdminDashboard.jsx   Panel global
-config.json                 Supabase URL/key + integraciones (Sheets, pagos)
+config.json                 Supabase URL/key + integraciones (Gemini endpoint, pagos)
 vercel.json                 SPA rewrite → index.html
+supabase/functions/gemini/  Edge Function: proxy de Gemini (parser WA + generate-wa)
 ```
 
 ## Estados de pedido
@@ -105,7 +106,7 @@ Fuente de verdad: `libro.variantes[]` (JSONB en Supabase).
 - **Fixtures:** los mensajes reales de la fotocopiadora (separados por `/`, tipo "Daniela Puca. CCC A4 vertical. Miercoles 18hs. pagado.") están en `npm run smoke` y en `scripts/test-msgs-reales.mjs`.
 - **Nota sobre "varios alumnos":** los mensajes de la fotocopiadora que se usaron de fixture van **separados por `/` en el chat**, pero **cada mensaje es UN solo alumno** (nombre, teléfono y sus libros). No hay lote. Solo sería un tema si algún mensaje real traía varios alumnos en un mismo texto (no se observó).
 - El emparejamiento final contra la DB lo hace la app por slug (`books.find(...)` en `AdminParserWA`), por eso `hojas`/`paginas` y `precio` del JSON de Gemini solo afectan a libros que no existen en el catálogo.
-- Ojo: el **otro** prompt de Gemini (`?mode=generate-wa`, mensaje de seguimiento desde Pedidos/Checkout) vive en el **Apps Script de Google Sheets**, no en este repo.
+- El **otro** prompt de Gemini (`?mode=generate-wa`, mensaje de seguimiento desde Pedidos/Checkout) vive ahora en la **Edge Function** (`supabase/functions/gemini/index.ts`, función `buildWaPrompt`) — antes estaba en el Apps Script de Google.
 
 ## Retiro en local (modelo de negocio, 2026-10-21)
 
@@ -117,7 +118,29 @@ Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumn
 - **`config.entrega.cadete_minimo`** se eliminó del código y de Ajustes (ya no hay cadete). Puede seguir existiendo en configs viejas de DB; es inofensivo.
 - **Mensajes:** el `DEFAULT_PARSER_PROMPT` (regla 8, y reglas 4/6) y `buildWhatsAppMessage()` (fallback) ahora dicen **"pasá a retirarlo por el local"** en vez de "te llevamos a la facultad". *Si el usuario llegara a guardar un prompt custom en Ajustes, hay que tocar "Usar el default" para que aplique el nuevo (verificado: hoy `config.prompts` está vacío → aplica el default).*
 - **Landing (App.jsx):** copy de "entrega en facultad" → "retiro en tu local".
-- **Smoke:** sección 17 (`npm run smoke`) cubre `isRetiroLocal` / `localPlace` / `deliveryPlaceFor` / `buildOrder` / `normalizeOrder` con el local configurado (79 checks).
+- **Smoke:** sección 17 (`npm run smoke`) cubre `isRetiroLocal` / `localPlace` / `deliveryPlaceFor` / `buildOrder` / `normalizeOrder` con el local configurado; sección 18 cubre `geminiEndpoint` (84 checks).
+
+## Proxy de Gemini → Supabase Edge Function (2026-10-21)
+
+Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse del parser WhatsApp + generador de mensaje `generate-wa`) ahora es una **Supabase Edge Function** en `supabase/functions/gemini/index.ts`. La API key vive como secret en Supabase (nunca llega al navegador).
+
+- **Contrato idéntico** al Apps Script que reemplaza, así la lógica de fetch de la web no cambia:
+  - `POST` urlencoded `{ mensaje, prompt }` → `{ pedidos, timestamp }` (parser WhatsApp).
+  - `GET ?mode=generate-wa&data=<json>` → `{ msj_ws }` (mensaje de seguimiento / botón "Regenerar").
+  - Errores devueltos en `200` con `{ error }` (como el script viejo), para que la web muestre el mensaje real.
+- **Config:** `integraciones.GEMINI_ENDPOINT` (clave nueva). `geminiEndpoint(config)` en `utils.js` la lee y **cae a la legacy `SHEETS_API_URL`** si está vacía (migración sin romper). URL de la función: `https://{project-ref}.supabase.co/functions/v1/gemini`.
+- **Secretos:** `GEMINI_API_KEY` (requerido). Opcionales: `GEMINI_MODEL` (default `gemini-3.1-flash-lite-preview`), `GEMINI_MODEL_FALLBACK` (`gemini-3-flash-preview`), `GEMINI_RATE_MAX` (10/min por IP).
+- **Deploy:** `supabase functions deploy gemini --no-verify-jwt` (la web la llama sin auth) y `supabase secrets set GEMINI_API_KEY=...`.
+- **generate-wa reframeado a retiro en local:** `buildWaPrompt()` en la Edge Function ya no dice "confirmar entrega / llevamos a la facultad"; ahora avisa que el pedido está **listo para retirar en el local** y el alumno pasa a buscarlo (consistente con el modelo de negocio).
+- **Rate limiting:** best-effort por IP (leen `x-forwarded-for`), in-memory por instancia — sin el bloqueo persistente/email del script viejo (no hay `MailApp`).
+- **Baja del sync de Sheets (obsoleto):** se eliminaron `syncOrderToSheets` y `fetchOrdersFromSheets` de `supabase.js`, la copia local en `Store.jsx` y su import muerto en `AdminPedidos.jsx`. Ya no funcionaba contra el Apps Script actual (ese script ya no tenía handler de Sheets).
+
+### Pasos de migración (usuario)
+1. `supabase secrets set GEMINI_API_KEY=<tu-key>` (CLI linkeado al proyecto `hjtbwnsxgellbtfariog`).
+2. `supabase functions deploy gemini --no-verify-jwt`.
+3. Probar: `curl "https://hjtbwnsxgellbtfariog.supabase.co/functions/v1/gemini"` → debe devolver `{ status, tip }`.
+4. En Ajustes (config de Supabase) setear `integraciones.GEMINI_ENDPOINT` a esa URL. Vaciar `SHEETS_API_URL` cuando todo funcione.
+5. Verificar parser WA + "Regenerar" mensaje desde el admin.
 
 ## Directivas para el agente
 
@@ -145,3 +168,4 @@ Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumn
 - Clonado localmente (2026-10-20).
 - Implementado: Ocultar Entregados (fetch lazy) + variantes libres de impresión.
 - Pendiente usuario: correr `migration_variantes.sql` en Supabase; commit/push cuando lo pida.
+- Migrado el proxy de Gemini a Supabase Edge Function (`supabase/functions/gemini`); baja del sync de Sheets. **Pendiente del usuario:** deployar la function + `secrets set GEMINI_API_KEY` + setear `integraciones.GEMINI_ENDPOINT` (pasos en la sección "Proxy de Gemini → Supabase Edge Function").

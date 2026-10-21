@@ -2,7 +2,7 @@ import React from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
 import { Cover, Alert, Spinner, CareerCombobox, fechaLabel, buildWhatsAppMessage } from './UI';
-import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal } from '../lib/utils';
+import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, geminiEndpoint } from '../lib/utils';
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
@@ -25,7 +25,6 @@ async function confirmAttendance(order, setOrders, config) {
   };
   await updateOrderInSupabase(updated, config);
   setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
-  syncOrderToSheets(updated, config);
   return updated;
 }
 
@@ -41,12 +40,11 @@ async function rescheduleOrder(order, newFecha, newTurno, newHorario, newLabel, 
   };
   await updateOrderInSupabase(updated, config);
   setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
-  syncOrderToSheets(updated, config);
   return updated;
 }
 
 async function generateWhatsAppMessageForOrder(order, config) {
-  const url = config.integraciones?.SHEETS_API_URL;
+  const url = geminiEndpoint(config);
   if (!url) return buildWhatsAppMessage(order);
   try {
     const librosPayload = order.items ? order.items.map(i => ({
@@ -74,23 +72,6 @@ async function generateWhatsAppMessageForOrder(order, config) {
     console.warn('Fallo al generar mensaje con Gemini, usando fallback:', err);
   }
   return buildWhatsAppMessage(order);
-}
-
-async function syncOrderToSheets(order, config) {
-  const url = config.integraciones?.SHEETS_API_URL;
-  if (!url) return;
-  try {
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'text/plain'
-      },
-      body: JSON.stringify(order)
-    });
-  } catch (err) {
-    console.error('Error sincronizando con Sheets:', err);
-  }
 }
 
 function getOrdersByPhone(orders, phone) {
@@ -687,7 +668,6 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
       }
       setPedidos(previous => [order, ...previous]);
       setPedidoConfirmado(order);
-      syncOrderToSheets(order, config);
       goToStep(4);
     } catch (err) {
       console.error('Error en handlePagar:', err);

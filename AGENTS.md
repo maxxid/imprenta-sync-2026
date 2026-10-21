@@ -15,6 +15,7 @@ imprenta-sync-2026/
 ├── rls_policies.sql        # Row Level Security de Supabase
 ├── migration_multi_tenant.sql # Migración multi-tenant: shops + FK + índices
 ├── vercel.json             # Config de deploy Vercel
+├── supabase/functions/gemini/index.ts  # Edge Function: proxy de Gemini (parser WA + generate-wa)
 ├── dist/                   # Build de producción (generado)
 └── src/
     ├── main.jsx            # Punto de entrada React
@@ -23,7 +24,7 @@ imprenta-sync-2026/
     ├── lib/
     │   ├── constants.js    # STORAGE, ORDER_STATES, FALLBACK_CONFIG, etc.
     │   ├── utils.js        # fmt, slug, calcSugerido, buildOrder, etc.
-    │   ├── supabase.js     # Cliente Supabase (singleton) + CRUD + Sheets sync
+    │   ├── supabase.js     # Cliente Supabase (singleton) + CRUD + shops/admins
     │   └── shop.js         # Contexto global de shop (multi-tenant)
     └── components/
         ├── Icons.jsx       # 21 iconos SVG (Home, Cart, Settings, etc.)
@@ -47,7 +48,7 @@ imprenta-sync-2026/
 | Frontend   | React 19 + Vite 8 |
 | Estilos    | Tailwind CSS 4 (`@tailwindcss/vite`) |
 | Backend    | Supabase (PostgreSQL + Auth + Storage) |
-| Sync       | Google Sheets vía Apps Script |
+| Proxy IA   | Supabase Edge Function (`supabase/functions/gemini`) |
 | Pagos      | Talo (códigos de referencia) |
 | Deploy     | Vercel |
 | Fonts      | DM Sans (Google Fonts) |
@@ -56,12 +57,10 @@ imprenta-sync-2026/
 
 ```
 Cliente → Catálogo → Ficha → Carrito → Checkout → Supabase (pedidos)
-                                                      ↓
-                                              Google Sheets (sync)
-                                                      ↓
+
 Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
-         ↓                                           ↓
-    WhatsApp (Gemini IA) ← Google Sheets ← Notificaciones
+         ↓
+    WhatsApp (Gemini IA) ← Edge Function `gemini` (parse + generate-wa)
 ```
 
 ## Estados de pedidos
@@ -107,7 +106,6 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `fetchConfigFromSupabase(config)` / `saveConfigToSupabase(...)` — Config remota
 - `getNextBusinessDay(fecha)` — Próximo día hábil
 - `getNextSlots(config, pedidos, career, isExpress)` — Slots de retiro disponibles (turnos para tener el pedido listo en el local)
-- `syncOrderToSheets(order, config)` — Sincroniza con Google Sheets
 - `getOrdersByPhone(orders, phone)` — Busca pedidos por WhatsApp
 
 ### Utilidades (src/lib/utils.js)
@@ -127,6 +125,7 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `buildParserCatalog(books, mensaje, { maxDetalle })` — Modo `compacto`: score local con IDF (tokens genéricos no puntúan, título completo +10) → máx. 10 fichas detalladas + índice de títulos (−56% de tokens). Antes de puntuar, `mensajeSinRuidoParaScore()` saca teléfonos, horarios, montos y estados de pago
 - `buildParserCatalogFull(books)` — Modo `completo`: una ficha por libro activo (la versión anterior)
 - `buildParserCatalogForMode(books, mensaje, modo)` — Selector según `config.prompts.catalogo_modo` ('compacto' default | 'completo'), toggle en Ajustes
+- `geminiEndpoint(config)` — URL del proxy de Gemini (Supabase Edge Function); usa `integraciones.GEMINI_ENDPOINT` y cae a la legacy `SHEETS_API_URL`
 
 ## Estado global (App.jsx)
 
@@ -209,5 +208,5 @@ Luego el admin del nuevo shop carga su catálogo y configura precios/ventanas.
 - **Nombres:** camelCase para funciones/variables, PascalCase para componentes
 - **Estado:** React hooks (useState/useEffect) en componentes funcionales
 - **Supabase:** Cliente singleton (no crear nuevas instancias)
-- **Google Sheets:** Sync vía `SHEETS_API_URL` en `config.integraciones`
+- **Gemini (IA):** Proxy vía Supabase Edge Function; URL en `config.integraciones.GEMINI_ENDPOINT` (fallback legacy `SHEETS_API_URL`). Secretos en Supabase (`GEMINI_API_KEY`).
 - **Redondeo:** `rounding.js` cargado como script global, accedido vía `window.roundingUtils`

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -64,9 +64,9 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
       catalogo: catalogo.texto
     });
 
-    const sheetsUrl = config.integraciones?.SHEETS_API_URL;
+    const sheetsUrl = geminiEndpoint(config);
     if (!sheetsUrl) {
-      setParserError('No está configurada la URL del Apps Script en integraciones.SHEETS_API_URL');
+      setParserError('No está configurado el endpoint de Gemini en integraciones.GEMINI_ENDPOINT');
       setParserLoading(false);
       return;
     }
@@ -542,7 +542,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                   <button
                     className="text-xs font-700 text-brand-DEFAULT hover:text-brand-dark"
                     onClick={async () => {
-                      const sheetsUrl = config.integraciones?.SHEETS_API_URL;
+                      const sheetsUrl = geminiEndpoint(config);
                       if (!sheetsUrl) return;
                       try {
                         const librosPayload = parserPreview.libros.map(b => ({

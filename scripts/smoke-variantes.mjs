@@ -3,7 +3,7 @@ import {
   ensureBookVariantes, getBookCombinations, calcPrecioItem, recalcBookSugeridos,
   applyClassicColumnPatchesToVariantes, prepareBookForSave, getMinPrice, getBookFormats,
   buildOrder, seedDefaultVariantes, normalizeVariante, newVarianteId, slug,
-  RETIRO_LOCAL, isRetiroLocal, localPlace, deliveryPlaceFor, normalizeOrder
+  RETIRO_LOCAL, isRetiroLocal, localPlace, deliveryPlaceFor, normalizeOrder, geminiEndpoint
 } from '../src/lib/utils.js';
 import { FALLBACK_CONFIG } from '../src/lib/constants.js';
 
@@ -232,6 +232,13 @@ const pedidoRetiro = buildOrder(
 );
 check('buildOrder → modalidad Retiro en local', pedidoRetiro.modalidad_entrega, RETIRO_LOCAL);
 check('buildOrder lugar = local', pedidoRetiro.lugar_entrega, 'Fotocopiadora UNJu — Rivadavia 1234');
+
+// 18. Endpoint de Gemini (proxy vía Edge Function; fallback a clave legacy)
+check('geminiEndpoint usa GEMINI_ENDPOINT (trim)', geminiEndpoint({ integraciones: { GEMINI_ENDPOINT: ' https://x.supabase.co/functions/v1/gemini ' } }), 'https://x.supabase.co/functions/v1/gemini');
+check('geminiEndpoint fallback a SHEETS_API_URL', geminiEndpoint({ integraciones: { SHEETS_API_URL: 'https://script.google.com/exec' } }), 'https://script.google.com/exec');
+check('geminiEndpoint prioriza GEMINI_ENDPOINT', geminiEndpoint({ integraciones: { GEMINI_ENDPOINT: 'https://nuevo', SHEETS_API_URL: 'https://viejo' } }), 'https://nuevo');
+check('geminiEndpoint sin config → vacío', geminiEndpoint({}), '');
+check('geminiEndpoint integraciones vacías → vacío', geminiEndpoint({ integraciones: {} }), '');
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

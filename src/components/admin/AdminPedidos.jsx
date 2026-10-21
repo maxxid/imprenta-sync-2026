@@ -3,7 +3,7 @@ import { Icon } from '../Icons';
 import { statusBadge, Alert, Spinner, fechaLabel, buildWhatsAppMessage } from '../UI';
 import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal, RETIRO_LOCAL } from '../../lib/utils';
 import { ORDER_STATES, STATE_LABELS, STATE_STYLES, STATE_ROW_BG } from '../../lib/constants';
-import { getSupabase, saveOrderToSupabase, syncOrderToSheets, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta, fetchOrdersFromSupabase } from '../../lib/supabase';
+import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta, fetchOrdersFromSupabase } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
 import { BookFormPanel } from '../BookFormPanel';
 

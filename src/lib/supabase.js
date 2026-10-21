@@ -418,35 +418,6 @@ export function normalizeConfig(config) {
   return merged;
 }
 
-export async function syncOrderToSheets(order, config) {
-  const url = config.integraciones?.SHEETS_API_URL;
-  if (!url) return;
-  try {
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(order)
-    });
-  } catch (err) {
-    console.error('Error sincronizando con Sheets:', err);
-  }
-}
-
-export async function fetchOrdersFromSheets(config) {
-  const url = config.integraciones?.SHEETS_API_URL;
-  if (!url) return null;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Error al leer Sheets');
-    const data = await response.json();
-    return Array.isArray(data) ? data : null;
-  } catch (err) {
-    console.error('Error obteniendo pedidos desde Sheets:', err);
-    return null;
-  }
-}
-
 export function getOrdersByPhone(orders, phone) {
   const norm = normalizePhone(phone);
   if (norm.length < 8) return [];

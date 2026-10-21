@@ -77,6 +77,10 @@ export const FALLBACK_CONFIG = {
     direccion: ''
   },
   integraciones: {
+    // Proxy de Gemini (Supabase Edge Function). Ver `geminiEndpoint()` en utils.js.
+    GEMINI_ENDPOINT: '',
+    // Legacy: la URL vieja del Apps Script de Google. Se conserva solo como fallback
+    // durante la migración; vaciarla cuando GEMINI_ENDPOINT esté en uso.
     SHEETS_API_URL: '',
     API_KEY: '',
     GOOGLE_CLIENT_ID: '',

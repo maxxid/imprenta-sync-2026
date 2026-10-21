@@ -608,6 +608,14 @@ export function buildParserPrompt(template, { fecha = '', mensaje = '', catalogo
   return prompt;
 }
 
+// URL del proxy de Gemini (Supabase Edge Function). `integraciones.GEMINI_ENDPOINT`
+// es la clave actual; cae a la legacy `SHEETS_API_URL` para no romper configs viejas.
+export function geminiEndpoint(config) {
+  const integraciones = config?.integraciones || {};
+  const url = integraciones.GEMINI_ENDPOINT || integraciones.SHEETS_API_URL || '';
+  return String(url).trim();
+}
+
 export function extractTimeFromMessage(text) {
   if (!text) return null;
   const hrMatch = text.match(/(?:a\s+las?\s+)?(\d{1,2})(?::?(\d{2}))?\s*(?:hs|horas)\b/gi);
