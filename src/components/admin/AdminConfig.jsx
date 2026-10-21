@@ -346,6 +346,18 @@ export function AdminConfig({ config, setConfig }) {
           <span className="font-700 text-ink-500"> Vacío = prompt por defecto.</span>
         </div>
 
+        <div className="text-xs font-700 text-ink-500 uppercase tracking-wide mb-1.5">Endpoint del proxy de Gemini</div>
+        <input
+          className="input-field font-mono text-xs w-full mb-1"
+          value={configDraft.integraciones?.GEMINI_ENDPOINT || ''}
+          placeholder="https://PROYECTO.supabase.co/functions/v1/gemini"
+          onChange={e => setConfigDraft(current => ({ ...current, integraciones: { ...(current.integraciones || {}), GEMINI_ENDPOINT: e.target.value } }))}
+        />
+        <div className="text-[11px] text-ink-400 mb-4">
+          URL de la Supabase Edge Function que reemplazó al Apps Script. Si queda vacía, se usa la legacy
+          <span className="font-mono"> SHEETS_API_URL</span>{configDraft.integraciones?.SHEETS_API_URL ? ' (hoy apuntando al Apps Script viejo)' : ''}.
+        </div>
+
         <div className="text-xs font-700 text-ink-500 uppercase tracking-wide mb-1.5">Catálogo que se le manda</div>
         <div className="grid gap-3 sm:grid-cols-2 mb-4">
           {[

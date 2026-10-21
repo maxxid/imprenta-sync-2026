@@ -1,0 +1,10 @@
+# Configuración del proyecto Supabase (CLI).
+# generate: supabase init · deploy: supabase functions deploy gemini
+#
+# verify_jwt = false → la web llama a la Edge Function sin token de autorización
+# (mismo contrato público que tenía el Apps Script de Google).
+
+project_id = "imprenta-sync-2026"
+
+[functions.gemini]
+verify_jwt = false

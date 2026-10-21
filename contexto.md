@@ -156,7 +156,7 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 1. `supabase secrets set GEMINI_API_KEY=<tu-key>` (CLI linkeado al proyecto `hjtbwnsxgellbtfariog`).
 2. `supabase functions deploy gemini --no-verify-jwt`.
 3. Probar: `curl "https://hjtbwnsxgellbtfariog.supabase.co/functions/v1/gemini"` → debe devolver `{ status, tip }`.
-4. En Ajustes (config de Supabase) setear `integraciones.GEMINI_ENDPOINT` a esa URL. Vaciar `SHEETS_API_URL` cuando todo funcione.
+4. En **Ajustes → card "Prompt y catálogo de Gemini"** setear el **"Endpoint del proxy de Gemini"** (`integraciones.GEMINI_ENDPOINT`) a esa URL y guardar. Vaciar `SHEETS_API_URL` cuando todo funcione.
 5. Verificar parser WA + "Regenerar" mensaje desde el admin.
 
 ## Directivas para el agente
