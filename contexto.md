@@ -89,10 +89,19 @@ Fuente de verdad: `libro.variantes[]` (JSONB en Supabase).
 - `calcPrecioItem(libro, ref, encuadernacion, config, ...)`: si `ref` es **objeto variante**, el 5to arg es `express`; si es **string** (id, 'A4', 'A5' o label libre), el 5to es `color` y el 6to `express`. Resuelve por id → por label (slug incluido) → fallback clásico A4/A5.
 - Ítem de carrito/pedido guarda `varianteId` + `formato` (= label de la variante).
 
+## Prompt de Gemini (parser WhatsApp)
+
+- **Dónde se edita:** Admin → Ajustes → card "Prompt de Gemini (parser WhatsApp)". Botón "Usar el default" lo deja vacío (= default).
+- **Persistencia:** `config.prompts.parser_wa` → JSONB de la tabla `config` (más `saveLocal`). Editable por shop.
+- **Tokens:** `{{fecha}}` (fecha larga es-AR), `{{mensaje}}` (crudo del alumno), `{{catalogo}}` (libros activos). Se reemplazan en `buildParserPrompt` (`src/lib/utils.js`).
+- **Redes de seguridad:** si borrás un token, esa parte se anexa igual al final; si borrás el bloque JSON de salida, se re-anexa (`PARSER_OUTPUT_SCHEMA` en `constants.js`) — sin ese bloque el parser no puede leer la respuesta.
+- Default: `DEFAULT_PARSER_PROMPT` en `src/lib/constants.js` (regla 8 = redacción del `msj_ws`, el mensaje al cliente).
+- Ojo: el **otro** prompt de Gemini (`?mode=generate-wa`, mensaje de seguimiento desde Pedidos/Checkout) vive en el **Apps Script de Google Sheets**, no en este repo.
+
 ## Directivas para el agente
 
 1. **Trabajar en este repo** salvo que se indique otro path.
-2. **Push a `main` solo cuando el usuario lo pida** (o cuando el flujo del chat lo deje explícito).
+2. **Commit + push a `main` tras cada cambio validado** (`npm run build` + `npm run smoke`): el usuario lo estableció así — *"siempre commit and push"* (2026-10-20). No esperar permiso para pushear.
 3. **No commitear secretos nuevos** (`.env`); `config.json` ya tiene anon key pública de Supabase — no ampliar superficie.
 4. **Respetar multi-tenant**: no romper filtros `shop_id` ni `onConflict` compuestos.
 5. **Cambios mínimos** al objetivo; no refactors colaterales.

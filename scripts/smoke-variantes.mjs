@@ -106,5 +106,29 @@ check('normalizeVariante default', normalizeVariante({ label: 'Nueva opción' })
 check('varianteId string + express (6 args)', calcPrecioItem(libre, 'a4_vert', 'basica', config, false, true).total, Math.round(6200 * 1.2));
 check('newVarianteId prefijo', /^nueva-opcion/.test(newVarianteId('Nueva opción')), true);
 
+// 13. buildParserPrompt (template editable del parser WA)
+import { buildParserPrompt } from '../src/lib/utils.js';
+import { DEFAULT_PARSER_PROMPT, PARSER_OUTPUT_SCHEMA } from '../src/lib/constants.js';
+
+const ctx = { fecha: 'lunes 20 de octubre de 2026', mensaje: 'hola, 2 copias de Algebra porfa', catalogo: '- [Algebra] | Hojas: 60' };
+const def = buildParserPrompt(undefined, ctx);
+check('prompt default contiene reglas', def.includes('REGLAS DE ORO'), true);
+check('prompt default con tokens reemplazados', def.includes(ctx.mensaje) && def.includes(ctx.catalogo) && def.includes(ctx.fecha), true);
+check('prompt default sin tokens sin reemplazar', def.includes('{{'), false);
+
+const custom = 'Regla propia. Alumno: {{mensaje}}. Hoy: {{fecha}}.\nLibros:\n{{catalogo}}\nRespuesta: [{"libro":"..."}]';
+const out = buildParserPrompt(custom, ctx);
+check('prompt custom respeta al admin', out.startsWith('Regla propia.'), true);
+check('prompt custom sin tokens sobrantes', out.includes('{{'), false);
+
+const sinTokens = 'Solo decime qué libro es y redactá el msj_ws.';
+const out2 = buildParserPrompt(sinTokens, ctx);
+check('sin tokens → se anexa mensaje/catálogo/fecha', out2.includes(ctx.mensaje) && out2.includes(ctx.catalogo) && out2.includes('HOY ES'), true);
+
+const sinJson = 'Desglosa {{mensaje}}\n{{catalogo}}';
+const out3 = buildParserPrompt(sinJson, ctx);
+check('sin bloque JSON → se re-anexa el schema', out3.includes(PARSER_OUTPUT_SCHEMA), true);
+check('default trae el schema integrado', DEFAULT_PARSER_PROMPT.includes('"libro"'), true);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

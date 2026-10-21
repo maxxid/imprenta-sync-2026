@@ -1,4 +1,4 @@
-import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES } from './constants.js';
+import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT } from './constants.js';
 
 export function fmt(n) {
   return `$${Number(n || 0).toLocaleString('es-AR')}`;
@@ -434,6 +434,30 @@ export function deriveOrderEstado(items) {
     if (states.includes(state)) return state;
   }
   return states[0];
+}
+
+/**
+ * Arma el prompt final del Parser WhatsApp desde el template editable
+ * (Ajustes → Prompt de Gemini). Tokens: {{fecha}}, {{mensaje}}, {{catalogo}}.
+ *
+ * Redes de seguridad: si el template editado borró algún token, se anexa esa
+ * parte igual; y si borró el bloque JSON de salida, se re-anexa (sin eso el
+ * parser no puede interpretar la respuesta).
+ */
+export function buildParserPrompt(template, { fecha = '', mensaje = '', catalogo = '' } = {}) {
+  const base = String(template || '').trim() || DEFAULT_PARSER_PROMPT;
+  let prompt = base
+    .split('{{fecha}}').join(fecha)
+    .split('{{mensaje}}').join(mensaje)
+    .split('{{catalogo}}').join(catalogo);
+
+  const extras = [];
+  if (!base.includes('{{mensaje}}')) extras.push(`MENSAJE DEL ALUMNO: "${mensaje}"`);
+  if (!base.includes('{{catalogo}}')) extras.push(`CATÁLOGO:\n${catalogo}`);
+  if (!base.includes('{{fecha}}')) extras.push(`HOY ES: ${fecha}`);
+  if (extras.length) prompt = `${prompt}\n\n${extras.join('\n\n')}`;
+  if (!base.includes('"libro"')) prompt = `${prompt}\n\n${PARSER_OUTPUT_SCHEMA}`;
+  return prompt;
 }
 
 export function extractTimeFromMessage(text) {

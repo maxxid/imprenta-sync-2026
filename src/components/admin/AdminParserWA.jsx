@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage, buildParserPrompt } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -60,28 +60,11 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
       `- [${b.titulo}] | Hojas: ${HOJAS(b.paginas, b.paginas_por_hoja)} | Págs: ${b.paginas} | Formatos: ${getBookFormats(b).join(', ')} | Precio desde: $${(() => { const bc = getBookCombinations(b); return bc.length > 0 ? Math.min(...bc.map(c => c.precio)) : 0; })()}`
     ).join('\n');
     const fechaHoyStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const prompt = `Hoy es ${fechaHoyStr}. Desglosa: "${mensaje}".
-
-CATÁLOGO:
-${booksContext}
-
-REGLAS DE ORO:
-1. FORMATO: A4 por defecto. Si no se especifica, usá A4.
-2. TRABAJO: Usá el nombre EXACTO del catálogo. Si no coincide exacto, usá el más cercano.
-3. VARIOS: Generá un objeto por cada libro mencionado.
-4. OBSERVACIONES (N): Resumí con emojis (🕒hora, 📍lugar, 🚨otro). Solo mencionar lugar si es diferente a la facultad. Si no hay hora, omitir. Estado de pago no es necesario decirlo.
-5. SEÑA (REGLA DE ORO): Si el mensaje NO menciona explícitamente un monto de pago, la seña SIEMPRE es 0. Jamás asumas que está pagado. Solo sena > 0 si ves un número junto a palabras como seña, pagué, transferí, pago, pagado. Ejemplos validos: seña 7400, dejo $6000 de seña, pagué 5000, transferí 3000, pago total, pagado completo. Interpreta tres mil como 3000, 5mil como 5000. Si solo dice seña sin numero, sena = 0. Si dice seña del 50%, calcula el 50% del precio del primer libro.
-6. FECHA: Calculá la fecha de entrega según el día mencionado. Formato YYYY-MM-DD. Si no hay día específico, dejá vacío.
-7. TELÉFONO: Solo números, sin espacios ni guiones ni +54.
-8. REDACCIÓN DE MENSAJE (msj_ws): Redactá un mensaje de WhatsApp corto y natural en español rioplatense (usá "tenés", "¿cómo estás? 😊").
-   - Tiene que ser redactado para ser enviado el día de entrega: confirmar si podrá ir así llevamos su pedido a la facultad (o el lugar indicado en su defecto) o reagendamos para otro día.
-   - Si hay lugar específico (Lavalle, clínica), incluilo, sino por defecto las entregas las hacemos en la facultad.
-   - Si el saldo es 0, no menciones dinero, solo que ya está listo.
-   - Si tiene saldo, decile el monto total.
-   - NO uses emojis excesivos. Profesional pero cercano. El emoji que siempre uso es este, usar al menos una vez 😊
-
-Responde ÚNICAMENTE un Array JSON:
-[{"alumno":"NOMBRE","formato":"A4/A5","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
+    const prompt = buildParserPrompt(config.prompts?.parser_wa, {
+      fecha: fechaHoyStr,
+      mensaje,
+      catalogo: booksContext
+    });
 
     const sheetsUrl = config.integraciones?.SHEETS_API_URL;
     if (!sheetsUrl) {

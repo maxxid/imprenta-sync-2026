@@ -119,6 +119,7 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `deliveryPlaceFor(modalidad, career, config)` — Lugar de entrega
 - `getEspiralSize(hojas, config)` — Tamaño de espiral
 - `extractTimeFromMessage(text)` — Extrae hora de mensaje WA
+- `buildParserPrompt(template, { fecha, mensaje, catalogo })` — Arma el prompt del parser WA desde `config.prompts.parser_wa` (editable en Ajustes); cae a `DEFAULT_PARSER_PROMPT` y anexa schema JSON si faltó
 
 ## Estado global (App.jsx)
 

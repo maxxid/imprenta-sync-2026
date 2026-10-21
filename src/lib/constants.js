@@ -117,3 +117,39 @@ export const FALLBACK_CONFIG = {
 };
 
 export const DEMO_WHATSAPP = ``;
+
+/**
+ * Prompt por defecto del Parser WhatsApp (Gemini vía Apps Script).
+ * Es editable por tienda en Ajustes → "Prompt de Gemini (parser WA)".
+ *
+ * Tokens disponibles (se reemplazan antes de enviar):
+ *   {{fecha}}    → fecha larga de hoy (es-AR)
+ *   {{mensaje}}  → mensaje crudo del alumno
+ *   {{catalogo}} → listado de libros activos (título, hojas, formatos, precio desde)
+ */
+export const DEFAULT_PARSER_PROMPT = `Hoy es {{fecha}}. Desglosa: "{{mensaje}}".
+
+CATÁLOGO:
+{{catalogo}}
+
+REGLAS DE ORO:
+1. FORMATO: A4 por defecto. Si no se especifica, usá A4.
+2. TRABAJO: Usá el nombre EXACTO del catálogo. Si no coincide exacto, usá el más cercano.
+3. VARIOS: Generá un objeto por cada libro mencionado.
+4. OBSERVACIONES (N): Resumí con emojis (🕒hora, 📍lugar, 🚨otro). Solo mencionar lugar si es diferente a la facultad. Si no hay hora, omitir. Estado de pago no es necesario decirlo.
+5. SEÑA (REGLA DE ORO): Si el mensaje NO menciona explícitamente un monto de pago, la seña SIEMPRE es 0. Jamás asumas que está pagado. Solo sena > 0 si ves un número junto a palabras como seña, pagué, transferí, pago, pagado. Ejemplos validos: seña 7400, dejo $6000 de seña, pagué 5000, transferí 3000, pago total, pagado completo. Interpreta tres mil como 3000, 5mil como 5000. Si solo dice seña sin numero, sena = 0. Si dice seña del 50%, calcula el 50% del precio del primer libro.
+6. FECHA: Calculá la fecha de entrega según el día mencionado. Formato YYYY-MM-DD. Si no hay día específico, dejá vacío.
+7. TELÉFONO: Solo números, sin espacios ni guiones ni +54.
+8. REDACCIÓN DE MENSAJE (msj_ws): Redactá un mensaje de WhatsApp corto y natural en español rioplatense (usá "tenés", "¿cómo estás? 😊").
+   - Tiene que ser redactado para ser enviado el día de entrega: confirmar si podrá ir así llevamos su pedido a la facultad (o el lugar indicado en su defecto) o reagendamos para otro día.
+   - Si hay lugar específico (Lavalle, clínica), incluilo, sino por defecto las entregas las hacemos en la facultad.
+   - Si el saldo es 0, no menciones dinero, solo que ya está listo.
+   - Si tiene saldo, decile el monto total.
+   - NO uses emojis excesivos. Profesional pero cercano. El emoji que siempre uso es este, usar al menos una vez 😊
+
+Responde ÚNICAMENTE un Array JSON:
+[{"alumno":"NOMBRE","formato":"A4/A5","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
+
+/** Salida JSON mínima que consume el parser (se anexa si el prompt editado la borró). */
+export const PARSER_OUTPUT_SCHEMA = `Responde ÚNICAMENTE un Array JSON:
+[{"alumno":"NOMBRE","formato":"A4/A5","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
