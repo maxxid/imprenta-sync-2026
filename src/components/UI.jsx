@@ -100,9 +100,11 @@ export function buildWhatsAppMessage(order) {
     ? `Hola ${order.nombre}, tus libros ya estan listos.`
     : `Hola ${order.nombre}, te compartimos el estado de tu pedido ${order.id}.`;
   const saldo = order.saldo_pendiente > 0 ? `Saldo pendiente: ${fmt(order.saldo_pendiente)}.` : 'No tenes saldo pendiente.';
-  const entrega = (order.modalidad_entrega === 'Cadete' || order.modalidad_entrega === 'Retiro domicilio')
-    ? 'Coordinamos por WhatsApp cuando este listo.'
-    : `Te espero en ${order.lugar_entrega} a las ${order.horario_entrega}.`;
+  const esLocal = order.modalidad_entrega !== 'Cadete' && order.modalidad_entrega !== 'Retiro domicilio';
+  const ventana = order.ventana_retiro && order.ventana_retiro !== 'Se coordina por WhatsApp' ? ` (${order.ventana_retiro})` : '';
+  const entrega = esLocal
+    ? `Pasá a retirarlo por ${order.lugar_entrega || 'nuestro local'}${ventana}.`
+    : 'Coordinamos por WhatsApp cuando este listo.';
   return [
     intro,
     `Libros: ${order.libro}.`,

@@ -41,9 +41,20 @@ export function AdminConfig({ config, setConfig }) {
             <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Precio promedio hoja</label>
             <input className="input-field" type="number" value={configDraft.produccion.precio_promedio_hoja} onChange={event => setConfigDraft(current => ({ ...current, produccion: { ...current.produccion, precio_promedio_hoja: Number(event.target.value || 0) } }))} />
           </div>
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <div className="font-700 text-sm text-ink-800 mb-1">Local físico</div>
+        <div className="text-xs text-ink-400 mb-4">Lugar donde los alumnos retiran sus pedidos. Se usa en el checkout, en el seguimiento y en los mensajes de WhatsApp. Dejalo vacío hasta que tengas los datos.</div>
+        <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Mínimo cadete</label>
-            <input className="input-field" type="number" value={configDraft.entrega?.cadete_minimo || 100} onChange={event => setConfigDraft(current => ({ ...current, entrega: { ...current.entrega, cadete_minimo: Number(event.target.value || 0) } }))} />
+            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Nombre del local</label>
+            <input className="input-field" type="text" placeholder="Ej: Fotocopiadora UNJu" value={configDraft.local?.nombre || ''} onChange={event => setConfigDraft(current => ({ ...current, local: { ...(current.local || {}), nombre: event.target.value } }))} />
+          </div>
+          <div>
+            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Dirección</label>
+            <input className="input-field" type="text" placeholder="Ej: Rivadavia 1234, cerca de la facultad" value={configDraft.local?.direccion || ''} onChange={event => setConfigDraft(current => ({ ...current, local: { ...(current.local || {}), direccion: event.target.value } }))} />
           </div>
         </div>
       </div>
@@ -241,14 +252,15 @@ export function AdminConfig({ config, setConfig }) {
       </div>
 
       <div className="card p-5">
-        <div className="font-700 text-sm text-ink-800 mb-4">Universidades y ventanas de entrega</div>
+        <div className="font-700 text-sm text-ink-800 mb-4">Universidades y turnos de retiro</div>
+        <div className="text-xs text-ink-400 -mt-2 mb-4">Cada turno es un horario en el que el alumno retira en el local. Activá los días y horas que querés ofrecer.</div>
         <div className="space-y-6">
           {getCareers(configDraft).map(career => (
             <div key={career.id_carrera} className="rounded-xl border border-ink-100 bg-ink-50 p-4">
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div>
                   <div className="font-800 text-sm text-ink-900">{careerLabel(career)}</div>
-                  <div className="text-xs text-ink-500 mt-0.5">{career.direccion_entrega}</div>
+                  <div className="text-xs text-ink-500 mt-0.5">{career.universidad}</div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">

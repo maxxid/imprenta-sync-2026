@@ -293,10 +293,36 @@ export function careerAddress(career, config) {
   return career?.direccion_entrega || config.carreras?.[0]?.direccion_entrega || config.facultad?.lugar || 'Dirección de facultad según carrera';
 }
 
+/** Modalidad única actual: el alumno retira en el local físico (cerca de la facultad). */
+export const RETIRO_LOCAL = 'Retiro en local';
+/** Legacy: la modalidad "Retiro facultad" del modelo anterior (retiro en la facultad). */
+const LEGACY_RETIRO_FACULTAD = 'Retiro facultad';
+
+/**
+ * ¿La modalidad es retiro en el local? Acepta la actual (RETIRO_LOCAL) y la
+ * legacy ("Retiro facultad") para no romper pedidos viejos guardados.
+ */
+export function isRetiroLocal(modalidad) {
+  return !modalidad || modalidad === RETIRO_LOCAL || modalidad === LEGACY_RETIRO_FACULTAD;
+}
+
+/**
+ * Lugar del local físico (config.local.nombre + config.local.direccion).
+ * Devuelve "Nombre — Dirección", solo dirección, solo nombre, o '' si está vacío
+ * (para que el caller caiga al fallback de facultad como placeholder).
+ */
+export function localPlace(config) {
+  const nombre = String(config?.local?.nombre || '').trim();
+  const direccion = String(config?.local?.direccion || '').trim();
+  if (nombre && direccion) return `${nombre} — ${direccion}`;
+  return direccion || nombre || '';
+}
+
 export function deliveryPlaceFor(modalidad, career, config) {
   if (modalidad === 'Retiro domicilio') return 'Chijra, se coordina por WhatsApp';
   if (modalidad === 'Cadete') return 'Se coordina por WhatsApp';
-  return careerAddress(career, config);
+  // Retiro en el local (actual o legacy): el lugar es el local físico.
+  return localPlace(config) || careerAddress(career, config);
 }
 
 export function roundTotal(value, config) {
@@ -385,8 +411,8 @@ export function buildOrder(items, form, slot, config, career, metodoPago = 'talo
   const montoPagado = form.pago === 'sena' ? roundTotal(total * 0.5, config) : total;
   const saldo = Math.max(0, total - montoPagado);
   const id = `P${String(Date.now()).slice(-6)}`;
-  const modalidad = form.modalidad || 'Retiro facultad';
-  const hasWindow = modalidad === 'Retiro facultad' && slot;
+  const modalidad = isRetiroLocal(form.modalidad) ? RETIRO_LOCAL : (form.modalidad || RETIRO_LOCAL);
+  const hasWindow = isRetiroLocal(modalidad) && slot;
   return {
     id,
     nombre: form.nombre,
@@ -608,7 +634,7 @@ export function extractTimeFromMessage(text) {
 
 export function normalizeOrder(order, config) {
   const estado = order.estado === 'Impreso' ? 'Listo' : order.estado;
-  const modalidad = order.modalidad_entrega || 'Retiro facultad';
+  const modalidad = isRetiroLocal(order.modalidad_entrega) ? RETIRO_LOCAL : (order.modalidad_entrega || RETIRO_LOCAL);
   const horario = order.horario_entrega || order.turno || '10:00';
   const lugarGuardado = String(order.lugar_entrega || '').includes('Punto de entrega') ? '' : order.lugar_entrega;
   const items = (order.items || []).map(item => ({ ...item, estado: item.estado || estado || 'Pendiente de impresión' }));
@@ -623,7 +649,7 @@ export function normalizeOrder(order, config) {
     saldo_pendiente: autoSaldado ? 0 : (order.saldo_pendiente ?? 0),
     modalidad_entrega: modalidad,
     ventana_retiro: order.ventana_retiro || (modalidad === 'Cadete' || modalidad === 'Retiro domicilio' ? 'Se coordina por WhatsApp' : `${order.fecha || ''} · ${horario}`),
-    lugar_entrega: lugarGuardado || config.carreras?.[0]?.direccion_entrega || 'Dirección de facultad según carrera',
+    lugar_entrega: lugarGuardado || localPlace(config) || config.carreras?.[0]?.direccion_entrega || 'Retiro en nuestro local',
     horario_entrega: horario,
     talo_ref: order.talo_ref || '',
     asistencia_confirmada: order.asistencia_confirmada || false,

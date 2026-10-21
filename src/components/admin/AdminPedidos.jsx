@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Icon } from '../Icons';
 import { statusBadge, Alert, Spinner, fechaLabel, buildWhatsAppMessage } from '../UI';
-import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal } from '../../lib/utils';
+import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal, RETIRO_LOCAL } from '../../lib/utils';
 import { ORDER_STATES, STATE_LABELS, STATE_STYLES, STATE_ROW_BG } from '../../lib/constants';
 import { getSupabase, saveOrderToSupabase, syncOrderToSheets, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta, fetchOrdersFromSupabase } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
@@ -339,7 +339,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     { key: 'nombre', label: 'Alumno' },
     { key: 'libro', label: 'Libro' },
     { key: 'formato', label: 'Formato' },
-    { key: 'ventana_retiro', label: 'Entrega' },
+    { key: 'ventana_retiro', label: 'Retiro' },
     { key: 'total', label: 'Pago' },
     { key: 'observaciones', label: 'Obs' },
     { key: 'estado', label: 'Estado' },
@@ -450,9 +450,9 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
               <option value="A5">A5</option>
             </select>
             <select className="input-field" value={filters.modalidad} onChange={event => setFilters(current => ({ ...current, modalidad: event.target.value }))}>
-              <option value="all">Todas las entregas</option>
+              <option value="all">Todas las modalidades</option>
+              <option value={RETIRO_LOCAL}>Retiro en local</option>
               <option value="Retiro domicilio">Retiro domicilio</option>
-              <option value="Retiro facultad">Retiro facultad</option>
               <option value="Cadete">Cadete</option>
             </select>
             <select className="input-field" value={filters.hojas} onChange={event => setFilters(current => ({ ...current, hojas: event.target.value }))}>
@@ -600,7 +600,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
                         </div>
                       ) : (
                         <>
-                          <div className="font-700 text-ink-900">{order.modalidad_entrega || 'Retiro facultad'}</div>
+                          <div className="font-700 text-ink-900">{order.modalidad_entrega || RETIRO_LOCAL}</div>
                           {order.excede_capacidad ? (
                             <div className="text-xs text-ink-400">
                               <div>1°: {formatVentana(order.ventana_retiro, order.fecha, order.horario_entrega)} ({order.hojas_primera_entrega} hojas)</div>

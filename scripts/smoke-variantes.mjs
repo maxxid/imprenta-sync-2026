@@ -2,7 +2,8 @@
 import {
   ensureBookVariantes, getBookCombinations, calcPrecioItem, recalcBookSugeridos,
   applyClassicColumnPatchesToVariantes, prepareBookForSave, getMinPrice, getBookFormats,
-  buildOrder, seedDefaultVariantes, normalizeVariante, newVarianteId, slug
+  buildOrder, seedDefaultVariantes, normalizeVariante, newVarianteId, slug,
+  RETIRO_LOCAL, isRetiroLocal, localPlace, deliveryPlaceFor, normalizeOrder
 } from '../src/lib/utils.js';
 import { FALLBACK_CONFIG } from '../src/lib/constants.js';
 
@@ -207,6 +208,30 @@ if (reales) {
 } else {
   console.log('\n  [bench] libros.json no disponible, se omite');
 }
+
+// 17. Modelo de retiro en local (reemplaza "entrega en facultad")
+const cfgLocal = { ...FALLBACK_CONFIG, local: { nombre: 'Fotocopiadora UNJu', direccion: 'Rivadavia 1234' } };
+check('isRetiroLocal(RETiro_LOCAL)', isRetiroLocal(RETIRO_LOCAL), true);
+check('isRetiroLocal legacy "Retiro facultad"', isRetiroLocal('Retiro facultad'), true);
+check('isRetiroLocal vacío (default)', isRetiroLocal(''), true);
+check('isRetiroLocal(Cadete) = false', isRetiroLocal('Cadete'), false);
+check('localPlace nombre+dirección', localPlace(cfgLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
+check('localPlace vacío → placeholder', localPlace({ local: {} }), '');
+check('deliveryPlaceFor(RETiro_LOCAL) → local', deliveryPlaceFor(RETIRO_LOCAL, null, cfgLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
+check('deliveryPlaceFor legacy → local', deliveryPlaceFor('Retiro facultad', null, cfgLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
+check('deliveryPlaceFor(Cadete)', deliveryPlaceFor('Cadete', null, cfgLocal), 'Se coordina por WhatsApp');
+check('deliveryPlaceFor sin local → cae a facultad', deliveryPlaceFor(RETIRO_LOCAL, { direccion_entrega: 'Aula Magna' }, { local: {} }), 'Aula Magna');
+
+const normLegacy = normalizeOrder({ modalidad_entrega: 'Retiro facultad', items: [] }, { local: { nombre: 'F X', direccion: 'Y 1' }, carreras: [] });
+check('normalizeOrder legacy → Retiro en local', normLegacy.modalidad_entrega, RETIRO_LOCAL);
+
+const pedidoRetiro = buildOrder(
+  [{ id: 'l1', titulo: 'Libro', paginas: 100, paginas_por_hoja: 2, precio: 1000, carrera: 'abo', id_carrera: 'abo-unju', materia: 'M', formato: 'A4 B/N' }],
+  { nombre: 'Alumna', whatsapp: '3881234567', pago: 'total', modalidad: RETIRO_LOCAL },
+  null, cfgLocal, null, 'talo'
+);
+check('buildOrder → modalidad Retiro en local', pedidoRetiro.modalidad_entrega, RETIRO_LOCAL);
+check('buildOrder lugar = local', pedidoRetiro.lugar_entrega, 'Fotocopiadora UNJu — Rivadavia 1234');
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

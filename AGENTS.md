@@ -106,7 +106,7 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `subirPortada(file, bookId, config)` — Sube imagen de portada
 - `fetchConfigFromSupabase(config)` / `saveConfigToSupabase(...)` — Config remota
 - `getNextBusinessDay(fecha)` — Próximo día hábil
-- `getNextSlots(config, pedidos, career, isExpress)` — Slots de entrega disponibles
+- `getNextSlots(config, pedidos, career, isExpress)` — Slots de retiro disponibles (turnos para tener el pedido listo en el local)
 - `syncOrderToSheets(order, config)` — Sincroniza con Google Sheets
 - `getOrdersByPhone(orders, phone)` — Busca pedidos por WhatsApp
 
@@ -116,7 +116,11 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `normalizePhone(value)` — Limpia número de teléfono
 - `roundTotal(value, config)` — Redondea total según config
 - `getCareers(config, books)`, `getCareer(...)`, `careerLabel(...)`, `careerAddress(...)` — Gestión de carreras
-- `deliveryPlaceFor(modalidad, career, config)` — Lugar de entrega
+- **Modelo de retiro en local** (reemplazó "entrega en facultad"; ahora el alumno retira en el local físico):
+  - `RETIRO_LOCAL` = `'Retiro en local'` — modalidad única canónica
+  - `isRetiroLocal(modalidad)` — true para la actual y la legacy `'Retiro facultad'` (no rompe pedidos viejos)
+  - `localPlace(config)` — `"nombre — dirección"` desde `config.local` (o '' si está vacío)
+  - `deliveryPlaceFor(modalidad, career, config)` — Lugar de retiro: local físico (legacy Cadete/domicilio conservados)
 - `getEspiralSize(hojas, config)` — Tamaño de espiral
 - `extractTimeFromMessage(text)` — Extrae hora de mensaje WA
 - `buildParserPrompt(template, { fecha, mensaje, catalogo })` — Arma el prompt del parser WA desde `config.prompts.parser_wa` (editable en Ajustes); cae a `DEFAULT_PARSER_PROMPT` y anexa schema JSON si faltó

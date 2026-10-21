@@ -72,8 +72,9 @@ export const FALLBACK_CONFIG = {
     recargo_express_pct: 20,
     deadline_hora: 20
   },
-  entrega: {
-    cadete_minimo: 100
+  local: {
+    nombre: '',
+    direccion: ''
   },
   integraciones: {
     SHEETS_API_URL: '',
@@ -136,15 +137,16 @@ REGLAS DE ORO:
 1. FORMATO: A4 por defecto. Si el alumno menciona otro ("A5", "A4 vertical", "papel fotográfico"), copiá en "formato" el nombre EXACTO de la variante del catálogo (ej: "A4 vertical (letra grande)").
 2. TRABAJO: Usá el nombre EXACTO del catálogo. Si no coincide exacto, usá el más cercano. Si el catálogo trae un ÍNDICE y el alumno se refiere a uno de esos títulos, usá ese título igual.
 3. VARIOS: Generá un objeto por cada libro mencionado.
-4. OBSERVACIONES (N): Resumí con emojis (🕒hora, 📍lugar, 🚨otro). Solo mencionar lugar si es diferente a la facultad. Si no hay hora, omitir. Estado de pago no es necesario decirlo.
+4. OBSERVACIONES (N): Resumí con emojis (🕒hora, 📍lugar, 🚨otro). Solo mencionar lugar si es diferente a nuestro local. Si no hay hora, omitir. Estado de pago no es necesario decirlo.
 5. SEÑA (REGLA DE ORO): Si el mensaje NO menciona explícitamente un monto de pago, la seña SIEMPRE es 0. Jamás asumas que está pagado. Solo sena > 0 si ves un número junto a palabras como seña, pagué, transferí, pago, pagado. Ejemplos validos: seña 7400, dejo $6000 de seña, pagué 5000, transferí 3000, pago total, pagado completo. Interpreta tres mil como 3000, 5mil como 5000. Si solo dice seña sin numero, sena = 0. Si dice seña del 50%, calcula el 50% del precio del primer libro.
-6. FECHA: Calculá la fecha de entrega según el día mencionado. Formato YYYY-MM-DD. Si no hay día específico, dejá vacío.
+6. FECHA: Calculá la fecha de retiro según el día mencionado. Formato YYYY-MM-DD. Si no hay día específico, dejá vacío.
 7. TELÉFONO: Solo números, sin espacios ni guiones ni +54.
 8. REDACCIÓN DE MENSAJE (msj_ws): Redactá un mensaje de WhatsApp corto y natural en español rioplatense (usá "tenés", "¿cómo estás? 😊").
-   - Tiene que ser redactado para ser enviado el día de entrega: confirmar si podrá ir así llevamos su pedido a la facultad (o el lugar indicado en su defecto) o reagendamos para otro día.
-   - Si hay lugar específico (Lavalle, clínica), incluilo, sino por defecto las entregas las hacemos en la facultad.
-   - Si el saldo es 0, no menciones dinero, solo que ya está listo.
-   - Si tiene saldo, decile el monto total.
+   - Es el mensaje para avisar que su pedido está LISTO y debe retirarlo por nuestro local. NO hacemos entregas a domicilio ni en la facultad: el alumno pasa a retirarlo.
+   - Decile que pase a retirarlo por nuestro local, e indicale el día y la hora para que lo tenga impreso y listo (usá la fecha/hora que mencionó el alumno).
+   - Si el alumno mencionó un lugar específico distinto al local (Lavalle, clínica), acláralo; si no, el retiro siempre es en nuestro local.
+   - Si el saldo es 0, no menciones dinero, solo que ya está listo para retirar.
+   - Si tiene saldo, decile el monto total a abonar al retirar.
    - NO uses emojis excesivos. Profesional pero cercano. El emoji que siempre uso es este, usar al menos una vez 😊
 
 Responde ÚNICAMENTE un Array JSON:

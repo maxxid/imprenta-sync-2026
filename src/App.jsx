@@ -7,7 +7,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { GlobalAdminDashboard } from './components/admin/GlobalAdminDashboard';
 import { PasswordSetup } from './components/admin/PasswordSetup';
 import { FALLBACK_CONFIG, STORAGE } from './lib/constants';
-import { migrateBook } from './lib/utils';
+import { migrateBook, RETIRO_LOCAL } from './lib/utils';
 import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig, isShopAdmin, checkPasswordChanged, markPasswordChanged } from './lib/supabase';
 import { setShop as setGlobalShop, getShopId } from './lib/shop';
 
@@ -27,7 +27,7 @@ export default function App() {
   const [config, setConfig] = useState(FALLBACK_CONFIG);
   const [orders, setOrders] = useState([]);
   const [catalogFilters, setCatalogFilters] = useState({ career: '', query: '', materia: '' });
-  const [checkoutForm, setCheckoutForm] = useState({ nombre: '', whatsapp: '', pago: 'total', modalidad: 'Retiro facultad' });
+  const [checkoutForm, setCheckoutForm] = useState({ nombre: '', whatsapp: '', pago: 'total', modalidad: RETIRO_LOCAL });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [adminAuthed, setAdminAuthed] = useState(loadLocal(STORAGE.admin, false));
@@ -328,7 +328,7 @@ export default function App() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { icon: <Icon.Book />, title: 'Catálogo online', desc: 'Cargá tus apuntes con vista previa de PDF. Los alumnos buscan por carrera y materia.' },
-              { icon: <Icon.Cart />, title: 'Pedidos 24/7', desc: 'Recibí pedidos automáticos sin atender WhatsApp. El alumno paga y elige ventana de entrega.' },
+              { icon: <Icon.Cart />, title: 'Pedidos 24/7', desc: 'Recibí pedidos automáticos sin atender WhatsApp. El alumno paga y elige el turno de retiro en tu local.' },
               { icon: <Icon.Bell />, title: 'Seguimiento', desc: 'El alumno sigue su pedido en tiempo real. Estados: pago, impresión, listo, entregado.' },
               { icon: <Icon.Settings />, title: 'Panel de control', desc: 'Dashboard con capacidad diaria, gestión de catálogo, precios por formato y más.' }
             ].map((f, i) => (
@@ -353,7 +353,7 @@ export default function App() {
               {[
                 { step: '1', title: 'Creá tu tienda', desc: 'Te damos un subdominio. Cargás tus libros, precios y horarios de entrega.' },
                 { step: '2', title: 'Compartí el link', desc: 'Los alumnos entran, eligen sus apuntes y pagan desde el celular.' },
-                { step: '3', title: 'Entregá en facultad', desc: 'Dashboard te muestra qué imprimir y cuándo. El alumno retira en la ventana pactada.' }
+                { step: '3', title: 'Retirá en tu local', desc: 'Dashboard te muestra qué imprimir y cuándo. El alumno retira en tu local en el turno pactado.' }
               ].map((s, i) => (
                 <div key={i} className="text-center">
                   <div className="w-12 h-12 rounded-full bg-brand-DEFAULT text-white flex items-center justify-center text-xl font-800 mx-auto mb-4">{s.step}</div>

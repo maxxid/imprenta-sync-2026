@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -336,10 +336,10 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
         estado: orderEstado,
         fecha: slot.fecha,
         turno: slot.turno,
-        modalidad_entrega: 'Retiro facultad',
+        modalidad_entrega: RETIRO_LOCAL,
         express: parserPreview.express,
         ventana_retiro: `${slot.fecha} · ${slot.horario}`,
-        lugar_entrega: careerAddress(career, config),
+        lugar_entrega: deliveryPlaceFor(RETIRO_LOCAL, career, config),
         horario_entrega: slot.horario,
         talo_ref: `WA-${String(Date.now()).slice(-6)}`,
         wa_raw: parserInput,

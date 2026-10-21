@@ -103,9 +103,21 @@ Fuente de verdad: `libro.variantes[]` (JSONB en Supabase).
 - **`mensajeSinRuidoParaScore()`**: antes de puntuar saca teléfonos, horarios, montos y estados de pago. Con mensajes reales, `+54 9 388 581-1006` o `$9.600` matcheaban dígitos de títulos ("Fallos - 19 Fallos", libros de Medicina) y ensuciaban las fichas.
 - **Formatos:** si el alumno escribe "A4 vertical", la regla 1 del prompt pide devolver el **nombre exacto de la variante**; `AdminParserWA` lo matchea por `slug(label).includes(...)`. "A4" solo → primer combo A4.
 - **Fixtures:** los mensajes reales de la fotocopiadora (separados por `/`, tipo "Daniela Puca. CCC A4 vertical. Miercoles 18hs. pagado.") están en `npm run smoke` y en `scripts/test-msgs-reales.mjs`.
-- **GAP CONOCIDO (no resuelto):** esos mensajes traen **varios alumnos separados por `/`** y el parser arma **un solo pedido** (`setParserPreview` toma `pedidos[0].alumno` y `pedidos[0].telefono`, junta todos los libros). Los teléfonos/nombres de los demás alumnos se pierden. Si se implementa: segmentar por `/` o por línea → un preview/pedido por alumno.
+- **Nota sobre "varios alumnos":** los mensajes de la fotocopiadora que se usaron de fixture van **separados por `/` en el chat**, pero **cada mensaje es UN solo alumno** (nombre, teléfono y sus libros). No hay lote. Solo sería un tema si algún mensaje real traía varios alumnos en un mismo texto (no se observó).
 - El emparejamiento final contra la DB lo hace la app por slug (`books.find(...)` en `AdminParserWA`), por eso `hojas`/`paginas` y `precio` del JSON de Gemini solo afectan a libros que no existen en el catálogo.
 - Ojo: el **otro** prompt de Gemini (`?mode=generate-wa`, mensaje de seguimiento desde Pedidos/Checkout) vive en el **Apps Script de Google Sheets**, no en este repo.
+
+## Retiro en local (modelo de negocio, 2026-10-21)
+
+Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumno **retira en el local físico** (cerca de la facultad). Las "ventanas de entrega" ahora son **turnos de retiro**: el alumno elige día/hora para que el admin tenga el pedido **impreso y listo** en el local (le sirve para organizarse, no es delivery).
+
+- **`config.local`** = `{ nombre, direccion }` (editable en Ajustes → card "Local físico"). Hoy está **vacío (placeholder)**: el usuario lo completa cuando quiera. Mientras esté vacío, el lugar cae al `direccion_entrega` de la facultad como fallback.
+- **Modalidad única:** `RETIRO_LOCAL = 'Retiro en local'`. Se quitó la selección de modalidades del checkout (antes: Retiro facultad / Cadete / Retiro domicilio) → ahora es 100% retiro en local. Cadete/domicilio se conservan solo para **pedidos viejos** ya guardados (`isRetiroLocal()` acepta la legacy `'Retiro facultad'`; `normalizeOrder` la mapea a `'Retiro en local'` al cargar).
+- **Funciones nuevas** en `utils.js`: `RETIRO_LOCAL`, `isRetiroLocal(modalidad)`, `localPlace(config)`. `deliveryPlaceFor()` ahora devuelve el **local** (no la facultad).
+- **`config.entrega.cadete_minimo`** se eliminó del código y de Ajustes (ya no hay cadete). Puede seguir existiendo en configs viejas de DB; es inofensivo.
+- **Mensajes:** el `DEFAULT_PARSER_PROMPT` (regla 8, y reglas 4/6) y `buildWhatsAppMessage()` (fallback) ahora dicen **"pasá a retirarlo por el local"** en vez de "te llevamos a la facultad". *Si el usuario llegara a guardar un prompt custom en Ajustes, hay que tocar "Usar el default" para que aplique el nuevo (verificado: hoy `config.prompts` está vacío → aplica el default).*
+- **Landing (App.jsx):** copy de "entrega en facultad" → "retiro en tu local".
+- **Smoke:** sección 17 (`npm run smoke`) cubre `isRetiroLocal` / `localPlace` / `deliveryPlaceFor` / `buildOrder` / `normalizeOrder` con el local configurado (79 checks).
 
 ## Directivas para el agente
 

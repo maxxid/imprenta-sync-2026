@@ -2,7 +2,7 @@ import React from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
 import { Cover, Alert, Spinner, CareerCombobox, fechaLabel, buildWhatsAppMessage } from './UI';
-import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante } from '../lib/utils';
+import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal } from '../lib/utils';
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
@@ -497,7 +497,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
                                     <div className="flex items-center justify-between">
                                       <div>
                                         <div className="font-700 text-sm text-ink-800">{fechaLabel(slot.fecha, slot.dOffset)} · {slot.horario}</div>
-                                        <div className="text-xs text-ink-400 mt-0.5">{deliveryPlaceFor('Retiro facultad', career, config)}</div>
+                                        <div className="text-xs text-ink-400 mt-0.5">{deliveryPlaceFor(RETIRO_LOCAL, career, config)}</div>
                                       </div>
                                       {expressSlotSel?.fecha === slot.fecha && expressSlotSel?.turno === slot.turno && expressSlotSel?.horario === slot.horario && <span className="text-brand-DEFAULT"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>}
                                     </div>
@@ -631,7 +631,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
     : config.produccion.capacidad_diaria_paginas;
   const excedeCapacidad = !isExpressOrder && totalHojas > dailyCap;
   const slots = getNextSlots(config, pedidos, activeCareer, isExpressOrder);
-  const needsSlot = form.modalidad === 'Retiro facultad';
+  const needsSlot = isRetiroLocal(form.modalidad);
 
   function getStateIndexForConfirm(estado) {
     if (estado === 'Pendiente de pago' || estado === 'Pendiente de impresión') return 0;
@@ -835,7 +835,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
               <div className="border-t border-ink-100 pt-3 space-y-2">
                 {pedidoConfirmado.excede_capacidad ? (
                   <>
-                    <div className="text-xs font-700 text-ink-400 uppercase tracking-wide mb-1">Entregas (pedido dividido)</div>
+                    <div className="text-xs font-700 text-ink-400 uppercase tracking-wide mb-1">Retiros (pedido dividido)</div>
                     <div className="flex justify-between text-sm">
                       <span className="text-ink-500">Parte 1</span>
                       <span className="font-700 text-right ml-4">{pedidoConfirmado.ventana_retiro} <span className="text-ink-400">({pedidoConfirmado.hojas_primera_entrega} hojas)</span></span>
@@ -846,7 +846,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                     </div>
                   </>
                 ) : (
-                  <div className="flex justify-between text-sm"><span className="text-ink-500">Entrega</span><span className="font-700 text-right ml-4">{pedidoConfirmado.ventana_retiro}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-ink-500">Retiro</span><span className="font-700 text-right ml-4">{pedidoConfirmado.ventana_retiro}</span></div>
                 )}
                 <div className="flex justify-between text-sm"><span className="text-ink-500">Lugar</span><span className="font-700 text-right ml-4">{pedidoConfirmado.lugar_entrega}</span></div>
               </div>
@@ -863,7 +863,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
       {step !== 4 && (
         <>
           <div className="flex items-center gap-2 mb-6">
-            {[['Datos', 1], [needsSlot ? 'Turno' : 'Entrega', 2], ['Pago', 3]].map(([label, index], position) => (
+            {[['Datos', 1], [needsSlot ? 'Turno' : 'Retiro', 2], ['Pago', 3]].map(([label, index], position) => (
               <React.Fragment key={label}>
                 <div className={`flex items-center gap-1.5 text-xs font-700 ${step >= index ? 'text-brand-DEFAULT' : 'text-ink-300'}`}>
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-800 ${step >= index ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-400'}`}>{step > index ? '✓' : index}</div>
@@ -964,22 +964,11 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Modalidad de entrega</label>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {['Retiro domicilio', 'Retiro facultad', 'Cadete'].map(option => (
-                      <button key={option} onClick={() => {
-                        setForm(current => ({ ...current, modalidad: option }));
-                        if (option !== 'Retiro facultad') {
-                          const primerSlot = slots.find(s => s.disponible);
-                          setSlotSel(primerSlot || null);
-                        }
-                      }} className={`radio-tile ${form.modalidad === option ? 'active' : ''}`}>
-                        <div className="font-700 text-sm">{option}</div>
-                        <div className="text-xs text-ink-400 mt-1">
-                          {option === 'Cadete' ? `Se coordina por WhatsApp · a cargo del cliente` : option === 'Retiro domicilio' ? 'Chijra, coordinamos por WhatsApp' : deliveryPlaceFor(option, activeCareer, config)}
-                        </div>
-                      </button>
-                    ))}
+                  <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Cómo recibís tu pedido</label>
+                  <div className="radio-tile active">
+                    <div className="font-700 text-sm">{RETIRO_LOCAL}</div>
+                    <div className="text-xs text-ink-400 mt-1">Retirá en nuestro local cuando esté impreso y listo. Elegís abajo el día y hora.</div>
+                    <div className="text-xs text-ink-500 mt-1">{deliveryPlaceFor(RETIRO_LOCAL, activeCareer, config)}</div>
                   </div>
                 </div>
               </div>
@@ -1000,7 +989,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                 }
                 goToStep(2);
               }}>
-                {needsSlot ? 'Elegir ventana de retiro' : 'Ir al pago'}
+                {needsSlot ? 'Elegir turno de retiro' : 'Ir al pago'}
               </button>
             </div>
           )}
@@ -1029,7 +1018,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
           {step === 2 && needsSlot && (
             <div className="slide-up">
               <div className="card p-5 mb-5">
-                <div className="text-xs font-700 text-ink-400 uppercase tracking-wide mb-4">Ventanas disponibles</div>
+                <div className="text-xs font-700 text-ink-400 uppercase tracking-wide mb-4">Turnos de retiro disponibles</div>
                 <div className="space-y-3">
                   {slots.map(slot => (
                     <button key={`${slot.fecha}-${slot.turno}-${slot.horario}`} disabled={!slot.disponible} onClick={() => slot.disponible && setSlotSel(slot)} className={`turn-card w-full text-left ${slotSel?.fecha === slot.fecha && slotSel?.turno === slot.turno && slotSel?.horario === slot.horario ? 'selected' : ''} ${!slot.disponible ? 'disabled' : ''}`}>
@@ -1170,7 +1159,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   </span>
                   <div>
-                    <div className="font-700 text-sm text-amber-800">Entrega dividida</div>
+                    <div className="font-700 text-sm text-amber-800">Retiro dividido</div>
                     <div className="text-xs text-amber-700 mt-1">Tu pedido es grande y no entra completo en la agenda de la fecha elegida. Lo dividiremos en 2 entregas y te contactamos por WhatsApp para coordinar la prioridad.</div>
                   </div>
                 </div>
@@ -1453,11 +1442,11 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
               <div className="flex justify-between"><span className="text-ink-500">Formato</span><span className="font-600">{selectedOrder.formato}</span></div>
               {selectedOrder.excede_capacidad ? (
                 <>
-                  <div className="flex justify-between"><span className="text-ink-500">Entrega 1° parte</span><span className="font-600 text-right ml-4">{selectedOrder.ventana_retiro} <span className="text-ink-400">({selectedOrder.hojas_primera_entrega} hojas)</span></span></div>
-                  <div className="flex justify-between"><span className="text-ink-500">Entrega 2° parte</span><span className="font-600 text-right ml-4">{new Date(`${selectedOrder.segunda_entrega_fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} <span className="text-ink-400">({selectedOrder.hojas_segunda_entrega} hojas)</span></span></div>
+                  <div className="flex justify-between"><span className="text-ink-500">Retiro 1° parte</span><span className="font-600 text-right ml-4">{selectedOrder.ventana_retiro} <span className="text-ink-400">({selectedOrder.hojas_primera_entrega} hojas)</span></span></div>
+                  <div className="flex justify-between"><span className="text-ink-500">Retiro 2° parte</span><span className="font-600 text-right ml-4">{new Date(`${selectedOrder.segunda_entrega_fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} <span className="text-ink-400">({selectedOrder.hojas_segunda_entrega} hojas)</span></span></div>
                 </>
               ) : (
-                <div className="flex justify-between"><span className="text-ink-500">Entrega</span><span className="font-600 text-right ml-4">{selectedOrder.ventana_retiro}</span></div>
+                <div className="flex justify-between"><span className="text-ink-500">Retiro</span><span className="font-600 text-right ml-4">{selectedOrder.ventana_retiro}</span></div>
               )}
               <div className="flex justify-between"><span className="text-ink-500">Lugar</span><span className="font-600 text-right ml-4">{selectedOrder.lugar_entrega}</span></div>
               <div className="flex justify-between"><span className="text-ink-500">Total</span><span className="font-800">{fmt(selectedOrder.total)}</span></div>
