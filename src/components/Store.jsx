@@ -2,7 +2,7 @@ import React from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
 import { Cover, Alert, Spinner, CareerCombobox, fechaLabel, buildWhatsAppMessage } from './UI';
-import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, geminiEndpoint } from '../lib/utils';
+import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, geminiEndpoint, buildWaPrompt } from '../lib/utils';
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
@@ -54,17 +54,18 @@ async function generateWhatsAppMessageForOrder(order, config) {
       precio: i.precio
     })) : [{ titulo: order.libro, hojas: order.hojas, paginas: order.paginas, precio: order.total }];
 
-    const data = JSON.stringify({
+    const dataObj = {
       nombre: order.nombre,
       whatsapp: order.whatsapp,
       libros: librosPayload,
       fecha: order.fecha,
       lugar_entrega: order.lugar_entrega || '',
       saldo: Number(order.saldo_pendiente) || 0
-    });
+    };
+    const prompt = buildWaPrompt(config?.prompts?.wa_aviso, dataObj);
 
     const sheetsBase = url;
-    const response = await fetch(`${sheetsBase}?mode=generate-wa&data=${encodeURIComponent(data)}`);
+    const response = await fetch(`${sheetsBase}?mode=generate-wa&data=${encodeURIComponent(JSON.stringify(dataObj))}&prompt=${encodeURIComponent(prompt)}`);
     if (!response.ok) throw new Error('Error');
     const result = await response.json();
     if (result.msj_ws) return result.msj_ws;

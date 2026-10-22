@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint, buildWaPrompt } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -556,7 +556,8 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                           lugar_entrega: '',
                           saldo: parserPreview.saldo || 0
                         };
-                        const url = `${sheetsUrl}?mode=generate-wa&data=${encodeURIComponent(JSON.stringify(data))}`;
+                        const prompt = buildWaPrompt(config?.prompts?.wa_aviso, data);
+                        const url = `${sheetsUrl}?mode=generate-wa&data=${encodeURIComponent(JSON.stringify(data))}&prompt=${encodeURIComponent(prompt)}`;
                         const res = await fetch(url);
                         const json = await res.json();
                         if (json.msj_ws) {

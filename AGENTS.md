@@ -122,6 +122,7 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `getEspiralSize(hojas, config)` — Tamaño de espiral
 - `extractTimeFromMessage(text)` — Extrae hora de mensaje WA
 - `buildParserPrompt(template, { fecha, mensaje, catalogo })` — Arma el prompt del parser WA desde `config.prompts.parser_wa` (editable en Ajustes); cae a `DEFAULT_PARSER_PROMPT` y anexa schema JSON si faltó
+- `buildWaPrompt(template, data)` — Arma el prompt del **aviso de WhatsApp** ("pedido listo para retirar") desde `config.prompts.wa_aviso` (2ª sección de la card Gemini en Ajustes); cae a `DEFAULT_WA_PROMPT` y resuelve `{{fecha}} {{fecha_pedido}} {{nombre}} {{telefono}} {{libros}} {{lugar}} {{saldo}}`
 - `buildParserCatalog(books, mensaje, { maxDetalle })` — Modo `compacto`: score local con IDF (tokens genéricos no puntúan, título completo +10) → máx. 10 fichas detalladas + índice de títulos (−56% de tokens). Antes de puntuar, `mensajeSinRuidoParaScore()` saca teléfonos, horarios, montos y estados de pago
 - `buildParserCatalogFull(books)` — Modo `completo`: una ficha por libro activo (la versión anterior)
 - `buildParserCatalogForMode(books, mensaje, modo)` — Selector según `config.prompts.catalogo_modo` ('compacto' default | 'completo'), toggle en Ajustes

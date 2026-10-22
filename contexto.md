@@ -90,9 +90,13 @@ Fuente de verdad: `libro.variantes[]` (JSONB en Supabase).
 - `calcPrecioItem(libro, ref, encuadernacion, config, ...)`: si `ref` es **objeto variante**, el 5to arg es `express`; si es **string** (id, 'A4', 'A5' o label libre), el 5to es `color` y el 6to `express`. Resuelve por id → por label (slug incluido) → fallback clásico A4/A5.
 - Ítem de carrito/pedido guarda `varianteId` + `formato` (= label de la variante).
 
-## Prompt y catálogo de Gemini (parser WhatsApp)
+## Prompts de Gemini (parser + aviso de WhatsApp)
 
-- **Dónde se edita:** Admin → Ajustes → card "Prompt y catálogo de Gemini (parser WhatsApp)". Botón "Usar el default" deja el prompt vacío (= default), y el toggle "Catálogo que se le manda" elige entre `compacto` (filtrado previo, default) y `completo` (como antes).
+La card de Ajustes ahora se llama **"Prompts de Gemini"** y tiene **dos prompts numerados**, cada uno con su botón "Usar el default", su descripción y sus tokens.
+
+### 1 · Prompt del parser (Pedidos → Parsear con Gemini)
+
+- **Dónde se edita:** Admin → Ajustes → card "Prompts de Gemini" → sección **"1 · Prompt del parser"**. Botón "Usar el default" deja el prompt vacío (= default), y el toggle "Catálogo que se le manda" elige entre `compacto` (filtrado previo, default) y `completo` (como antes).
 - **Persistencia:** `config.prompts.parser_wa` → JSONB de la tabla `config` (más `saveLocal`). Editable por shop.
 - **Tokens:** `{{fecha}}` (fecha larga es-AR), `{{mensaje}}` (crudo del alumno), `{{catalogo}}` (libros activos). Se reemplazan en `buildParserPrompt` (`src/lib/utils.js`).
 - **Redes de seguridad:** si borrás un token, esa parte se anexa igual al final; si borrás el bloque JSON de salida, se re-anexa (`PARSER_OUTPUT_SCHEMA` en `constants.js`) — sin ese bloque el parser no puede leer la respuesta.
@@ -106,7 +110,12 @@ Fuente de verdad: `libro.variantes[]` (JSONB en Supabase).
 - **Fixtures:** los mensajes reales de la fotocopiadora (separados por `/`, tipo "Daniela Puca. CCC A4 vertical. Miercoles 18hs. pagado.") están en `npm run smoke` y en `scripts/test-msgs-reales.mjs`.
 - **Nota sobre "varios alumnos":** los mensajes de la fotocopiadora que se usaron de fixture van **separados por `/` en el chat**, pero **cada mensaje es UN solo alumno** (nombre, teléfono y sus libros). No hay lote. Solo sería un tema si algún mensaje real traía varios alumnos en un mismo texto (no se observó).
 - El emparejamiento final contra la DB lo hace la app por slug (`books.find(...)` en `AdminParserWA`), por eso `hojas`/`paginas` y `precio` del JSON de Gemini solo afectan a libros que no existen en el catálogo.
-- El **otro** prompt de Gemini (`?mode=generate-wa`, mensaje de seguimiento desde Pedidos/Checkout) vive ahora en la **Edge Function** (`supabase/functions/gemini/index.ts`, función `buildWaPrompt`) — antes estaba en el Apps Script de Google.
+### 2 · Prompt del aviso de WhatsApp (🔄 Regenerar)
+
+- **Qué hace:** redacta el mensaje que le avisa al alumno que su pedido está **LISTO para retirar en el local**. Se usa al crear el pedido (checkout) y con el botón **🔄 Regenerar** del parser.
+- **Dónde se edita:** misma card, sección **"2 · Prompt del aviso de WhatsApp"**. Persistencia: `config.prompts.wa_aviso` (JSONB de `config`, editable por shop). Vacío = default.
+- **Tokens:** `{{fecha}}` (hoy, es-AR), `{{fecha_pedido}}` (día elegido), `{{nombre}}`, `{{telefono}}`, `{{libros}}` (listado), `{{lugar}}` (lugar de retiro; vacío → "nuestro local"), `{{saldo}}` (frase según saldo: pagado / debe $X). Se resuelven en **`buildWaPrompt(template, data)`** (`src/lib/utils.js`); vacío → `DEFAULT_WA_PROMPT` (`constants.js`).
+- **Envío:** la web arma el prompt y lo manda como **`prompt`** junto a `data` en `GET ?mode=generate-wa&data=...&prompt=...`. La Edge Function usa ese `prompt` si llega; si no (llamada directa o web vieja), cae a su copia de respaldo (`buildWaPrompt()` en `index.ts`).
 
 ## Retiro en local (modelo de negocio, 2026-10-21)
 
@@ -118,7 +127,7 @@ Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumn
 - **`config.entrega.cadete_minimo`** se eliminó del código y de Ajustes (ya no hay cadete). Puede seguir existiendo en configs viejas de DB; es inofensivo.
 - **Mensajes:** el `DEFAULT_PARSER_PROMPT` (regla 8, y reglas 4/6) y `buildWhatsAppMessage()` (fallback) ahora dicen **"pasá a retirarlo por el local"** en vez de "te llevamos a la facultad". *Si el usuario llegara a guardar un prompt custom en Ajustes, hay que tocar "Usar el default" para que aplique el nuevo (verificado: hoy `config.prompts` está vacío → aplica el default).*
 - **Landing (App.jsx):** copy de "entrega en facultad" → "retiro en tu local".
-- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18) y la agenda de turnos (19) — 103 checks.
+- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18), la agenda de turnos (19) y `buildWaPrompt`/aviso (20) — 117 checks.
 
 ## Horarios de retiro (agenda en Ajustes, 2026-10-21)
 
@@ -143,12 +152,12 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 
 - **Contrato idéntico** al Apps Script que reemplaza, así la lógica de fetch de la web no cambia:
   - `POST` urlencoded `{ mensaje, prompt }` → `{ pedidos, timestamp }` (parser WhatsApp).
-  - `GET ?mode=generate-wa&data=<json>` → `{ msj_ws }` (mensaje de seguimiento / botón "Regenerar").
+  - `GET ?mode=generate-wa&data=<json>[&prompt=<texto>]` → `{ msj_ws }` (aviso "pedido listo" / botón "Regenerar"). `prompt` es opcional: la web manda el resuelto desde `config.prompts.wa_aviso`; sin él, la función usa su default local.
   - Errores devueltos en `200` con `{ error }` (como el script viejo), para que la web muestre el mensaje real.
 - **Config:** `integraciones.GEMINI_ENDPOINT` (clave nueva). `geminiEndpoint(config)` en `utils.js` la lee y **cae a la legacy `SHEETS_API_URL`** si está vacía (migración sin romper). URL de la función: `https://{project-ref}.supabase.co/functions/v1/gemini`.
 - **Secretos:** `GEMINI_API_KEY` (requerido). Opcionales: `GEMINI_MODEL` (default `gemini-3.1-flash-lite-preview`), `GEMINI_MODEL_FALLBACK` (`gemini-3-flash-preview`), `GEMINI_RATE_MAX` (10/min por IP).
 - **Deploy:** `supabase functions deploy gemini --no-verify-jwt` (la web la llama sin auth) y `supabase secrets set GEMINI_API_KEY=...`.
-- **generate-wa reframeado a retiro en local:** `buildWaPrompt()` en la Edge Function ya no dice "confirmar entrega / llevamos a la facultad"; ahora avisa que el pedido está **listo para retirar en el local** y el alumno pasa a buscarlo (consistente con el modelo de negocio).
+- **generate-wa reframeado a retiro en local y ahora editable:** el aviso dice que el pedido está **listo para retirar en el local** (el alumno pasa a buscarlo). El prompt vive en **Ajustes → "2 · Prompt del aviso"** (`config.prompts.wa_aviso`; default `DEFAULT_WA_PROMPT`); la web lo resuelve con `buildWaPrompt()` y lo manda como `prompt`, que la función usa si llega (si no, su `buildWaPrompt()` local de respaldo).
 - **Rate limiting:** best-effort por IP (leen `x-forwarded-for`), in-memory por instancia — sin el bloqueo persistente/email del script viejo (no hay `MailApp`).
 - **Baja del sync de Sheets (obsoleto):** se eliminaron `syncOrderToSheets` y `fetchOrdersFromSheets` de `supabase.js`, la copia local en `Store.jsx` y su import muerto en `AdminPedidos.jsx`. Ya no funcionaba contra el Apps Script actual (ese script ya no tenía handler de Sheets).
 
@@ -156,7 +165,7 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 1. `supabase secrets set GEMINI_API_KEY=<tu-key>` (CLI linkeado al proyecto `hjtbwnsxgellbtfariog`).
 2. `supabase functions deploy gemini --no-verify-jwt`.
 3. Probar: `curl "https://hjtbwnsxgellbtfariog.supabase.co/functions/v1/gemini"` → debe devolver `{ status, tip }`.
-4. En **Ajustes → card "Prompt y catálogo de Gemini"** setear el **"Endpoint del proxy de Gemini"** (`integraciones.GEMINI_ENDPOINT`) a esa URL y guardar. Vaciar `SHEETS_API_URL` cuando todo funcione.
+4. En **Ajustes → card "Prompts de Gemini"** setear el **"Endpoint del proxy de Gemini"** (`integraciones.GEMINI_ENDPOINT`) a esa URL y guardar. Vaciar `SHEETS_API_URL` cuando todo funcione.
 5. Verificar parser WA + "Regenerar" mensaje desde el admin.
 
 ## Directivas para el agente

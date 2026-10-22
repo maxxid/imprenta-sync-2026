@@ -241,7 +241,10 @@ Deno.serve(async (req: Request) => {
         const dataJson = url.searchParams.get('data');
         if (!dataJson) return json({ error: 'Falta data' });
         const data = JSON.parse(dataJson);
-        const prompt = buildWaPrompt(data);
+        // La web manda el prompt ya resuelto (config.prompts.wa_aviso, editable en
+        // Ajustes). Si no llega (llamada directa o web vieja), cae al default de acá.
+        const custom = (url.searchParams.get('prompt') || '').trim();
+        const prompt = custom || buildWaPrompt(data);
         const resultado = await callGeminiConRespaldo(prompt);
         return json({ msj_ws: extraerMsj(resultado) });
       }

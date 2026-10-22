@@ -1,4 +1,4 @@
-import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT } from './constants.js';
+import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT } from './constants.js';
 
 export function fmt(n) {
   return `$${Number(n || 0).toLocaleString('es-AR')}`;
@@ -652,6 +652,35 @@ export function buildParserPrompt(template, { fecha = '', mensaje = '', catalogo
   if (extras.length) prompt = `${prompt}\n\n${extras.join('\n\n')}`;
   if (!base.includes('"libro"')) prompt = `${prompt}\n\n${PARSER_OUTPUT_SCHEMA}`;
   return prompt;
+}
+
+/**
+ * Arma el prompt del AVISO de WhatsApp ("tu pedido está listo para retirar").
+ * Mismo patrón que el parser: el template vive en `config.prompts.wa_aviso`
+ * (editable en Ajustes → Prompts de Gemini); vacío → DEFAULT_WA_PROMPT. Acá se
+ * resuelven los tokens con los datos del pedido y el resultado se manda a la Edge
+ * Function (que, si no llega el prompt, usa su copia de respaldo).
+ */
+export function buildWaPrompt(template, data = {}) {
+  const base = String(template || '').trim() || DEFAULT_WA_PROMPT;
+  const hoy = new Date().toLocaleDateString('es-AR');
+  const libros = Array.isArray(data?.libros) ? data.libros : [];
+  const contextoLibros = libros
+    .map(l => `- [${l?.titulo ?? ''}] | Hojas: ${l?.hojas ?? 0} | Págs: ${l?.paginas ?? 0} | Precio: $${l?.precio ?? 0}`)
+    .join('\n');
+  const lugar = String(data?.lugar_entrega ?? '').trim() || 'nuestro local';
+  const saldo = Number(data?.saldo) || 0;
+  const saldoTexto = saldo > 0
+    ? `El saldo pendiente es $${saldo}. Decile el monto total a abonar al retirar.`
+    : 'Ya tiene todo pagado, no menciones dinero.';
+  return base
+    .split('{{fecha_pedido}}').join(String(data?.fecha || 'no especificada'))
+    .split('{{fecha}}').join(hoy)
+    .split('{{nombre}}').join(String(data?.nombre ?? ''))
+    .split('{{telefono}}').join(String(data?.whatsapp ?? ''))
+    .split('{{libros}}').join(contextoLibros || '—')
+    .split('{{lugar}}').join(lugar)
+    .split('{{saldo}}').join(saldoTexto);
 }
 
 // URL del proxy de Gemini (Supabase Edge Function). `integraciones.GEMINI_ENDPOINT`

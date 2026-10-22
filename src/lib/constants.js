@@ -159,3 +159,36 @@ Responde ÚNICAMENTE un Array JSON:
 /** Salida JSON mínima que consume el parser (se anexa si el prompt editado la borró). */
 export const PARSER_OUTPUT_SCHEMA = `Responde ÚNICAMENTE un Array JSON:
 [{"alumno":"NOMBRE","formato":"A4/A5 o variante","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
+
+/**
+ * Prompt del AVISO de WhatsApp ("tu pedido está listo para retirar por el local").
+ * Editable en Ajustes → Prompts de Gemini → "Prompt del aviso". Si está vacío, se
+ * usa este. La web resuelve los tokens y manda el prompt ya armado a la Edge Function.
+ * Tokens:
+ *   {{fecha}}        → fecha de hoy (es-AR)
+ *   {{fecha_pedido}} → día que eligió el alumno
+ *   {{nombre}}       → alumno
+ *   {{telefono}}     → WhatsApp del alumno
+ *   {{libros}}       → listado de libros del pedido (título, hojas, págs, precio)
+ *   {{lugar}}        → lugar de retiro (el local)
+ *   {{saldo}}        → frase según saldo (pagado / debe $X)
+ */
+export const DEFAULT_WA_PROMPT = `Hoy es {{fecha}}. Redactá un mensaje de WhatsApp para avisarle a {{nombre}} que su pedido está LISTO para retirar en {{lugar}}.
+
+DATOS DEL PEDIDO:
+- Alumno: {{nombre}}
+- Teléfono: {{telefono}}
+- Libros: {{libros}}
+- Día del pedido: {{fecha_pedido}}
+- Lugar de retiro: {{lugar}}
+- {{saldo}}
+
+REGLAS:
+1. El alumno retira su pedido en {{lugar}}. NO hacemos entregas a domicilio ni en la facultad: él pasa a retirarlo.
+2. Corto y natural, español rioplatense ("tenés", "¿cómo estás?").
+3. Si hay día u horario de retiro, indicáselos para que pase a buscarlo cuando esté listo.
+4. Si el saldo es 0, no menciones dinero: solo que ya está listo para retirar.
+5. Si tiene saldo, decile el monto total a abonar al retirar.
+6. Sin emojis excesivos. Profesional pero cercano. Usá al menos una vez el emoji 😊.
+
+Respondé ÚNICAMENTE con el mensaje de WhatsApp, sin comillas ni JSON.`;

@@ -3,7 +3,7 @@ import { Icon } from '../Icons';
 import { Alert } from '../UI';
 import { getCareers, careerLabel, DIAS, DIAS_ORDER, buildVentana, normalizeVentanas, turnoFromHorario, nextHorario, slug } from '../../lib/utils';
 import { saveConfigToSupabase, saveLocal, loadLocal, deepMerge } from '../../lib/supabase';
-import { STORAGE, DEFAULT_PARSER_PROMPT } from '../../lib/constants';
+import { STORAGE, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT } from '../../lib/constants';
 
 export function AdminConfig({ config, setConfig }) {
   const [configDraft, setConfigDraft] = useState(null);
@@ -330,20 +330,11 @@ export function AdminConfig({ config, setConfig }) {
       </div>
 
       <div id="gemini" className="card p-5 scroll-mt-6">
-        <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
-          <div className="font-700 text-sm text-ink-800">Prompt y catálogo de Gemini (parser WhatsApp)</div>
-          <div className="flex gap-2">
-            <button
-              className="btn-secondary text-xs px-3 py-1.5"
-              onClick={() => setConfigDraft(current => ({ ...current, prompts: { ...(current.prompts || {}), parser_wa: '' } }))}
-              title="Vuelve al prompt original del sistema"
-            >Usar el default</button>
-          </div>
-        </div>
-        <div className="text-xs text-ink-400 mb-3">
-          Se usa en <span className="font-700">Pedidos → Parsear con Gemini</span>. Editá las reglas y, sobre todo,
-          la regla 8 (redacción del <span className="font-700">msj_ws</span>, el mensaje que le llega al cliente).
-          <span className="font-700 text-ink-500"> Vacío = prompt por defecto.</span>
+        <div className="font-700 text-sm text-ink-800 mb-1">Prompts de Gemini</div>
+        <div className="text-xs text-ink-400 mb-4">
+          Dos prompts controlan la IA: el del <span className="font-700">parser</span> (convierte el WhatsApp en pedidos)
+          y el del <span className="font-700">aviso</span> (redacta el mensaje de "pedido listo para retirar").
+          Se editan acá y quedan activos al guardar, sin redeploy.
         </div>
 
         <div className="text-xs font-700 text-ink-500 uppercase tracking-wide mb-1.5">Endpoint del proxy de Gemini</div>
@@ -356,6 +347,20 @@ export function AdminConfig({ config, setConfig }) {
         <div className="text-[11px] text-ink-400 mb-4">
           URL de la Supabase Edge Function que reemplazó al Apps Script. Si queda vacía, se usa la legacy
           <span className="font-mono"> SHEETS_API_URL</span>{configDraft.integraciones?.SHEETS_API_URL ? ' (hoy apuntando al Apps Script viejo)' : ''}.
+        </div>
+
+        <div className="border-t border-ink-100 pt-4 mb-1 flex items-center justify-between gap-3 flex-wrap">
+          <div className="font-700 text-sm text-ink-800">1 · Prompt del parser</div>
+          <button
+            className="btn-secondary text-xs px-3 py-1.5"
+            onClick={() => setConfigDraft(current => ({ ...current, prompts: { ...(current.prompts || {}), parser_wa: '' } }))}
+            title="Vuelve al prompt original del sistema"
+          >Usar el default</button>
+        </div>
+        <div className="text-xs text-ink-400 mb-3">
+          Se usa en <span className="font-700">Pedidos → Parsear con Gemini</span>. Editá las reglas y, sobre todo,
+          la regla 8 (redacción del <span className="font-700">msj_ws</span>, el mensaje que le llega al cliente).
+          <span className="font-700 text-ink-500"> Vacío = prompt por defecto.</span>
         </div>
 
         <div className="text-xs font-700 text-ink-500 uppercase tracking-wide mb-1.5">Catálogo que se le manda</div>
@@ -400,6 +405,39 @@ export function AdminConfig({ config, setConfig }) {
         <div className="text-[11px] text-ink-400 mt-2">
           Si borrás un token, esa parte se agrega igual al final; y si borrás el bloque JSON de salida se re-anexa,
           porque sin él el parser no puede leer la respuesta de Gemini.
+        </div>
+
+        <div className="border-t border-ink-100 mt-5 pt-4 mb-1 flex items-center justify-between gap-3 flex-wrap">
+          <div className="font-700 text-sm text-ink-800">2 · Prompt del aviso de WhatsApp</div>
+          <button
+            className="btn-secondary text-xs px-3 py-1.5"
+            onClick={() => setConfigDraft(current => ({ ...current, prompts: { ...(current.prompts || {}), wa_aviso: '' } }))}
+            title="Vuelve al prompt original del sistema"
+          >Usar el default</button>
+        </div>
+        <div className="text-xs text-ink-400 mb-3">
+          Redacta el mensaje que le avisa al alumno que su pedido está LISTO para retirar por el local.
+          Se usa al crear el pedido y con el botón <span className="font-700">🔄 Regenerar</span> del parser.
+          <span className="font-700 text-ink-500"> Vacío = prompt por defecto.</span>
+        </div>
+        <textarea
+          className="input-field font-mono text-xs leading-relaxed w-full"
+          rows={16}
+          spellCheck={false}
+          value={configDraft.prompts?.wa_aviso || ''}
+          placeholder={DEFAULT_WA_PROMPT}
+          onChange={e => setConfigDraft(current => ({ ...current, prompts: { ...(current.prompts || {}), wa_aviso: e.target.value } }))}
+        />
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <span className="text-[11px] font-700 text-ink-500 uppercase tracking-wide">Tokens</span>
+          {['{{fecha}}', '{{fecha_pedido}}', '{{nombre}}', '{{telefono}}', '{{libros}}', '{{lugar}}', '{{saldo}}'].map(t => (
+            <code key={t} className="badge bg-ink-100 text-ink-600 text-[11px] font-mono">{t}</code>
+          ))}
+          <span className="text-[11px] text-ink-400 ml-1">se reemplazan con los datos del pedido (hoy, día del pedido, alumno, teléfono, libros, lugar y saldo).</span>
+        </div>
+        <div className="text-[11px] text-ink-400 mt-2">
+          Si borrás un token, ese dato no se inyecta (el resto del prompt se respeta). Dejá siempre la línea final
+          "Respondé ÚNICAMENTE con el mensaje de WhatsApp" para que Gemini no agregue texto de más.
         </div>
       </div>
 

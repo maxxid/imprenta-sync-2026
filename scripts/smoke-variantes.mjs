@@ -269,5 +269,43 @@ check('nextHorario 19:00 → 20:00', nextHorario('19:00'), '20:00');
 check('nextHorario 23:00 → 00:00', nextHorario('23:00'), '00:00');
 check('DIAS_ORDER lunes..domingo', DIAS_ORDER, [1, 2, 3, 4, 5, 6, 0]);
 
+// 20. buildWaPrompt (aviso "pedido listo para retirar", editable en Ajustes)
+import { buildWaPrompt } from '../src/lib/utils.js';
+import { DEFAULT_WA_PROMPT } from '../src/lib/constants.js';
+
+const pedidoWA = {
+  nombre: 'Lucía Gómez',
+  whatsapp: '3885111222',
+  libros: [{ titulo: 'Apuntes de Anatomía', hojas: 100, paginas: 200, precio: 8000 }],
+  fecha: '2026-10-25',
+  lugar_entrega: 'Fotocopiadora UNJu — Rivadavia 1234',
+  saldo: 5000
+};
+const aviso = buildWaPrompt(undefined, pedidoWA);
+check('aviso: sin tokens sin reemplazar', aviso.includes('{{'), false);
+check('aviso: nombra al alumno', aviso.includes('Lucía Gómez'), true);
+check('aviso: incluye el libro', aviso.includes('Apuntes de Anatomía'), true);
+check('aviso: fecha de hoy inyectada', /\d{1,2}\/\d{1,2}\/\d{4}/.test(aviso), true);
+check('aviso: día del pedido', aviso.includes('2026-10-25'), true);
+check('aviso: lugar de retiro', aviso.includes('Rivadavia 1234'), true);
+check('aviso: saldo pendiente → monto', aviso.includes('saldo pendiente es $5000'), true);
+check('aviso: aclara retiro en local (no domicilio)', aviso.includes('NO hacemos entregas'), true);
+check('aviso: pide el emoji 😊', aviso.includes('😊'), true);
+
+const sinSaldo = buildWaPrompt(undefined, { ...pedidoWA, saldo: 0 });
+check('aviso saldo 0 → no menciona dinero', sinSaldo.includes('Ya tiene todo pagado') && !sinSaldo.includes('pendiente'), true);
+
+const sinLugar = buildWaPrompt(undefined, { ...pedidoWA, lugar_entrega: '' });
+check('aviso sin lugar → "nuestro local"', sinLugar.includes('en nuestro local'), true);
+
+check('aviso template vacío → DEFAULT_WA_PROMPT', buildWaPrompt('', pedidoWA).includes('LISTO para retirar'), true);
+check('aviso default trae todos los tokens', DEFAULT_WA_PROMPT.includes('{{saldo}}') && DEFAULT_WA_PROMPT.includes('{{fecha_pedido}}'), true);
+check('aviso default cierra pidiendo solo el mensaje', DEFAULT_WA_PROMPT.includes('Respondé ÚNICAMENTE con el mensaje de WhatsApp'), true);
+
+const avisoCustom = 'Hola {{nombre}}, tu pedido de {{libros}} está listo. Pasá por {{lugar}}.';
+const avisoOut = buildWaPrompt(avisoCustom, pedidoWA);
+check('aviso custom: respeta al admin', avisoOut.startsWith('Hola Lucía Gómez'), true);
+check('aviso custom: tokens resueltos', avisoOut.includes('Apuntes de Anatomía') && avisoOut.includes('Rivadavia 1234') && !avisoOut.includes('{{'), true);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);
