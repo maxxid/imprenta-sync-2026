@@ -7,3 +7,4 @@ Imprenta Sync 2026_files/
 .vercel
 .env
 .env.local
+supabase/.temp/
