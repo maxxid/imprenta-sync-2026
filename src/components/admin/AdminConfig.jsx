@@ -408,7 +408,7 @@ export function AdminConfig({ config, setConfig }) {
         </div>
 
         <div className="border-t border-ink-100 mt-5 pt-4 mb-1 flex items-center justify-between gap-3 flex-wrap">
-          <div className="font-700 text-sm text-ink-800">2 · Prompt del aviso de WhatsApp</div>
+          <div className="font-700 text-sm text-ink-800">2 · Prompt del recordatorio (día del retiro)</div>
           <button
             className="btn-secondary text-xs px-3 py-1.5"
             onClick={() => setConfigDraft(current => ({ ...current, prompts: { ...(current.prompts || {}), wa_aviso: '' } }))}
@@ -416,8 +416,10 @@ export function AdminConfig({ config, setConfig }) {
           >Usar el default</button>
         </div>
         <div className="text-xs text-ink-400 mb-3">
-          Redacta el mensaje que le avisa al alumno que su pedido está LISTO para retirar por el local.
-          Se usa al crear el pedido y con el botón <span className="font-700">🔄 Regenerar</span> del parser.
+          Redacta <span className="font-700 text-ink-600">EL mensaje importante</span>: el recordatorio que se manda el
+          <span className="font-700 text-ink-600"> MISMO DÍA del retiro pactado</span> para avisarle al alumno que su pedido
+          está LISTO y a qué hora pasa a buscarlo por el local (eligen el turno según sus clases → por eso importa la hora).
+          Se genera desde el <span className="font-700">tab WhatsApp</span> y con <span className="font-700">🔄 Regenerar</span> del parser.
           <span className="font-700 text-ink-500"> Vacío = prompt por defecto.</span>
         </div>
         <textarea
@@ -430,10 +432,10 @@ export function AdminConfig({ config, setConfig }) {
         />
         <div className="flex flex-wrap items-center gap-2 mt-3">
           <span className="text-[11px] font-700 text-ink-500 uppercase tracking-wide">Tokens</span>
-          {['{{fecha}}', '{{fecha_pedido}}', '{{nombre}}', '{{telefono}}', '{{libros}}', '{{lugar}}', '{{saldo}}'].map(t => (
+          {['{{fecha}}', '{{fecha_pedido}}', '{{hora}}', '{{nombre}}', '{{telefono}}', '{{libros}}', '{{lugar}}', '{{saldo}}'].map(t => (
             <code key={t} className="badge bg-ink-100 text-ink-600 text-[11px] font-mono">{t}</code>
           ))}
-          <span className="text-[11px] text-ink-400 ml-1">se reemplazan con los datos del pedido (hoy, día del pedido, alumno, teléfono, libros, lugar y saldo).</span>
+          <span className="text-[11px] text-ink-400 ml-1">se reemplazan con los datos del pedido (hoy, día del retiro, hora, alumno, teléfono, libros, lugar y saldo).</span>
         </div>
         <div className="text-[11px] text-ink-400 mt-2">
           Si borrás un token, ese dato no se inyecta (el resto del prompt se respeta). Dejá siempre la línea final

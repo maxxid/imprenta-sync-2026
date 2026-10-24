@@ -527,7 +527,6 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                   </div>
                 );
               })()}
-              <div className="flex justify-between items-center"><span className="text-ink-500">Formato</span><select className="input-field text-xs py-1.5 w-[80px] text-right font-700" value={parserPreview.formato} onChange={e => updateParserField('formato', e.target.value)}><option value="A4">A4</option><option value="A5">A5</option></select></div>
               <div className="flex justify-between items-center"><span className="text-ink-500">Seña / pago</span><input className="input-field text-xs py-1.5 w-[130px] text-right font-700" type="number" value={parserPreview.montoPagado || 0} onChange={e => updateParserField('montoPagado', Number(e.target.value) || 0)} /></div>
               <div className="flex justify-between"><span className="text-ink-500">Saldo</span><span className="font-700">{fmt(parserPreview.saldo)}</span></div>
               <div className="flex justify-between"><span className="text-ink-500">Total</span><span className="font-700">{fmt(parserPreview.total)}</span></div>
@@ -548,11 +547,13 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                         const librosPayload = parserPreview.libros.map(b => ({
                           titulo: b.titulo, hojas: b.hojas || 0, paginas: b.paginas || 0, precio: b.precio || 0
                         }));
+                        const horaWA = extractTimeFromMessage(parserInput) || (parserPreview.entrega?.turno === 'manana' ? '10:00' : '19:00');
                         const data = {
                           nombre: parserPreview.nombre,
                           whatsapp: parserPreview.whatsapp,
                           libros: librosPayload,
                           fecha: parserPreview.entrega?.fecha || '',
+                          hora: horaWA,
                           lugar_entrega: '',
                           saldo: parserPreview.saldo || 0
                         };

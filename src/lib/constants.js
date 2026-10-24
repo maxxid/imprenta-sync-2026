@@ -161,32 +161,37 @@ export const PARSER_OUTPUT_SCHEMA = `Responde ÚNICAMENTE un Array JSON:
 [{"alumno":"NOMBRE","formato":"A4/A5 o variante","libro":"NOMBRE_EXACTO","hojas":0,"paginas":0,"fecha":"YYYY-MM-DD","precio":0,"sena":0,"observaciones":"RESUMEN","telefono":"","msj_ws":""}]`;
 
 /**
- * Prompt del AVISO de WhatsApp ("tu pedido está listo para retirar por el local").
- * Editable en Ajustes → Prompts de Gemini → "Prompt del aviso". Si está vacío, se
- * usa este. La web resuelve los tokens y manda el prompt ya armado a la Edge Function.
+ * Prompt del RECORDATORIO de WhatsApp (día del retiro: "tu pedido está listo y te
+ * esperamos hoy a las X en el local"). Es EL mensaje importante: se manda el MISMO
+ * DÍA de la entrega pactada (los alumnos eligen el turno según sus clases → por eso
+ * la hora importa). Con IA. Editable en Ajustes → Prompts de Gemini → sección 2.
+ * Si está vacío, se usa este. La web resuelve los tokens y manda el prompt ya armado
+ * a la Edge Function.
  * Tokens:
  *   {{fecha}}        → fecha de hoy (es-AR)
  *   {{fecha_pedido}} → día que eligió el alumno
+ *   {{hora}}         → horario pactado de retiro (HH:MM)
  *   {{nombre}}       → alumno
  *   {{telefono}}     → WhatsApp del alumno
  *   {{libros}}       → listado de libros del pedido (título, hojas, págs, precio)
  *   {{lugar}}        → lugar de retiro (el local)
  *   {{saldo}}        → frase según saldo (pagado / debe $X)
  */
-export const DEFAULT_WA_PROMPT = `Hoy es {{fecha}}. Redactá un mensaje de WhatsApp para avisarle a {{nombre}} que su pedido está LISTO para retirar en {{lugar}}.
+export const DEFAULT_WA_PROMPT = `Hoy es {{fecha}}. Redactá un mensaje de WhatsApp para avisarle a {{nombre}} que su pedido está LISTO para retirar en {{lugar}}, el {{fecha_pedido}} a las {{hora}}.
 
 DATOS DEL PEDIDO:
 - Alumno: {{nombre}}
 - Teléfono: {{telefono}}
 - Libros: {{libros}}
-- Día del pedido: {{fecha_pedido}}
+- Día del retiro: {{fecha_pedido}}
+- Hora del retiro: {{hora}}
 - Lugar de retiro: {{lugar}}
 - {{saldo}}
 
 REGLAS:
 1. El alumno retira su pedido en {{lugar}}. NO hacemos entregas a domicilio ni en la facultad: él pasa a retirarlo.
 2. Corto y natural, español rioplatense ("tenés", "¿cómo estás?").
-3. Si hay día u horario de retiro, indicáselos para que pase a buscarlo cuando esté listo.
+3. Indicale SIEMPRE el día y la hora de retiro ({{fecha_pedido}} a las {{hora}}) para que pase a buscarlo cuando esté listo.
 4. Si el saldo es 0, no menciones dinero: solo que ya está listo para retirar.
 5. Si tiene saldo, decile el monto total a abonar al retirar.
 6. Sin emojis excesivos. Profesional pero cercano. Usá al menos una vez el emoji 😊.

@@ -59,6 +59,7 @@ async function generateWhatsAppMessageForOrder(order, config) {
       whatsapp: order.whatsapp,
       libros: librosPayload,
       fecha: order.fecha,
+      hora: order.horario_entrega || '',
       lugar_entrega: order.lugar_entrega || '',
       saldo: Number(order.saldo_pendiente) || 0
     };
