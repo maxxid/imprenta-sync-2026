@@ -59,9 +59,16 @@ export function AdminWA({ orders, setOrders, config }) {
   const campoMsj = esHoy ? 'wa_message' : 'wa_confirmacion';
   const campoEnviado = esHoy ? 'wa_recordatorio_enviado' : 'wa_confirmacion_enviada';
 
-  const mensajeDe = (order) => (esHoy
-    ? (order.wa_message || '')
-    : (order.wa_confirmacion || buildConfirmationMessage(order)));
+  // Confirmación: si nadie la editó (es exactamente la que se guardó al crear el
+  // pedido, con el lugar de ESE momento) la regeneramos con el lugar ACTUAL — los
+  // pedidos viejos guardaron la dirección de la facultad. Si fue editada, se respeta.
+  const mensajeDe = (order) => {
+    if (esHoy) return order.wa_message || '';
+    const guardada = order.wa_confirmacion;
+    if (!guardada) return buildConfirmationMessage(order, config);
+    const intacta = guardada === buildConfirmationMessage(order); // sin config → lugar guardado
+    return intacta ? buildConfirmationMessage(order, config) : guardada;
+  };
 
   const generarRecordatorio = async (order) => {
     setGenId(order.id);

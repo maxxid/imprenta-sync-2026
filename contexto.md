@@ -127,7 +127,7 @@ Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumn
 - **`config.entrega.cadete_minimo`** se eliminó del código y de Ajustes (ya no hay cadete). Puede seguir existiendo en configs viejas de DB; es inofensivo.
 - **Mensajes:** el `DEFAULT_PARSER_PROMPT` (regla 8, y reglas 4/6) y `buildWhatsAppMessage()` (fallback) ahora dicen **"pasá a retirarlo por el local"** en vez de "te llevamos a la facultad". *Si el usuario llegara a guardar un prompt custom en Ajustes, hay que tocar "Usar el default" para que aplique el nuevo (verificado: hoy `config.prompts` está vacío → aplica el default).*
 - **Landing (App.jsx):** copy de "entrega en facultad" → "retiro en tu local".
-- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18), la agenda de turnos (19) y `buildWaPrompt`/aviso (20) — 117 checks.
+- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18), la agenda de turnos (19), `buildWaPrompt`/aviso (20), confirmación (21), calculadora (22) y lugar de retiro (23) — 164 checks.
 
 ## Horarios de retiro (agenda en Ajustes, 2026-10-21)
 
@@ -228,4 +228,17 @@ Decisiones de precio (ok del usuario 2026-10-24):
 - **Encuadernación a nivel PEDIDO** (en Pedido Nuevo): *Sin / Cada PDF por su lado / Todos juntos en una* → `calcEncuadernacion(items, modo, config)` reusa la config actual (`encuadernacion.basica` = 600 si `hojas >= umbral(40)`); "todos juntos" muestra además el tamaño de espiral (`getEspiralSize`). Se cobra como **línea de ítem** y solo se calcula sobre los ítems con `origen === 'calculadora'` (los del catálogo ya traen encuadernación en el precio de la variante → no se duplica).
 - Ítems del pedido ahora pueden traer `origen: 'calculadora' | 'catalogo' | 'encuadernacion'` y `comentario`.
 
-**Smoke: 152 checks** (sección 22 = calculadora: categorías, páginas, precio por página, toggle impar y encuadernación).
+**Smoke: 164 checks** (sección 22 = calculadora: categorías, páginas, precio por página, toggle impar y encuadernación; sección 23 = lugar de retiro en los mensajes).
+
+### Fix: lugar de retiro en los mensajes de WhatsApp (2026-10-24)
+
+**Problema reportado:** un recordatorio decía *"Podés retirarlo en el Aula Magna / Quincho de la Facultad de Ciencias Jurídicas (UNJu)"*. Dos causas:
+
+1. `{{lugar}}` salía de `order.lugar_entrega`, **guardado al crear el pedido** → los pedidos viejos traían la dirección de la facultad del modelo anterior.
+2. **`config.local` está VACÍO en producción** (`nombre: ""`, `direccion: ""` en `hjtbwnsxgellbtfariog`) → todo lo que depende del local cae al fallback de facultad.
+
+**Fix:** `lugarRetiro(order, config)` (utils) resuelve el lugar **AL MOMENTO DE GENERAR**: retiro en local → `localPlace(config)`; si el local no está cargado → `''` (los mensajes usan "nuestro local") y **nunca la facultad**; modalidades heredadas (Cadete / domicilio) conservan su texto. Lo usan `buildConfirmationMessage(order, config?, template?)`, `generateRecordatorio` (`data.lugar_entrega`) y el 🔄 Regenerar del parser (`localPlace(config)`).
+
+- El prompt **default ya decía "NO hacemos entregas ni en la facultad"**: el error era solo el valor del token.
+- El tab WhatsApp **regenera solo las confirmaciones intactas** (las que son exactamente las guardadas al crear) con el lugar actual; las editadas a mano se respetan.
+- **Pendiente del usuario:** cargar **Ajustes → Local físico** (nombre y dirección); si no, los mensajes quedan en "nuestro local" sin dirección.

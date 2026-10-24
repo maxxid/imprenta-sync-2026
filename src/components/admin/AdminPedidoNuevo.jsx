@@ -139,7 +139,7 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
       order.estado = computeOrderStatus(monto);
       order.items = order.items.map(i => ({ ...i, estado: order.estado }));
       order.encuadernacion_modo = form.encuadernacion;
-      order.wa_confirmacion = buildConfirmationMessage(order);
+      order.wa_confirmacion = buildConfirmationMessage(order, config);
 
       const saved = await saveOrderToSupabase(order, config);
       if (!saved) { alert('No se pudo guardar el pedido. Revisá la conexión.'); return; }

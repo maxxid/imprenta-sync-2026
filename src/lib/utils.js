@@ -371,6 +371,22 @@ export function deliveryPlaceFor(modalidad, career, config) {
   return localPlace(config) || careerAddress(career, config);
 }
 
+/**
+ * Lugar de retiro para los MENSAJES de WhatsApp, resuelto AL MOMENTO DE GENERAR.
+ * `order.lugar_entrega` se guarda al crear el pedido: los pedidos viejos (o creados
+ * con el local sin configurar) traen la dirección de la facultad heredada del modelo
+ * anterior. Acá se usa SIEMPRE la config vigente: retiro en local → el local físico;
+ * si el local no está cargado queda '' (el mensaje cae a "nuestro local") y NUNCA se
+ * sugiere la facultad. Modalidades heredadas (Cadete / domicilio) conservan su texto.
+ * Sin `config` se devuelve lo guardado (no se puede resolver).
+ */
+export function lugarRetiro(order = {}, config) {
+  const guardado = String(order?.lugar_entrega ?? '').trim();
+  if (!config) return guardado;
+  if (isRetiroLocal(order?.modalidad)) return localPlace(config);
+  return guardado;
+}
+
 export function roundTotal(value, config) {
   const base = Number(value || 0);
   const multiple = config?.redondeo?.multiplo ?? 1;
@@ -705,10 +721,12 @@ function fechaAmigable(fecha) {
 /**
  * Mensaje de CONFIRMACIÓN de carga (plantilla FIJA, SIN IA). Se arma al crear el
  * pedido y entra como PENDIENTE al tab WhatsApp. Resuelve unos pocos tokens locales;
- * NO llama a Gemini. `template` opcional para pisar CONFIRMATION_TEMPLATE.
+ * NO llama a Gemini. Firma: (order, config?, template?).
  * Tokens: {{nombre}} {{fecha}} {{fecha_larga}} {{hora}} {{lugar}}
+ * El {{lugar}} sale de `lugarRetiro(order, config)` (config vigente, no el valor
+ * guardado al crear → los pedidos viejos ya no dicen "facultad").
  */
-export function buildConfirmationMessage(order = {}, template) {
+export function buildConfirmationMessage(order = {}, config, template) {
   const base = String(template || '').trim() || CONFIRMATION_TEMPLATE;
   const fecha = String(order.fecha || '').trim();
   return base
@@ -716,7 +734,7 @@ export function buildConfirmationMessage(order = {}, template) {
     .split('{{fecha}}').join(fecha)
     .split('{{fecha_larga}}').join(fechaAmigable(fecha))
     .split('{{hora}}').join(String(order.horario_entrega ?? '').trim() || 'a coordinar')
-    .split('{{lugar}}').join(String(order.lugar_entrega ?? '').trim() || 'nuestro local');
+    .split('{{lugar}}').join(lugarRetiro(order, config) || 'nuestro local');
 }
 
 /**
@@ -736,7 +754,7 @@ export async function generateRecordatorio(order = {}, config) {
     libros: librosPayload,
     fecha: order.fecha,
     hora: order.horario_entrega || '',
-    lugar_entrega: order.lugar_entrega || '',
+    lugar_entrega: lugarRetiro(order, config),
     saldo: Number(order.saldo_pendiente) || 0
   };
   const prompt = buildWaPrompt(config?.prompts?.wa_aviso, dataObj);

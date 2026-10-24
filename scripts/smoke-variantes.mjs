@@ -379,5 +379,34 @@ check('enc: hojas = solo ítems de calculadora', calcEncuadernacion([itemCalc(30
 check('enc: espiral según hojas totales', calcEncuadernacion([itemCalc(60)], 'todos', config).size, '9 mm');
 check('enc: sin costo → sin tamaño', calcEncuadernacion([itemCalc(10)], 'todos', config).size, null);
 
+// 23. Lugar de retiro en los mensajes (se resuelve AL GENERAR, no el guardado al crear)
+import { lugarRetiro } from '../src/lib/utils.js';
+
+const configConLocal = { local: { nombre: 'Fotocopiadora UNJu', direccion: 'Rivadavia 1234' } };
+const configSinLocal = { local: { nombre: '', direccion: '' } };
+const FACULTAD_VIEJA = 'Aula Magna / Quincho de la Facultad de Ciencias Jurídicas (UNJu)';
+const pedidoViejo = { modalidad: 'Retiro en local', lugar_entrega: FACULTAD_VIEJA };
+const esFacultad = texto => /aula magna|quincho|ciencias jur/i.test(String(texto));
+
+check('lugar: config vigente pisa el lugar guardado', lugarRetiro(pedidoViejo, configConLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
+check('lugar: local sin cargar → vacío (nunca facultad)', lugarRetiro(pedidoViejo, configSinLocal), '');
+check('lugar: sin config → se conserva lo guardado', lugarRetiro(pedidoViejo), FACULTAD_VIEJA);
+check('lugar: legacy "Retiro facultad" también va al local', lugarRetiro({ modalidad: 'Retiro facultad', lugar_entrega: 'Aula Magna' }, configConLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
+check('lugar: modalidad vacía = local', lugarRetiro({ lugar_entrega: 'Aula Magna' }, configConLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
+check('lugar: Cadete conserva su texto', lugarRetiro({ modalidad: 'Cadete', lugar_entrega: 'Se coordina por WhatsApp' }, configConLocal), 'Se coordina por WhatsApp');
+
+const confConLocal = buildConfirmationMessage(pedidoViejo, configConLocal);
+check('confirmación con config → nombra el local', confConLocal.includes('Rivadavia 1234'), true);
+check('confirmación con config → nunca la facultad', esFacultad(confConLocal), false);
+const confSinLocalCfg = buildConfirmationMessage(pedidoViejo, configSinLocal);
+check('confirmación sin local cargado → "nuestro local"', confSinLocalCfg.includes('nuestro local') && !esFacultad(confSinLocalCfg), true);
+
+const promptRecordatorio = buildWaPrompt(undefined, {
+  nombre: 'Jose', fecha: '2026-10-21', hora: '19:00', saldo: 39500,
+  libros: [], lugar_entrega: lugarRetiro(pedidoViejo, configConLocal)
+});
+check('recordatorio: el lugar resuelto es el local', promptRecordatorio.includes('Rivadavia 1234'), true);
+check('recordatorio: jamás la dirección de la facultad', esFacultad(promptRecordatorio), false);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

@@ -629,7 +629,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
         order.segunda_entrega_fecha = getNextBusinessDay(order.fecha || new Date().toISOString().split('T')[0]);
         order.notas_admin = `Pedido grande. Parte 1: ${dailyCap} hojas el ${order.fecha}. Parte 2: ${order.hojas_segunda_entrega} hojas el ${order.segunda_entrega_fecha}.`;
       }
-      order.wa_confirmacion = buildConfirmationMessage(order);
+      order.wa_confirmacion = buildConfirmationMessage(order, config);
       const saved = await saveOrderToSupabase(order, config);
       if (!saved) {
         alert('Error al guardar el pedido. Revisá tu conexión e intentá de nuevo.');
@@ -658,7 +658,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
         order.segunda_entrega_fecha = getNextBusinessDay(order.fecha || new Date().toISOString().split('T')[0]);
         order.notas_admin = `Pedido grande. Parte 1: ${dailyCap} hojas el ${order.fecha}. Parte 2: ${order.hojas_segunda_entrega} hojas el ${order.segunda_entrega_fecha}.`;
       }
-      order.wa_confirmacion = buildConfirmationMessage(order);
+      order.wa_confirmacion = buildConfirmationMessage(order, config);
       const saved = await saveOrderToSupabase(order, config);
       if (!saved) {
         alert('Error al guardar el pedido. Revisá tu conexión e intentá de nuevo.');
