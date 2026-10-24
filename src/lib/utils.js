@@ -864,6 +864,22 @@ export function geminiEndpoint(config) {
   return String(url).trim();
 }
 
+/**
+ * Saca la hora de un texto de observaciones: el horario de retiro ya se agenda
+ * en su campo (`horario_entrega`), no tiene que duplicarse en notas. Limpia el
+ * patrón que enseñaba el prompt viejo del parser ("🕒18hs") y menciones tipo
+ * "a las 18 hs" que el modelo pueda colar.
+ */
+export function observacionesSinHora(texto) {
+  return String(texto || '')
+    .replace(/🕒\s*\d{1,2}(?::\d{2})?\s*(?:hs|horas)?/gi, '')          // patrón del prompt viejo
+    .replace(/\b(?:a las\s+)?\d{1,2}(?::\d{2})?\s*(?:hs|horas)\b/gi, '') // "a las 18 hs" / "14hs"
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,;])/g, '$1')
+    .replace(/^[\s,;·]+|[\s,;·]+$/g, '')                                // sobras al costado
+    .trim();
+}
+
 export function extractTimeFromMessage(text) {
   if (!text) return null;
   const hrMatch = text.match(/(?:a\s+las?\s+)?(\d{1,2})(?::?(\d{2}))?\s*(?:hs|horas)\b/gi);

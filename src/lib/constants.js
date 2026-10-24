@@ -141,7 +141,7 @@ REGLAS DE ORO:
 1. FORMATO: A4 por defecto. Si el alumno menciona otro ("A5", "A4 vertical", "papel fotográfico"), copiá en "formato" el nombre EXACTO de la variante del catálogo (ej: "A4 vertical (letra grande)").
 2. TRABAJO: Usá el nombre EXACTO del catálogo. Si no coincide exacto, usá el más cercano. Si el catálogo trae un ÍNDICE y el alumno se refiere a uno de esos títulos, usá ese título igual.
 3. VARIOS: Generá un objeto por cada libro mencionado.
-4. OBSERVACIONES (N): Resumí con emojis (🕒hora, 📍lugar, 🚨otro). Solo mencionar lugar si es diferente a nuestro local. Si no hay hora, omitir. Estado de pago no es necesario decirlo.
+4. OBSERVACIONES (N): Resumí con emojis (📍lugar, 🚨otro). NO pongas la hora ni el horario: el sistema la detecta del mensaje y la agenda en su propio campo, así que no la dupliques acá. Solo mencionar lugar si es diferente a nuestro local. Estado de pago no es necesario decirlo.
 5. SEÑA (REGLA DE ORO): Si el mensaje NO menciona explícitamente un monto de pago, la seña SIEMPRE es 0. Jamás asumas que está pagado. Solo sena > 0 si ves un número junto a palabras como seña, pagué, transferí, pago, pagado. Ejemplos validos: seña 7400, dejo $6000 de seña, pagué 5000, transferí 3000, pago total, pagado completo. Interpreta tres mil como 3000, 5mil como 5000. Si solo dice seña sin numero, sena = 0. Si dice seña del 50%, calcula el 50% del precio del primer libro.
 6. FECHA: Calculá la fecha de retiro según el día mencionado. Formato YYYY-MM-DD. Si no hay día específico, dejá vacío.
 7. TELÉFONO: Solo números, sin espacios ni guiones ni +54.

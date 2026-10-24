@@ -420,7 +420,7 @@ check('recordatorio sin local → nunca la facultad', esFacultad(promptSinLocal)
 
 // 24. Agenda con/sin hora (parse → Pedido Nuevo → edición en Pedidos)
 // (buildOrder / normalizeOrder / turnoFromHorario ya se importan arriba)
-import { tieneHora, extractTimeFromMessage } from '../src/lib/utils.js';
+import { tieneHora, extractTimeFromMessage, observacionesSinHora } from '../src/lib/utils.js';
 
 // ¿Es hora pactada? Es la única puerta: todo lo que no pase = sin hora.
 check('hora: "14:30" es hora válida', tieneHora('14:30'), true);
@@ -475,6 +475,14 @@ check('confirmación con hora → sin el cierre por defecto', confConHora24.incl
 const promptSinHora24 = buildWaPrompt(undefined, { nombre: 'Ana', fecha: '2026-10-27', hora: '', saldo: 0, libros: [], lugar_entrega: 'nuestro local' });
 check('recordatorio sin hora → sin "a las a coordinar"', /a las a coordinar/i.test(promptSinHora24), false);
 check('recordatorio con hora → usa la hora pactada', buildWaPrompt(undefined, { nombre: 'Ana', fecha: '2026-10-27', hora: '14:30', saldo: 0, libros: [], lugar_entrega: 'nuestro local' }).includes('a las 14:30'), true);
+
+// La hora NO se agenda en observaciones/notas: vive en horario_entrega
+check('obs: saca el patrón legacy "🕒18hs"', observacionesSinHora('🕒18hs 📍Lavalle'), '📍Lavalle');
+check('obs: saca "a las 18 hs"', observacionesSinHora('retira a las 18 hs, avisa'), 'retira, avisa');
+check('obs: saca "14hs" suelto', observacionesSinHora('14hs'), '');
+check('obs: deja el resto intacto', observacionesSinHora('📍Lavalle · 🚨espiral'), '📍Lavalle · 🚨espiral');
+check('obs: vacío sigue vacío', observacionesSinHora(''), '');
+check('obs: idempotente (2 pasadas = 1)', observacionesSinHora(observacionesSinHora('🕒18hs 📍Lavalle')), '📍Lavalle');
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

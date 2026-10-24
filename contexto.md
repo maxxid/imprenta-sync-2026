@@ -127,7 +127,7 @@ Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumn
 - **`config.entrega.cadete_minimo`** se eliminó del código y de Ajustes (ya no hay cadete). Puede seguir existiendo en configs viejas de DB; es inofensivo.
 - **Mensajes:** el `DEFAULT_PARSER_PROMPT` (regla 8, y reglas 4/6) y `buildWhatsAppMessage()` (fallback) ahora dicen **"pasá a retirarlo por el local"** en vez de "te llevamos a la facultad". *Si el usuario llegara a guardar un prompt custom en Ajustes, hay que tocar "Usar el default" para que aplique el nuevo (verificado: hoy `config.prompts` está vacío → aplica el default).*
 - **Landing (App.jsx):** copy de "entrega en facultad" → "retiro en tu local".
-- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18), la agenda de turnos (19), `buildWaPrompt`/aviso (20), confirmación (21), calculadora (22), lugar de retiro (23) y agenda con/sin hora (24) — 200 checks.
+- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18), la agenda de turnos (19), `buildWaPrompt`/aviso (20), confirmación (21), calculadora (22), lugar de retiro (23) y agenda con/sin hora (24) — 206 checks.
 
 ## Horarios de retiro (agenda en Ajustes, 2026-10-21)
 
@@ -229,7 +229,7 @@ Decisiones de precio (ok del usuario 2026-10-24):
 - **Encuadernación a nivel PEDIDO** (en Pedido Nuevo): *Sin / Cada PDF por su lado / Todos juntos en una* → `calcEncuadernacion(items, modo, config)` reusa la config actual (`encuadernacion.basica` = 600 si `hojas >= umbral(40)`); "todos juntos" muestra además el tamaño de espiral (`getEspiralSize`). Se cobra como **línea de ítem** y solo se calcula sobre los ítems con `origen === 'calculadora'` (los del catálogo ya traen encuadernación en el precio de la variante → no se duplica).
 - Ítems del pedido ahora pueden traer `origen: 'calculadora' | 'catalogo' | 'encuadernacion'` y `comentario`.
 
-**Smoke: 200 checks** (sección 22 = calculadora: categorías, páginas, precio por página, toggle impar y encuadernación; 23 = lugar de retiro en los mensajes; 24 = agenda con/sin hora).
+**Smoke: 206 checks** (sección 22 = calculadora: categorías, páginas, precio por página, toggle impar y encuadernación; 23 = lugar de retiro en los mensajes; 24 = agenda con/sin hora + observaciones sin hora).
 
 ### Fix: lugar de retiro en los mensajes de WhatsApp (2026-10-24)
 
@@ -273,5 +273,6 @@ Misma UX que en el tab WhatsApp, adaptada a la grilla de Pedidos. **Cada fila = 
 - **Mensajes:** sin hora, `{{hora}}` → "a coordinar" y **`cierraSinHora()`** reescribe el `"a las …"` colgado → **"(horario a coordinar)"** (`buildConfirmationMessage` y `buildWaPrompt`). La Edge Function (`index.ts`) hace lo mismo en su prompt de fallback → **redeployada** (`supabase functions deploy gemini --no-verify-jwt`).
 - **Visores:** tab WhatsApp muestra "· a coordinar"; tracking del alumno muestra "· a coordinar" / "Horario a coordinar" (antes "·  hs").
 - **Filtro Ventana** en Pedidos: ahora compara **`horario_entrega`** (agrupa por hora: "10:00 hs" = 10:00–10:59) y agrega la opción **"Sin hora"**.
+- **La hora NO se agenda en observaciones/notas** (pregunta del usuario): el prompt del parser decía *"OBSERVACIONES: 🕒hora…"*, con lo que la hora quedaba duplicada en `observaciones` de ítem y en `notas_admin`. Ahora: (1) `DEFAULT_PARSER_PROMPT` regla 4 dice explícitamente **NO pongas la hora** (la detecta el sistema y va a `horario_entrega`), (2) **`observacionesSinHora()`** (utils) limpia el patrón legacy `🕒18hs` y menciones `a las 18 hs` al importar (`observaciones` del ítem y `notas_admin`), (3) el placeholder del input pasó de *"ej: 🕒14hs 📍Lavalle"* a *"ej: 📍Lavalle · 🚨otro"*. Producción **no tiene prompt custom** (`prompts` solo tiene `catalogo_modo`) → el cambio aplica de una, sin tocar config.
 - **Legacy:** `normalizeOrder` (corre en **cada lectura** de pedidos) cura las ventanas repetidas del Pedido Nuevo viejo y no inventa hora → el dato queda saneado en pantalla y al próximo guardado.
-- Smoke **200 checks** (sección 24: agenda con/sin hora).
+- Smoke **206 checks** (sección 24: agenda con/sin hora + observaciones sin hora).

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, lugarRetiro, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint, buildWaPrompt, tieneHora, turnoFromHorario } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, lugarRetiro, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint, buildWaPrompt, tieneHora, turnoFromHorario, observacionesSinHora } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -301,7 +301,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
           precio: book.precio || 0,
           tipo: book.hojas >= (config.encuadernacion?.umbral_anillado_hojas || 40) ? 'anillado' : 'abrochado',
           imagen_url: book.imagen_url,
-          observaciones: parserPreview.aiPedidos?.[idx]?.observaciones || ''
+          observaciones: observacionesSinHora(parserPreview.aiPedidos?.[idx]?.observaciones || '')
         };
       });
       const career = getCareer(config, books, items[0]?.id_carrera || '');
@@ -349,7 +349,8 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
         ts: new Date().toISOString()
       };
       order.wa_message = parserPreview.aiMsjWs || '';
-      order.notas_admin = itemsWithEstado[0]?.observaciones || '';
+      // Red de seguridad: la hora vive en `horario_entrega`, nunca en notas.
+      order.notas_admin = observacionesSinHora(itemsWithEstado[0]?.observaciones || '');
       await saveOrderToSupabase(order, config);
       setOrders(previous => [order, ...previous]);
       try {
@@ -507,7 +508,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                             updated[idx] = { ...updated[idx], observaciones: e.target.value };
                             setParserPreview(prev => ({ ...prev, aiPedidos: updated }));
                           }}
-                          placeholder="ej: 🕒14hs 📍Lavalle"
+                          placeholder="ej: 📍Lavalle · 🚨otro"
                         />
                       </div>
                     </div>
