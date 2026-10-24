@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { fmt, getCategorias, calcPdfPaginas, calcPdfPrecio } from '../../lib/utils';
 import { saveConfigToSupabase } from '../../lib/supabase';
+import { DEFAULT_CALC_CATEGORIAS } from '../../lib/constants';
 
 const nuevoId = () => `pdf_${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
 const pdfVacio = (n) => ({ id: nuevoId(), nombre: `PDF ${n}`, incluir: true, paginas: {} });
 
 /**
  * Tab Calculadora: sub-pestañas = 1 PDF cada una. Por PDF se cargan páginas por
- * categoría (precio por página, editable en Ajustes → Calculadora). El presupuesto se
- * guarda en `config.calc_borrador` (DB, sin migración) y puede mandarse al tab
- * "Pedido Nuevo" con el botón "Cargar los ✓ a Pedido Nuevo".
+ * categoría (precio por página). El botón **⚙ Ajustes** abre un panel chico para
+ * editar sobre la marcha los costos y variables (tarifas por categoría, redondeo a
+ * par, anillado y umbral de hojas) — mismo contenido que Ajustes → Calculadora.
+ * El presupuesto se guarda en `config.calc_borrador` (DB, sin migración) y puede
+ * mandarse al tab "Pedido Nuevo" con el botón "Cargar los ✓ a Pedido Nuevo".
  */
 export function AdminCalculadora({ config, setConfig, setPedidoDraft, setTab, calcFromOrder }) {
   const categorias = getCategorias(config);
@@ -19,6 +22,8 @@ export function AdminCalculadora({ config, setConfig, setPedidoDraft, setTab, ca
   const [activoId, setActivoId] = useState(() => borrador?.activo || null);
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState(null);
+  // Borrador del panel ⚙ de ajustes rápidos (null = panel cerrado).
+  const [ajustes, setAjustes] = useState(null);
 
   useEffect(() => {
     if (!pdfs.some(p => p.id === activoId)) setActivoId(pdfs[0]?.id || null);
@@ -58,6 +63,47 @@ export function AdminCalculadora({ config, setConfig, setPedidoDraft, setTab, ca
     const ok = await saveConfigToSupabase(nuevaConfig, nuevaConfig);
     setConfig(nuevaConfig);
     setGuardando(false);
+    setMsg(ok ? 'ok' : 'local');
+    setTimeout(() => setMsg(null), 3500);
+  }
+
+  // ─── Panel ⚙: ajustes rápidos de costos y variables ─────────────────
+  // Se abre/cierra con el botón del header; borrador local que se aplica con
+  // "Guardar ajustes" (mismo camino de persistencia que guardar()).
+  function abrirAjustes() {
+    setAjustes(prev => (prev ? null : {
+      categorias: (config?.calculadora?.categorias || DEFAULT_CALC_CATEGORIAS).map(c => ({ ...c })),
+      redondear_impar: Boolean(config?.calculadora?.redondear_impar),
+      anillado: Number(config?.encuadernacion?.basica) || 0,
+      umbral: Number(config?.encuadernacion?.umbral_anillado_hojas) || 40
+    }));
+  }
+
+  function setCatAjuste(idx, patch) {
+    setAjustes(a => ({ ...a, categorias: a.categorias.map((c, i) => (i === idx ? { ...c, ...patch } : c)) }));
+  }
+
+  async function guardarAjustes() {
+    if (!ajustes) return;
+    setGuardando(true);
+    setMsg(null);
+    const nuevaConfig = {
+      ...config,
+      calculadora: {
+        ...(config?.calculadora || {}),
+        categorias: ajustes.categorias,
+        redondear_impar: ajustes.redondear_impar
+      },
+      encuadernacion: {
+        ...(config?.encuadernacion || {}),
+        basica: ajustes.anillado,
+        umbral_anillado_hojas: ajustes.umbral
+      }
+    };
+    const ok = await saveConfigToSupabase(nuevaConfig, nuevaConfig);
+    setConfig(nuevaConfig);
+    setGuardando(false);
+    setAjustes(null);
     setMsg(ok ? 'ok' : 'local');
     setTimeout(() => setMsg(null), 3500);
   }
@@ -112,14 +158,89 @@ export function AdminCalculadora({ config, setConfig, setPedidoDraft, setTab, ca
           ))}
           <button onClick={agregarPdf} className="px-3 py-2 rounded-lg text-sm font-700 text-brand-DEFAULT hover:bg-surface-hover" title="Agregar otro PDF">+ Nuevo PDF</button>
         </div>
-        <div className="ml-auto text-xs text-ink-500">
-          {pdfs.length} PDF{pdfs.length !== 1 ? 's' : ''} · <span className="font-700 text-ink-700">Total {fmt(totalPresupuesto)}</span>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="text-xs text-ink-500">
+            {pdfs.length} PDF{pdfs.length !== 1 ? 's' : ''} · <span className="font-700 text-ink-700">Total {fmt(totalPresupuesto)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={abrirAjustes}
+            className={`btn-ghost text-xs px-2.5 py-1.5 flex items-center gap-1 ${ajustes ? 'text-brand-DEFAULT bg-brand-muted' : ''}`}
+            title="Ajustes rápidos: tarifas por página, redondeo y encuadernación"
+          >⚙ Ajustes</button>
         </div>
       </div>
 
+      {ajustes && (
+        <div className="card p-4 mb-4">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <div className="font-700 text-sm text-ink-800">⚙ Ajustes de la calculadora</div>
+              <div className="text-xs text-ink-400">Costos y variables que usa esta pestaña (lo mismo que Ajustes → Calculadora).</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAjustes(null)}
+              className="text-ink-400 hover:text-ink-700 text-lg leading-none"
+              title="Cerrar sin guardar"
+            >✕</button>
+          </div>
+
+          <div className="text-[11px] font-700 text-ink-500 uppercase tracking-wide mb-1">Tarifas por página</div>
+          <div className="space-y-2 mb-3">
+            {ajustes.categorias.map((cat, idx) => (
+              <div key={cat.id || idx} className="flex items-center gap-2 flex-wrap">
+                <input className="input-field flex-1 min-w-[150px]" type="text" placeholder="Ej: Blanco y negro" value={cat.nombre} onChange={e => setCatAjuste(idx, { nombre: e.target.value })} />
+                <input className="input-field w-[110px]" type="number" min="0" value={cat.precio} onChange={e => setCatAjuste(idx, { precio: Number(e.target.value || 0) })} />
+                <span className="text-xs text-ink-400 font-700">$ / pág</span>
+                <button
+                  type="button"
+                  onClick={() => setAjustes(a => ({ ...a, categorias: a.categorias.length <= 1 ? a.categorias : a.categorias.filter((_, i) => i !== idx) }))}
+                  disabled={ajustes.categorias.length <= 1}
+                  className="text-ink-400 hover:text-danger disabled:opacity-30 text-lg leading-none"
+                  title="Quitar categoría"
+                >✕</button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-end gap-x-4 gap-y-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setAjustes(a => ({ ...a, categorias: [...a.categorias, { id: `cat_${Date.now().toString(36)}`, nombre: '', precio: 0 }] }))}
+              className="btn-secondary text-xs px-3 py-1.5"
+            >+ Agregar categoría</button>
+            <label className="flex items-center gap-2 text-xs font-700 text-ink-600 cursor-pointer select-none pb-1.5">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-brand-DEFAULT"
+                checked={ajustes.redondear_impar}
+                onChange={e => setAjustes(a => ({ ...a, redondear_impar: e.target.checked }))}
+              />
+              Redondear a par
+            </label>
+            <div>
+              <label className="text-[10px] font-700 text-ink-400 uppercase block mb-1">Anillado ($)</label>
+              <input className="input-field w-[110px]" type="number" min="0" value={ajustes.anillado} onChange={e => setAjustes(a => ({ ...a, anillado: Number(e.target.value || 0) }))} />
+            </div>
+            <div>
+              <label className="text-[10px] font-700 text-ink-400 uppercase block mb-1">Anillado desde (hojas)</label>
+              <input className="input-field w-[110px]" type="number" min="1" value={ajustes.umbral} onChange={e => setAjustes(a => ({ ...a, umbral: Number(e.target.value || 1) }))} />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-ink-100">
+            <button type="button" onClick={() => setAjustes(null)} className="btn-ghost text-xs px-3 py-1.5">Cancelar</button>
+            <button type="button" onClick={guardarAjustes} disabled={guardando} className="btn-primary text-xs px-4 py-1.5">
+              {guardando ? '…' : 'Guardar ajustes'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="text-xs text-ink-400 mb-4">
         Cobro <span className="font-700 text-ink-600">por página según contenido</span> (una hoja puede llevar texto de un lado e imagen del otro).
-        Editá categorías y precios en <span className="font-700">Ajustes → Calculadora</span>. Dejalo guardado o cargalo al pedido.
+        Editá categorías y precios con <span className="font-700">⚙ Ajustes</span> (arriba) o en <span className="font-700">Ajustes → Calculadora</span>. Dejalo guardado o cargalo al pedido.
       </div>
 
       {!activo ? (

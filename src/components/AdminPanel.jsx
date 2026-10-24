@@ -26,13 +26,13 @@ export function AdminPanel({ orders, setOrders, books, setBooks, config, setConf
         <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 flex-shrink-0">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: <Icon.Home /> },
+            { id: 'catalogo', label: 'Catálogo', icon: <Icon.Book /> },
             { id: 'pedido-nuevo', label: 'Pedido Nuevo', icon: <Icon.Edit /> },
+            { id: 'parser', label: 'Parser WA', icon: <Icon.Message /> },
             { id: 'calculadora', label: 'Calculadora', icon: <Icon.Table /> },
             { id: 'pedidos', label: 'Pedidos', icon: <Icon.Cart /> },
             { id: 'whatsapp', label: 'WhatsApp', icon: <Icon.Message /> },
-            { id: 'catalogo', label: 'Catálogo', icon: <Icon.Book /> },
-            { id: 'config', label: 'Config', icon: <Icon.Settings /> },
-            { id: 'parser', label: 'Parser WA', icon: <Icon.Message /> }
+            { id: 'config', label: 'Config', icon: <Icon.Settings /> }
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-700 transition-colors ${tab === t.id ? 'bg-brand-DEFAULT text-white shadow-md' : 'text-ink-500 hover:text-ink-700 hover:bg-surface-hover'}`}>
               {t.icon} {t.label}

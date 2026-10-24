@@ -76,11 +76,19 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 5. Listo
 6. Entregado
 
+## Pestañas del panel (orden — decisión del usuario)
+
+`AdminPanel.jsx` arma el array de tabs en este orden (el `id` es el que se pasa a `setTab`):
+
+**Dashboard → Catálogo → Pedido Nuevo → Parser WA → Calculadora → Pedidos → WhatsApp → Config**
+
+Cambiar el orden solo implica reordenar ese array: los ids y los `tab === '...'` del ruteo no cambian.
+
 ## Calculadora + Pedido Nuevo (2 tabs vinculados)
 
 Dos pestañas del panel vinculadas en los 2 sentidos (estado compartido `pedidoDraft { items, form }` + `calcFromOrder` en `AdminPanel.jsx`, sobrevive el cambio de tab):
 
-1. **Calculadora** (`admin/AdminCalculadora.jsx`) — sub-pestañas = **1 PDF por archivo**. Carga **páginas por categoría** y cobra **POR PÁGINA** según el contenido. Botones: **Dejar guardado** (`config.calc_borrador`, JSONB → sin migración) y **Cargar los ✓ a Pedido Nuevo** (crea ítems con `origen: 'calculadora'`, `es_unico: true`).
+1. **Calculadora** (`admin/AdminCalculadora.jsx`) — sub-pestañas = **1 PDF por archivo**. Carga **páginas por categoría** y cobra **POR PÁGINA** según el contenido. Botón **⚙ Ajustes** (header) → panel chico con los costos y variables de la pestaña: tarifas por categoría (agregar/quitar), **Redondear a par**, **Anillado ($)** y **Anillado desde (hojas)** — borrador local + `saveConfigToSupabase` (mismo camino que "Dejar guardado"; ✕/Cancelar descarta). Botones: **Dejar guardado** (`config.calc_borrador`, JSONB → sin migración) y **Cargar los ✓ a Pedido Nuevo** (crea ítems con `origen: 'calculadora'`, `es_unico: true`).
 2. **Pedido Nuevo** (`admin/AdminPedidoNuevo.jsx`) — **buscador del catálogo** (clic = ítem con su precio vía `calcPrecioItem`), botón **Calcular PDF** (salta a Calculadora y vuelve con el resultado), formulario (nombre, WhatsApp, fecha/hora de retiro, **monto pagado**: input único —vacío o 0 = **nulo**, acotado a ≤ total, botón **Total** autocompleta—, encuadernación) y **Crear pedido** → `buildOrder` + `saveOrderToSupabase` (queda en Pedidos + confirmación pendiente en WhatsApp). Cada ítem de catálogo muestra **chips de variante bajo "Comentario"** (`combosDeItem`/`setVarianteItem` → recalcula precio, hojas y tipo; antes elegía `combos[0]` sin poder cambiarlo). Sin agenda ni control de capacidad: fecha/hora a mano; carrera vacía (retiro en local).
 
 **Precios (decidido con el usuario):**
