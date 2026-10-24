@@ -389,8 +389,9 @@ const pedidoViejo = { modalidad: 'Retiro en local', lugar_entrega: FACULTAD_VIEJ
 const esFacultad = texto => /aula magna|quincho|ciencias jur/i.test(String(texto));
 
 check('lugar: config vigente pisa el lugar guardado', lugarRetiro(pedidoViejo, configConLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
-check('lugar: local sin cargar → vacío (nunca facultad)', lugarRetiro(pedidoViejo, configSinLocal), '');
+check('lugar: local sin cargar → frase fija "nuestro local"', lugarRetiro(pedidoViejo, configSinLocal), 'nuestro local');
 check('lugar: sin config → se conserva lo guardado', lugarRetiro(pedidoViejo), FACULTAD_VIEJA);
+check('lugar: sin config ni lugar → nunca vacío', lugarRetiro({}, undefined), 'nuestro local');
 check('lugar: legacy "Retiro facultad" también va al local', lugarRetiro({ modalidad: 'Retiro facultad', lugar_entrega: 'Aula Magna' }, configConLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
 check('lugar: modalidad vacía = local', lugarRetiro({ lugar_entrega: 'Aula Magna' }, configConLocal), 'Fotocopiadora UNJu — Rivadavia 1234');
 check('lugar: Cadete conserva su texto', lugarRetiro({ modalidad: 'Cadete', lugar_entrega: 'Se coordina por WhatsApp' }, configConLocal), 'Se coordina por WhatsApp');
@@ -407,6 +408,15 @@ const promptRecordatorio = buildWaPrompt(undefined, {
 });
 check('recordatorio: el lugar resuelto es el local', promptRecordatorio.includes('Rivadavia 1234'), true);
 check('recordatorio: jamás la dirección de la facultad', esFacultad(promptRecordatorio), false);
+
+// Sin local cargado: frase fija resuelta en el prompt (nunca '' ni token a criterio de la IA)
+const promptSinLocal = buildWaPrompt(undefined, {
+  nombre: 'Jose', fecha: '2026-10-21', hora: '19:00', saldo: 0,
+  libros: [], lugar_entrega: lugarRetiro(pedidoViejo, configSinLocal)
+});
+check('recordatorio sin local → "en nuestro local" resuelto', promptSinLocal.includes('en nuestro local'), true);
+check('recordatorio sin local → sin token sin reemplazar', promptSinLocal.includes('{{lugar}}'), false);
+check('recordatorio sin local → nunca la facultad', esFacultad(promptSinLocal), false);
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

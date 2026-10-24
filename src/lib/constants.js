@@ -218,3 +218,10 @@ export const DEFAULT_CALC_CATEGORIAS = [
   { id: 'poco_color', nombre: 'Poco color', precio: 40 },
   { id: 'color', nombre: 'Color', precio: 60 }
 ];
+
+/**
+ * Frase fija de lugar cuando NO hay local cargado (nombre/dirección vacíos).
+ * Nunca '' y nunca la facultad: los mensajes dicen "pasá por nuestro local" y
+ * tampoco quedan a criterio de la IA (va resuelto en el prompt y en los datos).
+ */
+export const LUGAR_FALLBACK = 'nuestro local';

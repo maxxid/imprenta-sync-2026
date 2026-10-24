@@ -1,4 +1,4 @@
-import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, CONFIRMATION_TEMPLATE, DEFAULT_CALC_CATEGORIAS } from './constants.js';
+import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, CONFIRMATION_TEMPLATE, DEFAULT_CALC_CATEGORIAS, LUGAR_FALLBACK } from './constants.js';
 
 export function fmt(n) {
   return `$${Number(n || 0).toLocaleString('es-AR')}`;
@@ -376,15 +376,15 @@ export function deliveryPlaceFor(modalidad, career, config) {
  * `order.lugar_entrega` se guarda al crear el pedido: los pedidos viejos (o creados
  * con el local sin configurar) traen la dirección de la facultad heredada del modelo
  * anterior. Acá se usa SIEMPRE la config vigente: retiro en local → el local físico;
- * si el local no está cargado queda '' (el mensaje cae a "nuestro local") y NUNCA se
- * sugiere la facultad. Modalidades heredadas (Cadete / domicilio) conservan su texto.
- * Sin `config` se devuelve lo guardado (no se puede resolver).
+ * si no hay nombre/dirección cargados → la frase fija `LUGAR_FALLBACK` ("nuestro
+ * local") — **nunca '' y nunca la facultad**, así el mensaje no queda a criterio de
+ * la IA ni tira texto roto. Modalidades heredadas (Cadete / domicilio) conservan su
+ * texto guardado.
  */
 export function lugarRetiro(order = {}, config) {
   const guardado = String(order?.lugar_entrega ?? '').trim();
-  if (!config) return guardado;
-  if (isRetiroLocal(order?.modalidad)) return localPlace(config);
-  return guardado;
+  if (config && isRetiroLocal(order?.modalidad)) return localPlace(config) || LUGAR_FALLBACK;
+  return guardado || LUGAR_FALLBACK;
 }
 
 export function roundTotal(value, config) {
@@ -686,7 +686,7 @@ export function buildWaPrompt(template, data = {}) {
   const contextoLibros = libros
     .map(l => `- [${l?.titulo ?? ''}] | Hojas: ${l?.hojas ?? 0} | Págs: ${l?.paginas ?? 0} | Precio: $${l?.precio ?? 0}`)
     .join('\n');
-  const lugar = String(data?.lugar_entrega ?? '').trim() || 'nuestro local';
+  const lugar = String(data?.lugar_entrega ?? '').trim() || LUGAR_FALLBACK;
   const hora = String(data?.hora ?? '').trim() || String(data?.horario_entrega ?? '').trim() || 'a coordinar';
   const saldo = Number(data?.saldo) || 0;
   const saldoTexto = saldo > 0
@@ -734,7 +734,7 @@ export function buildConfirmationMessage(order = {}, config, template) {
     .split('{{fecha}}').join(fecha)
     .split('{{fecha_larga}}').join(fechaAmigable(fecha))
     .split('{{hora}}').join(String(order.horario_entrega ?? '').trim() || 'a coordinar')
-    .split('{{lugar}}').join(lugarRetiro(order, config) || 'nuestro local');
+    .split('{{lugar}}').join(lugarRetiro(order, config));
 }
 
 /**
