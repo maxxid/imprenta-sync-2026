@@ -6,6 +6,7 @@ import { AdminPedidos } from './admin/AdminPedidos';
 import { AdminCatalogo } from './admin/AdminCatalogo';
 import { AdminConfig } from './admin/AdminConfig';
 import { AdminParserWA } from './admin/AdminParserWA';
+import { AdminWA } from './admin/AdminWA';
 
 export function AdminPanel({ orders, setOrders, books, setBooks, config, setConfig, theme, setTheme, onLogout }) {
   const [tab, setTab] = useState('dashboard');
@@ -17,6 +18,7 @@ export function AdminPanel({ orders, setOrders, books, setBooks, config, setConf
           {[
             { id: 'dashboard', label: 'Dashboard', icon: <Icon.Home /> },
             { id: 'pedidos', label: 'Pedidos', icon: <Icon.Cart /> },
+            { id: 'whatsapp', label: 'WhatsApp', icon: <Icon.Message /> },
             { id: 'catalogo', label: 'Catálogo', icon: <Icon.Book /> },
             { id: 'config', label: 'Config', icon: <Icon.Settings /> },
             { id: 'parser', label: 'Parser WA', icon: <Icon.Message /> }
@@ -33,6 +35,7 @@ export function AdminPanel({ orders, setOrders, books, setBooks, config, setConf
 
       {tab === 'dashboard' && <AdminDashboard orders={orders} books={books} config={config} setTab={setTab} />}
       {tab === 'pedidos' && <AdminPedidos orders={orders} setOrders={setOrders} books={books} config={config} setTab={setTab} />}
+      {tab === 'whatsapp' && <AdminWA orders={orders} setOrders={setOrders} config={config} />}
       {tab === 'catalogo' && <AdminCatalogo books={books} setBooks={setBooks} config={config} />}
       {tab === 'config' && <AdminConfig config={config} setConfig={setConfig} />}
       {tab === 'parser' && <AdminParserWA books={books} config={config} orders={orders} setOrders={setOrders} />}

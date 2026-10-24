@@ -14,6 +14,7 @@ imprenta-sync-2026/
 ├── rounding.js             # Utilidad de redondeo (cargada como <script>)
 ├── rls_policies.sql        # Row Level Security de Supabase
 ├── migration_multi_tenant.sql # Migración multi-tenant: shops + FK + índices
+├── migration_wa_flujo.sql # Migración flujo WA: wa_confirmacion + banderas de enviado en pedidos
 ├── vercel.json             # Config de deploy Vercel
 ├── supabase/functions/gemini/index.ts  # Edge Function: proxy de Gemini (parser WA + generate-wa)
 ├── dist/                   # Build de producción (generado)
@@ -38,7 +39,8 @@ imprenta-sync-2026/
             ├── AdminPedidos.jsx    # Grilla de pedidos con filtros y edición
             ├── AdminCatalogo.jsx   # Grilla de libros con bulk edit
             ├── AdminConfig.jsx     # Configuración: precios, carreras, feriados
-            └── AdminParserWA.jsx   # Parser de mensajes WhatsApp
+            ├── AdminParserWA.jsx   # Parser de mensajes WhatsApp
+            └── AdminWA.jsx         # Tab WhatsApp: confirmación de carga + recordatorio día del retiro
 ```
 
 ## Stack
@@ -71,6 +73,17 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 4. Para encuadernar
 5. Listo
 6. Entregado
+
+## Mensajes de WhatsApp (flujo de 2 toques)
+
+El alumno elige el turno de retiro según sus clases → **la hora es clave**. Dos mensajes, gestionados desde el **tab WhatsApp** (`AdminWA.jsx`):
+
+1. **Confirmación de carga** — plantilla **FIJA, sin IA** (`CONFIRMATION_TEMPLATE` → `buildConfirmationMessage`). Se arma al crear el pedido (checkout) y entra como **pendiente** al tab. Aplica a presencial y virtual, para agendar al alumno. Campo: `wa_confirmacion`.
+2. **Recordatorio (día del retiro)** — **con IA** (`generateRecordatorio` → prompt `config.prompts.wa_aviso`). Se genera al hacer clic en el tab y se manda el **MISMO DÍA** del retiro pactado. Texto en `wa_message`.
+
+**Tab WhatsApp:** sub-tabs **Hoy** (retiros de hoy + atrasados → recordatorio) y **Próximos** (retiros futuros → confirmaciones). Pendientes arriba; por pedido: mensaje editable, botón **Enviar** (`wa.me`) y **marcar enviado** (toggle).
+
+**Banderas** (columnas nuevas → `migration_wa_flujo.sql`): `wa_confirmacion_enviada` y `wa_recordatorio_enviado` (TIMESTAMPTZ; NULL = pendiente).
 
 ## Funciones clave por dominio
 
@@ -122,7 +135,9 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 - `getEspiralSize(hojas, config)` — Tamaño de espiral
 - `extractTimeFromMessage(text)` — Extrae hora de mensaje WA
 - `buildParserPrompt(template, { fecha, mensaje, catalogo })` — Arma el prompt del parser WA desde `config.prompts.parser_wa` (editable en Ajustes); cae a `DEFAULT_PARSER_PROMPT` y anexa schema JSON si faltó
-- `buildWaPrompt(template, data)` — Arma el prompt del **aviso de WhatsApp** ("pedido listo para retirar") desde `config.prompts.wa_aviso` (2ª sección de la card Gemini en Ajustes); cae a `DEFAULT_WA_PROMPT` y resuelve `{{fecha}} {{fecha_pedido}} {{nombre}} {{telefono}} {{libros}} {{lugar}} {{saldo}}`
+- `buildWaPrompt(template, data)` — Arma el prompt del **recordatorio de WhatsApp** (día del retiro: "pedido listo, te esperamos hoy a las X") desde `config.prompts.wa_aviso` (2ª sección de la card Gemini en Ajustes); cae a `DEFAULT_WA_PROMPT` y resuelve `{{fecha}} {{fecha_pedido}} {{hora}} {{nombre}} {{telefono}} {{libros}} {{lugar}} {{saldo}}`
+- `buildConfirmationMessage(order, template?)` — Mensaje de **confirmación de carga** (plantilla FIJA, sin IA) desde `CONFIRMATION_TEMPLATE`; tokens `{{nombre}} {{fecha}} {{fecha_larga}} {{hora}} {{lugar}}`. Se arma al crear el pedido y entra como **pendiente** al tab WhatsApp
+- `generateRecordatorio(order, config)` — Genera el **recordatorio** (día del retiro) con IA vía la Edge Function; devuelve el texto o lanza error. Se usa desde el tab WhatsApp
 - `buildParserCatalog(books, mensaje, { maxDetalle })` — Modo `compacto`: score local con IDF (tokens genéricos no puntúan, título completo +10) → máx. 10 fichas detalladas + índice de títulos (−56% de tokens). Antes de puntuar, `mensajeSinRuidoParaScore()` saca teléfonos, horarios, montos y estados de pago
 - `buildParserCatalogFull(books)` — Modo `completo`: una ficha por libro activo (la versión anterior)
 - `buildParserCatalogForMode(books, mensaje, modo)` — Selector según `config.prompts.catalogo_modo` ('compacto' default | 'completo'), toggle en Ajustes

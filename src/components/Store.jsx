@@ -1,8 +1,8 @@
 import React from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
-import { Cover, Alert, Spinner, CareerCombobox, fechaLabel, buildWhatsAppMessage } from './UI';
-import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, geminiEndpoint, buildWaPrompt } from '../lib/utils';
+import { Cover, Alert, Spinner, CareerCombobox, fechaLabel } from './UI';
+import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, buildConfirmationMessage } from '../lib/utils';
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
@@ -41,39 +41,6 @@ async function rescheduleOrder(order, newFecha, newTurno, newHorario, newLabel, 
   await updateOrderInSupabase(updated, config);
   setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
   return updated;
-}
-
-async function generateWhatsAppMessageForOrder(order, config) {
-  const url = geminiEndpoint(config);
-  if (!url) return buildWhatsAppMessage(order);
-  try {
-    const librosPayload = order.items ? order.items.map(i => ({
-      titulo: i.titulo,
-      hojas: i.hojas,
-      paginas: i.paginas,
-      precio: i.precio
-    })) : [{ titulo: order.libro, hojas: order.hojas, paginas: order.paginas, precio: order.total }];
-
-    const dataObj = {
-      nombre: order.nombre,
-      whatsapp: order.whatsapp,
-      libros: librosPayload,
-      fecha: order.fecha,
-      hora: order.horario_entrega || '',
-      lugar_entrega: order.lugar_entrega || '',
-      saldo: Number(order.saldo_pendiente) || 0
-    };
-    const prompt = buildWaPrompt(config?.prompts?.wa_aviso, dataObj);
-
-    const sheetsBase = url;
-    const response = await fetch(`${sheetsBase}?mode=generate-wa&data=${encodeURIComponent(JSON.stringify(dataObj))}&prompt=${encodeURIComponent(prompt)}`);
-    if (!response.ok) throw new Error('Error');
-    const result = await response.json();
-    if (result.msj_ws) return result.msj_ws;
-  } catch (err) {
-    console.warn('Fallo al generar mensaje con Gemini, usando fallback:', err);
-  }
-  return buildWhatsAppMessage(order);
 }
 
 function getOrdersByPhone(orders, phone) {
@@ -662,7 +629,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
         order.segunda_entrega_fecha = getNextBusinessDay(order.fecha || new Date().toISOString().split('T')[0]);
         order.notas_admin = `Pedido grande. Parte 1: ${dailyCap} hojas el ${order.fecha}. Parte 2: ${order.hojas_segunda_entrega} hojas el ${order.segunda_entrega_fecha}.`;
       }
-      order.wa_message = await generateWhatsAppMessageForOrder(order, config);
+      order.wa_confirmacion = buildConfirmationMessage(order);
       const saved = await saveOrderToSupabase(order, config);
       if (!saved) {
         alert('Error al guardar el pedido. Revisá tu conexión e intentá de nuevo.');
@@ -691,6 +658,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
         order.segunda_entrega_fecha = getNextBusinessDay(order.fecha || new Date().toISOString().split('T')[0]);
         order.notas_admin = `Pedido grande. Parte 1: ${dailyCap} hojas el ${order.fecha}. Parte 2: ${order.hojas_segunda_entrega} hojas el ${order.segunda_entrega_fecha}.`;
       }
+      order.wa_confirmacion = buildConfirmationMessage(order);
       const saved = await saveOrderToSupabase(order, config);
       if (!saved) {
         alert('Error al guardar el pedido. Revisá tu conexión e intentá de nuevo.');

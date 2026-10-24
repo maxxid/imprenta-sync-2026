@@ -197,3 +197,14 @@ REGLAS:
 6. Sin emojis excesivos. Profesional pero cercano. Usá al menos una vez el emoji 😊.
 
 Respondé ÚNICAMENTE con el mensaje de WhatsApp, sin comillas ni JSON.`;
+
+/**
+ * Mensaje de CONFIRMACIÓN de carga (plantilla FIJA, sin IA). Se genera al crear el
+ * pedido (checkout) y entra como PENDIENTE al tab WhatsApp; el admin lo manda desde
+ * ahí. A diferencia del recordatorio, NO llama a Gemini: resuelve unos pocos tokens.
+ * Aplica a presencial y virtual, para que el cliente quede agendado.
+ * Tokens: {{nombre}} {{fecha}} {{fecha_larga}} {{hora}} {{lugar}}
+ */
+export const CONFIRMATION_TEMPLATE = `¡Hola {{nombre}}! 😊 ¡Recibimos tu pedido!
+Te lo agendamos para retirarlo el {{fecha_larga}} a las {{hora}} en {{lugar}}.
+Si te surge algo, avisanos por acá y lo reagendamos sin problema.`;

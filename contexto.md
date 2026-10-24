@@ -196,3 +196,19 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 - Pendiente usuario: correr `migration_variantes.sql` en Supabase; commit/push cuando lo pida.
 - Migrado el proxy de Gemini a Supabase Edge Function (`supabase/functions/gemini`); baja del sync de Sheets. **Pendiente del usuario:** deployar la function + `secrets set GEMINI_API_KEY` + setear `integraciones.GEMINI_ENDPOINT` (pasos en la sección "Proxy de Gemini → Supabase Edge Function").
 - Rediseñada la agenda de horarios en Ajustes (editor semanal completo, ya no solo on/off) + fix de `getNextSlots` para poder cerrar días. Pendiente: probarla con el usuario y deployar Gemini.
+
+### Flujo de mensajes WhatsApp (2026-10-24) — 2 toques
+
+Decidido con el usuario: **la hora es clave** (los alumnos eligen el turno según sus clases). Dos mensajes, gestionados en el nuevo **tab WhatsApp** (`AdminWA.jsx`):
+
+1. **Confirmación de carga** — plantilla **FIJA, sin IA** (`CONFIRMATION_TEMPLATE` → `buildConfirmationMessage`). Se arma al crear el pedido (checkout, ambos medios de pago) y entra como **pendiente** al tab. Presencial y virtual. Campo: `wa_confirmacion`.
+2. **Recordatorio (día del retiro)** — **con IA** (`generateRecordatorio` → prompt `config.prompts.wa_aviso`, ahora rotulado "2 · Prompt del recordatorio (día del retiro)" en Ajustes). Se genera con clic en el tab y se manda el **MISMO DÍA** del retiro pactado. Texto en `wa_message`. Token nuevo **`{{hora}}`** en `buildWaPrompt`/`DEFAULT_WA_PROMPT`.
+
+- **Tab:** sub-tabs **Hoy** (retiros de hoy + atrasados → recordatorio) y **Próximos** (futuros → confirmaciones); pendientes arriba; por pedido: mensaje editable + **Enviar** (`wa.me`) + **marcar enviado** (toggle).
+- **NO hay mensaje "listo" separado antes del día**: se concentra todo en el recordatorio del mismo día.
+- Parser: se quitó el **select global A4/A5** redundante; el formato es **por libro** (ya lo era en datos y en cada fila).
+- **Checkout ya NO llama a Gemini** (antes generaba el "listo" prematuro); ahora solo arma la confirmación fija (instantáneo).
+
+**Pendientes del usuario (M3/M4):**
+1. Correr `migration_wa_flujo.sql` en Supabase (`hjtbwnsxgellbtfariog`) **antes** de que el front escriba los campos nuevos (sino el upsert falla por columna inexistente).
+2. Redeployar la función si se tocó `index.ts`: `supabase functions deploy gemini --no-verify-jwt` (el `{{hora}}` del fallback).

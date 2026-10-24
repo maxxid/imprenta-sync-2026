@@ -314,5 +314,30 @@ const avisoOut = buildWaPrompt(avisoCustom, pedidoWA);
 check('aviso custom: respeta al admin', avisoOut.startsWith('Hola Lucía Gómez'), true);
 check('aviso custom: tokens resueltos', avisoOut.includes('Apuntes de Anatomía') && avisoOut.includes('Rivadavia 1234') && !avisoOut.includes('{{'), true);
 
+// 21. buildConfirmationMessage (confirmación de carga, plantilla fija SIN IA)
+import { buildConfirmationMessage } from '../src/lib/utils.js';
+import { CONFIRMATION_TEMPLATE } from '../src/lib/constants.js';
+
+const pedidoConf = {
+  nombre: 'Lucía Gómez',
+  fecha: '2026-10-25',
+  horario_entrega: '10:30',
+  lugar_entrega: 'Fotocopiadora UNJu — Rivadavia 1234'
+};
+const confirmacion = buildConfirmationMessage(pedidoConf);
+check('confirmación: sin tokens sin reemplazar', confirmacion.includes('{{'), false);
+check('confirmación: nombra al alumno', confirmacion.includes('Lucía Gómez'), true);
+check('confirmación: fecha larga con día de la semana', /Domingo 25\/10/i.test(confirmacion), true);
+check('confirmación: hora pactada', confirmacion.includes('10:30'), true);
+check('confirmación: lugar de retiro', confirmacion.includes('Rivadavia 1234'), true);
+
+const confSinHora = buildConfirmationMessage({ ...pedidoConf, horario_entrega: '' });
+check('confirmación sin hora → "a coordinar"', confSinHora.includes('a coordinar') && !confSinHora.includes('{{'), true);
+
+const confSinFecha = buildConfirmationMessage({ ...pedidoConf, fecha: '' });
+check('confirmación sin fecha → "a coordinar"', confSinFecha.includes('a coordinar') && !confSinFecha.includes('{{'), true);
+
+check('confirmación default = CONFIRMATION_TEMPLATE', CONFIRMATION_TEMPLATE.includes('{{fecha_larga}}') && buildConfirmationMessage(pedidoConf).length > 0, true);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

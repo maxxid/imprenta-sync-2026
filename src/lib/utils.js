@@ -1,4 +1,4 @@
-import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT } from './constants.js';
+import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, CONFIRMATION_TEMPLATE } from './constants.js';
 
 export function fmt(n) {
   return `$${Number(n || 0).toLocaleString('es-AR')}`;
@@ -685,6 +685,65 @@ export function buildWaPrompt(template, data = {}) {
     .split('{{libros}}').join(contextoLibros || '—')
     .split('{{lugar}}').join(lugar)
     .split('{{saldo}}').join(saldoTexto);
+}
+
+/**
+ * "Jueves 25/10" (día de la semana + día/mes) desde una fecha ISO 'YYYY-MM-DD'.
+ * Devuelve la fecha cruda si no se puede parsear, o 'a coordinar' si está vacía.
+ */
+function fechaAmigable(fecha) {
+  const raw = String(fecha || '').trim();
+  if (!raw) return 'a coordinar';
+  const parts = raw.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return raw;
+  const [year, month, day] = parts;
+  const d = new Date(year, month - 1, day, 12, 0, 0);
+  const dia = DIAS[d.getDay()] || '';
+  return `${dia} ${day}/${String(month).padStart(2, '0')}`.trim();
+}
+
+/**
+ * Mensaje de CONFIRMACIÓN de carga (plantilla FIJA, SIN IA). Se arma al crear el
+ * pedido y entra como PENDIENTE al tab WhatsApp. Resuelve unos pocos tokens locales;
+ * NO llama a Gemini. `template` opcional para pisar CONFIRMATION_TEMPLATE.
+ * Tokens: {{nombre}} {{fecha}} {{fecha_larga}} {{hora}} {{lugar}}
+ */
+export function buildConfirmationMessage(order = {}, template) {
+  const base = String(template || '').trim() || CONFIRMATION_TEMPLATE;
+  const fecha = String(order.fecha || '').trim();
+  return base
+    .split('{{nombre}}').join(String(order.nombre ?? ''))
+    .split('{{fecha}}').join(fecha)
+    .split('{{fecha_larga}}').join(fechaAmigable(fecha))
+    .split('{{hora}}').join(String(order.horario_entrega ?? '').trim() || 'a coordinar')
+    .split('{{lugar}}').join(String(order.lugar_entrega ?? '').trim() || 'nuestro local');
+}
+
+/**
+ * Genera el RECORDATORIO (día del retiro) con IA vía la Edge Function. Devuelve el
+ * texto o lanza error (el caller decide reintentar). Se usa desde el tab WhatsApp.
+ */
+export async function generateRecordatorio(order = {}, config) {
+  const url = geminiEndpoint(config);
+  if (!url) throw new Error('Sin endpoint de Gemini configurado');
+  const items = Array.isArray(order.items) ? order.items : [];
+  const librosPayload = items.length
+    ? items.map(i => ({ titulo: i.titulo, hojas: i.hojas, paginas: i.paginas, precio: i.precio }))
+    : [{ titulo: order.libro, hojas: order.hojas, paginas: order.paginas, precio: order.total }];
+  const dataObj = {
+    nombre: order.nombre,
+    whatsapp: order.whatsapp,
+    libros: librosPayload,
+    fecha: order.fecha,
+    hora: order.horario_entrega || '',
+    lugar_entrega: order.lugar_entrega || '',
+    saldo: Number(order.saldo_pendiente) || 0
+  };
+  const prompt = buildWaPrompt(config?.prompts?.wa_aviso, dataObj);
+  const response = await fetch(`${url}?mode=generate-wa&data=${encodeURIComponent(JSON.stringify(dataObj))}&prompt=${encodeURIComponent(prompt)}`);
+  if (!response.ok) throw new Error('Error generando el recordatorio');
+  const result = await response.json();
+  return result.msj_ws || null;
 }
 
 // URL del proxy de Gemini (Supabase Edge Function). `integraciones.GEMINI_ENDPOINT`
