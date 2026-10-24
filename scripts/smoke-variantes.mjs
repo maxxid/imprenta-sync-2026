@@ -418,5 +418,63 @@ check('recordatorio sin local → "en nuestro local" resuelto', promptSinLocal.i
 check('recordatorio sin local → sin token sin reemplazar', promptSinLocal.includes('{{lugar}}'), false);
 check('recordatorio sin local → nunca la facultad', esFacultad(promptSinLocal), false);
 
+// 24. Agenda con/sin hora (parse → Pedido Nuevo → edición en Pedidos)
+// (buildOrder / normalizeOrder / turnoFromHorario ya se importan arriba)
+import { tieneHora, extractTimeFromMessage } from '../src/lib/utils.js';
+
+// ¿Es hora pactada? Es la única puerta: todo lo que no pase = sin hora.
+check('hora: "14:30" es hora válida', tieneHora('14:30'), true);
+check('hora: "9:05" es hora válida', tieneHora('9:05'), true);
+check('hora: vacío = sin hora', tieneHora(''), false);
+check('hora: "A coordinar" = sin hora', tieneHora('A coordinar'), false);
+check('hora: "manana" no se cuela como hora', tieneHora('manana'), false);
+check('hora: "24:99" inválido', tieneHora('24:99'), false);
+check('hora: null = sin hora', tieneHora(null), false);
+
+// Parse: detecta hora si el mensaje la trae; si no, NO inventa
+check('parse: "a las 18 hs" → 18:00', extractTimeFromMessage('lo retiro a las 18 hs'), '18:00');
+check('parse: mensaje sin hora → null (nunca inventa)', extractTimeFromMessage('hola quería imprimir el libro'), null);
+
+// buildOrder (Pedido Nuevo)
+const cfg24 = { local: { nombre: '', direccion: '' } };
+const form24 = { nombre: 'Ana', whatsapp: '3885111222', pago: 'total', modalidad: 'Retiro en local' };
+const slotConHora = { fecha: '2026-10-27', horario: '14:30', turno: turnoFromHorario('14:30'), label: '' };
+const slotSinHora = { fecha: '2026-10-27', horario: '', turno: '', label: '' };
+
+const pedidoConHora = buildOrder([], form24, slotConHora, cfg24, null);
+check('agenda: con hora → horario 14:30', pedidoConHora.horario_entrega, '14:30');
+check('agenda: con hora → turno derivado (tarde)', pedidoConHora.turno, 'tarde');
+check('agenda: con hora → ventana termina en la hora', /· 14:30$/.test(pedidoConHora.ventana_retiro), true);
+check('agenda: con hora → la ventana no repite la hora', pedidoConHora.ventana_retiro.includes('14:30 · 14:30'), false);
+
+const pedidoSinHora = buildOrder([], form24, slotSinHora, cfg24, null);
+check('agenda: sin hora → horario_entrega vacío', pedidoSinHora.horario_entrega, '');
+check('agenda: sin hora → turno vacío', pedidoSinHora.turno, '');
+check('agenda: sin hora → ventana dice "A coordinar"', /A coordinar$/.test(pedidoSinHora.ventana_retiro), true);
+check('agenda: sin slot → sin hora', buildOrder([], form24, null, cfg24, null).horario_entrega, '');
+
+// normalizeOrder (se ejecuta en cada guardado): NUNCA inventa un horario
+check('normalize: sin hora NO inventa 10:00', normalizeOrder({ fecha: '2026-10-27', horario_entrega: '', turno: '' }, cfg24).horario_entrega, '');
+check('normalize: legacy "A coordinar" → vacío', normalizeOrder({ horario_entrega: 'A coordinar' }, cfg24).horario_entrega, '');
+check('normalize: conserva la hora válida', normalizeOrder({ horario_entrega: '14:30' }, cfg24).horario_entrega, '14:30');
+check('normalize: rescata turno legacy con hora (parser viejo)', normalizeOrder({ horario_entrega: '', turno: '19:00' }, cfg24).horario_entrega, '19:00');
+check('normalize: turno categoría no se cuela como hora', normalizeOrder({ horario_entrega: '', turno: 'manana' }, cfg24).horario_entrega, '');
+check('normalize: ventana sin hora → "… · A coordinar"', /A coordinar$/.test(normalizeOrder({ fecha: '2026-10-27' }, cfg24).ventana_retiro), true);
+check('normalize: ventana legacy "14:30 · 14:30" → se rearmа con la fecha', normalizeOrder({ fecha: '2026-10-27', horario_entrega: '14:30', ventana_retiro: '14:30 · 14:30' }, cfg24).ventana_retiro, '2026-10-27 · 14:30');
+check('normalize: ventana legacy "A coordinar · A coordinar" → se rearmа', normalizeOrder({ fecha: '2026-10-27', horario_entrega: '', ventana_retiro: 'A coordinar · A coordinar' }, cfg24).ventana_retiro, '2026-10-27 · A coordinar');
+check('normalize: ventana normal se conserva tal cual', normalizeOrder({ fecha: '2026-10-27', horario_entrega: '14:30', ventana_retiro: 'lunes, 27 de oct. · 14:30' }, cfg24).ventana_retiro, 'lunes, 27 de oct. · 14:30');
+
+// Mensajes: sin hora no queda un "a las …" colgando
+const confSinHora24 = buildConfirmationMessage({ nombre: 'Ana', fecha: '2026-10-27', horario_entrega: '' }, cfg24);
+check('confirmación sin hora → "(horario a coordinar)"', confSinHora24.includes('(horario a coordinar)'), true);
+check('confirmación sin hora → sin "a las a coordinar"', /a las a coordinar/i.test(confSinHora24), false);
+const confConHora24 = buildConfirmationMessage({ nombre: 'Ana', fecha: '2026-10-27', horario_entrega: '14:30' }, cfg24);
+check('confirmación con hora → "a las 14:30"', confConHora24.includes('a las 14:30'), true);
+check('confirmación con hora → sin el cierre por defecto', confConHora24.includes('(horario a coordinar)'), false);
+
+const promptSinHora24 = buildWaPrompt(undefined, { nombre: 'Ana', fecha: '2026-10-27', hora: '', saldo: 0, libros: [], lugar_entrega: 'nuestro local' });
+check('recordatorio sin hora → sin "a las a coordinar"', /a las a coordinar/i.test(promptSinHora24), false);
+check('recordatorio con hora → usa la hora pactada', buildWaPrompt(undefined, { nombre: 'Ana', fecha: '2026-10-27', hora: '14:30', saldo: 0, libros: [], lugar_entrega: 'nuestro local' }).includes('a las 14:30'), true);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

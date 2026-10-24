@@ -152,14 +152,19 @@ function buildWaPrompt(data: Record<string, unknown>): string {
     .join('\n');
 
   const lugar = String(data?.lugar_entrega ?? '').trim() || 'nuestro local';
-  const hora = String(data?.hora ?? '').trim() || String(data?.horario_entrega ?? '').trim() || 'a coordinar';
+  const horaCruda = String(data?.hora ?? '').trim() || String(data?.horario_entrega ?? '').trim();
+  // Sin hora pactada NO se inventa un horario: se agenda "a coordinar" y la
+  // frase cambia para no dejar un "a las a coordinar" colgando.
+  const hayHora = /^\d{1,2}:\d{2}$/.test(horaCruda);
+  const hora = hayHora ? horaCruda : 'a coordinar';
+  const fraseHora = hayHora ? `a las ${hora}` : '(horario a coordinar)';
   const saldo = Number(data?.saldo) || 0;
   const saldoTexto = saldo > 0
     ? `El saldo pendiente es $${saldo}. Decile el monto total a abonar al retirar.`
     : 'Ya tiene todo pagado, no menciones dinero.';
 
   return [
-    `Hoy es ${hoy}. Redactá un mensaje de WhatsApp para avisarle al alumno que su pedido está LISTO para retirar en ${lugar}, el ${data?.fecha ?? ''} a las ${hora}.`,
+    `Hoy es ${hoy}. Redactá un mensaje de WhatsApp para avisarle al alumno que su pedido está LISTO para retirar en ${lugar}, el ${data?.fecha ?? ''} ${fraseHora}.`,
     '',
     'DATOS DEL PEDIDO:',
     `- Alumno: ${data?.nombre ?? ''}`,
@@ -173,7 +178,7 @@ function buildWaPrompt(data: Record<string, unknown>): string {
     'REGLAS:',
     `1. El alumno retira su pedido en ${lugar}. NO hacemos entregas a domicilio ni en la facultad: él pasa a retirarlo.`,
     '2. Corto y natural, español rioplatense ("tenés", "¿cómo estás?").',
-    `3. Indicale SIEMPRE el día y la hora de retiro (${data?.fecha ?? ''} a las ${hora}) para que pase a buscarlo cuando esté listo.`,
+    `3. Indicale SIEMPRE el día y la hora de retiro (${data?.fecha ?? ''} ${fraseHora}) para que pase a buscarlo cuando esté listo.`,
     '4. Si el saldo es 0, no menciones dinero: solo que ya está listo para retirar.',
     '5. Si tiene saldo, decile el monto total a abonar al retirar.',
     '6. Sin emojis excesivos. Profesional pero cercano. Usá al menos una vez el emoji 😊.',

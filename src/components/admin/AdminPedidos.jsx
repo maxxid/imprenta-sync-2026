@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Icon } from '../Icons';
 import { statusBadge, Alert, Spinner, fechaLabel, buildWhatsAppMessage } from '../UI';
-import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal, RETIRO_LOCAL } from '../../lib/utils';
+import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal, RETIRO_LOCAL, tieneHora, turnoFromHorario } from '../../lib/utils';
 import { ORDER_STATES, STATE_LABELS, STATE_STYLES, STATE_ROW_BG } from '../../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, saveLocal, loadLocal, formatVentana, formatFechaCorta, fetchOrdersFromSupabase } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
@@ -156,7 +156,13 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
         : (filters.estado === 'all' || itemEstado === filters.estado);
       const isEditing = editingOrder === order.id;
       const fecha = isEditing || filters.fecha === 'all' || order.fecha === filters.fecha;
-      const ventana = isEditing || filters.ventana === 'all' || order.turno === filters.ventana;
+      // La hora del pedido es `horario_entrega` ('HH:MM' o vacío = sin hora);
+      // `turno` solo se rescata si es un horario legacy. El filtro agrupa por
+      // hora (10:00 hs = 10:00–10:59) y tiene opción "Sin hora".
+      const horaOrden = tieneHora(order.horario_entrega) ? String(order.horario_entrega).trim()
+        : (tieneHora(order.turno) ? String(order.turno).trim() : '');
+      const ventana = isEditing || filters.ventana === 'all'
+        || (filters.ventana === 'sin' ? !horaOrden : horaOrden.slice(0, 2) === filters.ventana.slice(0, 2));
       const alumno = !filters.alumno || slug(order.nombre).includes(slug(filters.alumno));
       const libro = !filters.libro || slug(item.titulo || order.libro).includes(slug(filters.libro));
       const formato = filters.formato === 'all' || String(item.formato || order.formato).includes(filters.formato);
@@ -425,17 +431,31 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, [field]: value } : o));
   }
 
+  /** Cambia la hora pactada de retiro (input type="time"). Vacío = sin hora:
+   *  no se inventa horario y `turno` se deriva junto (o queda vacío). */
+  function updateHora(orderId, hora) {
+    const h = tieneHora(hora) ? String(hora).trim() : '';
+    setOrders(prev => prev.map(o => o.id === orderId
+      ? { ...o, horario_entrega: h, turno: h ? turnoFromHorario(h) : '' }
+      : o));
+  }
+
   const saveEditedOrder = useCallback(async (orderId) => {
     setSavingOrder(orderId);
     try {
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
-      const turno = order.turno || '10:00';
-      const horario = turno;
+      // Hora pactada = horario_entrega ('HH:MM'); vacío = sin hora y NO se
+      // inventa horario (se rescata un turno legacy que ya tuviera hora).
+      // `turno` queda derivado y la ventana se rearma con "A coordinar" si
+      // no hay hora → la columna Retiro muestra la falta de hora.
+      const hora = tieneHora(order.horario_entrega) ? String(order.horario_entrega).trim()
+        : (tieneHora(order.turno) ? String(order.turno).trim() : '');
       const updated = {
         ...order,
-        ventana_retiro: order.fecha ? `${formatFechaCorta(order.fecha)} · ${horario}` : order.ventana_retiro,
-        horario_entrega: horario
+        horario_entrega: hora,
+        turno: hora ? turnoFromHorario(hora) : (order.turno || ''),
+        ventana_retiro: order.fecha ? `${formatFechaCorta(order.fecha)} · ${hora || 'A coordinar'}` : order.ventana_retiro
       };
       await persistOrder(updated);
       setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
@@ -561,6 +581,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
             </select>
             <select className="input-field" value={filters.ventana} onChange={event => setFilters(current => ({ ...current, ventana: event.target.value }))}>
               <option value="all">Todas las ventanas</option>
+              <option value="sin">Sin hora</option>
               {Array.from({length: 15}, (_, i) => i + 9).map(h => (
                 <option key={h} value={`${String(h).padStart(2, '0')}:00`}>{`${String(h).padStart(2, '0')}:00 hs`}</option>
               ))}
@@ -790,11 +811,14 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
                       editingOrder === order.id ? (
                         <div className="flex flex-col gap-1">
                           <input className="input-field text-xs py-1 w-full" value={order.fecha || ''} onChange={e => updateOrderField(order.id, 'fecha', e.target.value)} type="date" />
-                          <select className="input-field text-xs py-1 w-full" value={order.turno || '10:00'} onChange={e => updateOrderField(order.id, 'turno', e.target.value)}>
-                            {Array.from({length: 15}, (_, i) => i + 9).map(h => (
-                              <option key={h} value={`${String(h).padStart(2, '0')}:00`}>{`${String(h).padStart(2, '0')}:00 hs`}</option>
-                            ))}
-                          </select>
+                          <input
+                            className="input-field text-xs py-1 w-full"
+                            type="time"
+                            value={tieneHora(order.horario_entrega) ? String(order.horario_entrega).trim() : ''}
+                            onChange={e => updateHora(order.id, e.target.value)}
+                            title="Hora pactada de retiro (vacío = sin hora)"
+                          />
+                          <div className="text-[10px] text-ink-400">Hora vacía = sin hora (queda "A coordinar")</div>
                         </div>
                       ) : (
                         <>

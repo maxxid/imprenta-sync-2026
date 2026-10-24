@@ -465,6 +465,29 @@ export function fechaLabel(fecha, offset) {
   return new Date(year, month - 1, day, 12, 0, 0).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
+/**
+ * ¿La hora pactada de retiro es un 'HH:MM' válido? Todo lo que no lo sea
+ * ('', 'A coordinar', 'manana', basura legacy) se trata como SIN HORA.
+ * Es la única puerta de entrada para decidir si un pedido está agendado con
+ * hora: nada inventa horarios (ni '10:00' ni '19:00').
+ */
+export function tieneHora(h) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(h ?? '').trim());
+  if (!m) return false;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  return hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
+}
+
+/**
+ * Quita el "a las …" que queda colgando cuando no hay hora pactada:
+ * "…el lunes 27 a las a coordinar…" → "…el lunes 27 (horario a coordinar)…".
+ * Solo se aplica cuando NO hay hora válida (si la hay, no toca nada).
+ */
+function cierraSinHora(msg) {
+  return String(msg).replace(/\s*a las a coordinar\b/gi, ' (horario a coordinar)');
+}
+
 export function buildOrder(items, form, slot, config, career, metodoPago = 'talo') {
   const pages = items.reduce((acc, item) => acc + item.paginas, 0);
   const hojas = items.reduce((acc, item) => acc + item.hojas, 0);
@@ -498,9 +521,11 @@ export function buildOrder(items, form, slot, config, career, metodoPago = 'talo
     turno: slot ? slot.turno : '',
     modalidad_entrega: modalidad,
     express: items.some(item => item.express),
-    ventana_retiro: slot ? `${slot.label || fechaLabel(slot.fecha, slot.dOffset)} · ${slot.horario}` : 'Se coordina por WhatsApp',
+    ventana_retiro: slot
+      ? [slot.label || fechaLabel(slot.fecha, slot.dOffset), tieneHora(slot.horario) ? slot.horario : 'A coordinar'].filter(Boolean).join(' · ')
+      : 'Se coordina por WhatsApp',
     lugar_entrega: deliveryPlaceFor(modalidad, career, config),
-    horario_entrega: slot ? slot.horario : 'A coordinar',
+    horario_entrega: slot && tieneHora(slot.horario) ? String(slot.horario).trim() : '',
     talo_ref: metodoPago === 'transferencia' ? `TRANSF-${id}` : `TALO-${id}`,
     ts: new Date().toISOString()
   };
@@ -692,7 +717,7 @@ export function buildWaPrompt(template, data = {}) {
   const saldoTexto = saldo > 0
     ? `El saldo pendiente es $${saldo}. Decile el monto total a abonar al retirar.`
     : 'Ya tiene todo pagado, no menciones dinero.';
-  return base
+  const msg = base
     .split('{{fecha_pedido}}').join(String(data?.fecha || 'no especificada'))
     .split('{{fecha}}').join(hoy)
     .split('{{hora}}').join(hora)
@@ -701,6 +726,7 @@ export function buildWaPrompt(template, data = {}) {
     .split('{{libros}}').join(contextoLibros || '—')
     .split('{{lugar}}').join(lugar)
     .split('{{saldo}}').join(saldoTexto);
+  return tieneHora(hora) ? msg : cierraSinHora(msg);
 }
 
 /**
@@ -729,12 +755,14 @@ function fechaAmigable(fecha) {
 export function buildConfirmationMessage(order = {}, config, template) {
   const base = String(template || '').trim() || CONFIRMATION_TEMPLATE;
   const fecha = String(order.fecha || '').trim();
-  return base
+  const hora = String(order.horario_entrega ?? '').trim();
+  const msg = base
     .split('{{nombre}}').join(String(order.nombre ?? ''))
     .split('{{fecha}}').join(fecha)
     .split('{{fecha_larga}}').join(fechaAmigable(fecha))
-    .split('{{hora}}').join(String(order.horario_entrega ?? '').trim() || 'a coordinar')
+    .split('{{hora}}').join(hora || 'a coordinar')
     .split('{{lugar}}').join(lugarRetiro(order, config));
+  return tieneHora(hora) ? msg : cierraSinHora(msg);
 }
 
 /**
@@ -863,12 +891,24 @@ export function extractTimeFromMessage(text) {
 export function normalizeOrder(order, config) {
   const estado = order.estado === 'Impreso' ? 'Listo' : order.estado;
   const modalidad = isRetiroLocal(order.modalidad_entrega) ? RETIRO_LOCAL : (order.modalidad_entrega || RETIRO_LOCAL);
-  const horario = order.horario_entrega || order.turno || '10:00';
+  // Hora pactada: si no hay 'HH:MM' válido, queda SIN HORA ('') — nunca se
+  // inventa un horario. Se rescata un 'turno' legacy con hora (parser viejo),
+  // pero un turno categoría ('manana'/'tarde') no se cuela como hora.
+  const horario = tieneHora(order.horario_entrega)
+    ? String(order.horario_entrega).trim()
+    : (tieneHora(order.turno) ? String(order.turno).trim() : '');
   const lugarGuardado = String(order.lugar_entrega || '').includes('Punto de entrega') ? '' : order.lugar_entrega;
   const items = (order.items || []).map(item => ({ ...item, estado: item.estado || estado || 'Pendiente de impresión' }));
   const derivedEstado = deriveOrderEstado(items);
   const total = order.total || 0;
   const autoSaldado = derivedEstado === 'Entregado';
+  // Ventana de retiro: se cura el legacy de Pedido Nuevo que repetía el dato
+  // ("14:30 · 14:30" o "A coordinar · A coordinar") → se rearma abajo.
+  const partesVentana = String(order.ventana_retiro || '').split('·').map(s => s.trim());
+  const ventanaRepetida = partesVentana.length === 2
+    && partesVentana[0] && partesVentana[0] === partesVentana[1]
+    && /^(\d{1,2}:\d{2}|a coordinar)$/i.test(partesVentana[0]);
+  const ventana = ventanaRepetida ? '' : String(order.ventana_retiro || '').trim();
   return {
     ...order,
     items,
@@ -876,7 +916,9 @@ export function normalizeOrder(order, config) {
     monto_pagado: autoSaldado ? total : (order.monto_pagado ?? 0),
     saldo_pendiente: autoSaldado ? 0 : (order.saldo_pendiente ?? 0),
     modalidad_entrega: modalidad,
-    ventana_retiro: order.ventana_retiro || (modalidad === 'Cadete' || modalidad === 'Retiro domicilio' ? 'Se coordina por WhatsApp' : `${order.fecha || ''} · ${horario}`),
+    ventana_retiro: ventana || (modalidad === 'Cadete' || modalidad === 'Retiro domicilio'
+      ? 'Se coordina por WhatsApp'
+      : [order.fecha, horario || 'A coordinar'].filter(Boolean).join(' · ')),
     lugar_entrega: lugarGuardado || localPlace(config) || config.carreras?.[0]?.direccion_entrega || 'Retiro en nuestro local',
     horario_entrega: horario,
     talo_ref: order.talo_ref || '',

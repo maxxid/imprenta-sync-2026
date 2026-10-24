@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, lugarRetiro, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint, buildWaPrompt } from '../../lib/utils';
+import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, lugarRetiro, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint, buildWaPrompt, tieneHora, turnoFromHorario } from '../../lib/utils';
 import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
 import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
 
@@ -305,13 +305,15 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
         };
       });
       const career = getCareer(config, books, items[0]?.id_carrera || '');
+      // Si el mensaje trae hora → se agenda con esa hora. Si NO, se agenda SIN
+      // hora (queda editable en Pedidos); nunca se inventa un 10:00/19:00.
       const msgTime = extractTimeFromMessage(parserInput);
-      const horarioFinal = msgTime || (parserPreview.entrega?.turno === 'manana' ? '10:00' : '19:00');
+      const hayHora = tieneHora(msgTime);
       const slot = {
         fecha: parserPreview.entrega?.fecha || today,
-        turno: horarioFinal,
-        horario: horarioFinal,
-        label: msgTime || (parserPreview.entrega?.turno === 'manana' ? 'Mañana' : 'Tarde')
+        turno: hayHora ? turnoFromHorario(msgTime) : '',
+        horario: hayHora ? msgTime : '',
+        label: ''
       };
       const total = roundTotal(items.reduce((acc, item) => acc + item.precio, 0), config);
       const orderEstado = parserPreview.montoPagado > 0 ? 'Pendiente de impresión' : 'Pendiente de pago';
@@ -338,7 +340,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
         turno: slot.turno,
         modalidad_entrega: RETIRO_LOCAL,
         express: parserPreview.express,
-        ventana_retiro: `${slot.fecha} · ${slot.horario}`,
+        ventana_retiro: [slot.fecha, slot.horario || 'A coordinar'].filter(Boolean).join(' · '),
         lugar_entrega: deliveryPlaceFor(RETIRO_LOCAL, career, config),
         horario_entrega: slot.horario,
         talo_ref: `WA-${String(Date.now()).slice(-6)}`,
@@ -547,7 +549,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                         const librosPayload = parserPreview.libros.map(b => ({
                           titulo: b.titulo, hojas: b.hojas || 0, paginas: b.paginas || 0, precio: b.precio || 0
                         }));
-                        const horaWA = extractTimeFromMessage(parserInput) || (parserPreview.entrega?.turno === 'manana' ? '10:00' : '19:00');
+                        const horaWA = extractTimeFromMessage(parserInput) || '';
                         const data = {
                           nombre: parserPreview.nombre,
                           whatsapp: parserPreview.whatsapp,

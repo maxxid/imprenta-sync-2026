@@ -119,9 +119,9 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
 
       const slot = {
         fecha: form.fecha,
-        horario: form.hora || 'A coordinar',
+        horario: form.hora || '',   // '' = sin hora pactada (se agrega después desde Pedidos)
         turno: form.hora ? turnoFromHorario(form.hora) : '',
-        label: form.hora || 'A coordinar'
+        label: ''                   // buildOrder arma la ventana con fechaLabel
       };
       const order = buildOrder(
         itemsFinales,
@@ -262,6 +262,7 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
             <div>
               <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1">Hora</label>
               <input className="input-field" type="time" value={form.hora} onChange={e => setForm({ hora: e.target.value })} />
+              <div className="text-[10px] text-ink-400 mt-1">Vacío = sin hora (queda "A coordinar")</div>
             </div>
           </div>
 

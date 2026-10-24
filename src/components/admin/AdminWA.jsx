@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Icon } from '../Icons';
-import { fmt, buildConfirmationMessage, generateRecordatorio } from '../../lib/utils';
+import { fmt, buildConfirmationMessage, generateRecordatorio, tieneHora } from '../../lib/utils';
 import { updateOrderInSupabase } from '../../lib/supabase';
 
 const hoyISO = () => new Date().toISOString().split('T')[0];
@@ -310,7 +310,7 @@ export function AdminWA({ orders, setOrders, config }) {
                       {atrasado && <span className="badge bg-danger-muted text-danger-DEFAULT text-[10px]">Atrasado</span>}
                     </div>
                     <div className="text-xs text-ink-500 mt-1">
-                      {order.fecha || 'sin fecha'}{order.horario_entrega ? ` · ${order.horario_entrega} hs` : ''}
+                      {order.fecha || 'sin fecha'}{tieneHora(order.horario_entrega) ? ` · ${order.horario_entrega} hs` : ' · a coordinar'}
                       {order.lugar_entrega ? ` · ${order.lugar_entrega}` : ''}
                     </div>
                     <div className="text-[11px] text-ink-400 mt-0.5 truncate max-w-[420px]">

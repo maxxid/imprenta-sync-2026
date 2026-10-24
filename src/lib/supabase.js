@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone, prepareBookForSave } from './utils.js';
+import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone, prepareBookForSave, tieneHora } from './utils.js';
 import { STATE_STYLES, STATE_LABELS, FALLBACK_CONFIG } from './constants.js';
 import { getShopId } from './shop.js';
 
@@ -324,7 +324,10 @@ export function formatVentana(ventana, fecha, horario) {
   if (ventana && /^\d{4}-\d{2}-\d{2}/.test(ventana)) {
     return ventana.replace(/^\d{4}-\d{2}-\d{2}/, match => formatFechaCorta(match));
   }
-  return ventana || (fecha ? `${formatFechaCorta(fecha)} · ${horario}` : '');
+  if (ventana) return ventana;
+  if (!fecha) return '';
+  // Sin hora pactada no se muestra un horario inventado: dice "A coordinar".
+  return `${formatFechaCorta(fecha)} · ${tieneHora(horario) ? horario : 'A coordinar'}`;
 }
 
 export function saveLocal(key, value) {

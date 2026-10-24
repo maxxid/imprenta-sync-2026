@@ -127,7 +127,7 @@ Cambio de modelo: **ya no hay entregas a domicilio ni en la facultad**. El alumn
 - **`config.entrega.cadete_minimo`** se eliminó del código y de Ajustes (ya no hay cadete). Puede seguir existiendo en configs viejas de DB; es inofensivo.
 - **Mensajes:** el `DEFAULT_PARSER_PROMPT` (regla 8, y reglas 4/6) y `buildWhatsAppMessage()` (fallback) ahora dicen **"pasá a retirarlo por el local"** en vez de "te llevamos a la facultad". *Si el usuario llegara a guardar un prompt custom en Ajustes, hay que tocar "Usar el default" para que aplique el nuevo (verificado: hoy `config.prompts` está vacío → aplica el default).*
 - **Landing (App.jsx):** copy de "entrega en facultad" → "retiro en tu local".
-- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18), la agenda de turnos (19), `buildWaPrompt`/aviso (20), confirmación (21), calculadora (22) y lugar de retiro (23) — 168 checks.
+- **Smoke:** `npm run smoke` cubre retiro en local (17), `geminiEndpoint` (18), la agenda de turnos (19), `buildWaPrompt`/aviso (20), confirmación (21), calculadora (22), lugar de retiro (23) y agenda con/sin hora (24) — 200 checks.
 
 ## Horarios de retiro (agenda en Ajustes, 2026-10-21)
 
@@ -229,7 +229,7 @@ Decisiones de precio (ok del usuario 2026-10-24):
 - **Encuadernación a nivel PEDIDO** (en Pedido Nuevo): *Sin / Cada PDF por su lado / Todos juntos en una* → `calcEncuadernacion(items, modo, config)` reusa la config actual (`encuadernacion.basica` = 600 si `hojas >= umbral(40)`); "todos juntos" muestra además el tamaño de espiral (`getEspiralSize`). Se cobra como **línea de ítem** y solo se calcula sobre los ítems con `origen === 'calculadora'` (los del catálogo ya traen encuadernación en el precio de la variante → no se duplica).
 - Ítems del pedido ahora pueden traer `origen: 'calculadora' | 'catalogo' | 'encuadernacion'` y `comentario`.
 
-**Smoke: 168 checks** (sección 22 = calculadora: categorías, páginas, precio por página, toggle impar y encuadernación; sección 23 = lugar de retiro en los mensajes).
+**Smoke: 200 checks** (sección 22 = calculadora: categorías, páginas, precio por página, toggle impar y encuadernación; 23 = lugar de retiro en los mensajes; 24 = agenda con/sin hora).
 
 ### Fix: lugar de retiro en los mensajes de WhatsApp (2026-10-24)
 
@@ -257,3 +257,21 @@ Misma UX que en el tab WhatsApp, adaptada a la grilla de Pedidos. **Cada fila = 
 - **`aplicarEstadoSeleccion(direction)` agrupa por pedido y escribe UNA sola vez por pedido**: si se marcan 2 ítems del mismo pedido y se corren por separado, el segundo write partiría de los ítems viejos y pisaría el primero. Recalcula `deriveOrderEstado(items)` y persiste con `normalizeOrder` + `persistOrder` (mismo camino que `advanceItemState`); solo persiste los pedidos que realmente cambiaron.
 - **La selección se limpia** al cambiar filtros/orden/excluir estados/u ocultar entregados, y se **poda sola** si una fila dejó de estar visible (p. ej. cambió de estado y salió del filtro) → nunca quedan claves fantasma que inflen el contador.
 - Durante la corrida se pintan las filas en `savingItemStates` (los ←/→ por fila quedan con spinner y deshabilitados) y `bulkSaving` deshabilita los botones de la barra.
+
+### Agenda con/sin hora de retiro (2026-10-24)
+
+**Regla (decisión del usuario):** un pedido se agenda **CON hora solo si la hora existe** —detectada en el parse del mensaje o elegida en Pedido Nuevo—; si no, se agenda **SIN hora** (sin error y **sin horario inventado**) y queda **editable en Pedidos** para cargarla después de preguntarle al alumno a qué hora lo necesita.
+
+- **Modelo:** `horario_entrega` = `'HH:MM'` o `''` (sin hora). **`tieneHora(h)`** (utils) es la **única puerta** para decidir si hay hora: lo que no pase ('', `'A coordinar'`, `'manana'`, basura legacy) = sin hora. `turno` = derivado (`manana`/`tarde` vía `turnoFromHorario`) o `''`; solo se rescata si es un `HH:MM` legacy.
+- **Los 3 lugares que INVENTABAN horario quedaron sin fallback:**
+  1. Parser (`msgTime || turno==='manana' ? '10:00' : '19:00'`) → ahora `horario: msgTime || ''`.
+  2. `normalizeOrder` (`|| '10:00'`, que además **se escribía en el campo** en cada guardado) → `''`.
+  3. `saveEditedOrder` (`turno || '10:00'` y pisaba `horario_entrega` con `turno`) → no inventa y arma `ventana_retiro = "fecha · hora|A coordinar"`.
+- **Parse:** con hora → agenda con esa hora y `turno = turnoFromHorario(hora)`; sin hora → `horario_entrega: ''`, `turno: ''` y `ventana_retiro = "fecha · A coordinar"`.
+- **Pedido Nuevo:** `input type="time"` libre; vacío → `slot.horario = ''` (antes guardaba la literal `'A coordinar'` y la ventana salía `"A coordinar · A coordinar"` o `"14:30 · 14:30"`). `slot.label = ''` para que `buildOrder` arme la ventana con `fechaLabel` (antes repetía la hora).
+- **Edición en Pedidos:** la celda **Retiro** en modo editar ahora tiene `input type="time"` sobre **`horario_entrega`** (antes era un `<select>` que escribía en **`turno`**, el campo equivocado, sin opción de vacío, y forzaba 10:00 al guardar) + hint *"Hora vacía = sin hora"*. `updateHora()` mantiene `horario_entrega` + `turno` juntos.
+- **Mensajes:** sin hora, `{{hora}}` → "a coordinar" y **`cierraSinHora()`** reescribe el `"a las …"` colgado → **"(horario a coordinar)"** (`buildConfirmationMessage` y `buildWaPrompt`). La Edge Function (`index.ts`) hace lo mismo en su prompt de fallback → **redeployada** (`supabase functions deploy gemini --no-verify-jwt`).
+- **Visores:** tab WhatsApp muestra "· a coordinar"; tracking del alumno muestra "· a coordinar" / "Horario a coordinar" (antes "·  hs").
+- **Filtro Ventana** en Pedidos: ahora compara **`horario_entrega`** (agrupa por hora: "10:00 hs" = 10:00–10:59) y agrega la opción **"Sin hora"**.
+- **Legacy:** `normalizeOrder` (corre en **cada lectura** de pedidos) cura las ventanas repetidas del Pedido Nuevo viejo y no inventa hora → el dato queda saneado en pantalla y al próximo guardado.
+- Smoke **200 checks** (sección 24: agenda con/sin hora).

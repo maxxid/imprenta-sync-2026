@@ -2,7 +2,7 @@ import React from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
 import { Cover, Alert, Spinner, CareerCombobox, fechaLabel } from './UI';
-import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, buildConfirmationMessage } from '../lib/utils';
+import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, buildConfirmationMessage, tieneHora } from '../lib/utils';
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
@@ -1297,7 +1297,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-700 text-sm text-ink-900 truncate">{order.libro}</div>
-                    <div className="text-xs text-ink-400 mt-0.5">{order.fecha} · {order.horario_entrega}</div>
+                    <div className="text-xs text-ink-400 mt-0.5">{order.fecha}{tieneHora(order.horario_entrega) ? ` · ${order.horario_entrega}` : ' · a coordinar'}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <span className={`status-chip ${STATE_STYLES[order.estado] || 'bg-ink-100 text-ink-700'}`}>{STATE_LABELS[order.estado] || order.estado}</span>
@@ -1365,7 +1365,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
                 </div>
                 <div className="bg-white/10 rounded-xl p-3 mb-3 text-sm space-y-1.5">
                   <div className="flex items-center gap-2"><Icon.MapPin /> {selectedOrder.lugar_entrega}</div>
-                  <div className="flex items-center gap-2"><Icon.Clock /> {selectedOrder.horario_entrega} hs</div>
+                  <div className="flex items-center gap-2"><Icon.Clock /> {tieneHora(selectedOrder.horario_entrega) ? `${selectedOrder.horario_entrega} hs` : 'Horario a coordinar'}</div>
                 </div>
                 <button
                   className="order-action-btn bg-surface text-brand-dark dark:text-brand-light hover:bg-surface-hover"

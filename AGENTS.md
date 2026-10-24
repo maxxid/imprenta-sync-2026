@@ -118,6 +118,7 @@ El alumno elige el turno de retiro según sus clases → **la hora es clave**. D
 - `deriveOrderEstado(items)` — Deriva estado desde items
 - `computeOrderStatus(montoPagado)` — Estado según pago
 - `orderPagesForCapacity(order)` — Hojas que consumen capacidad
+- **`tieneHora(h)`** — ¿'HH:MM' válido? Es la **única puerta** para decidir si un pedido está agendado con hora: todo lo que no pase ('', `'A coordinar'`, `'manana'`) = **sin hora** y **nada inventa horarios** (ni '10:00' ni '19:00'). `turno` = `turnoFromHorario(hora)` (`manana`/`tarde`) o `''`.
 
 ### Supabase (src/lib/supabase.js)
 - `getSupabase(config)` — Cliente singleton
