@@ -3,7 +3,7 @@ import { Icon } from '../Icons';
 import { Alert } from '../UI';
 import { getCareers, careerLabel, DIAS, DIAS_ORDER, buildVentana, normalizeVentanas, turnoFromHorario, nextHorario, slug } from '../../lib/utils';
 import { saveConfigToSupabase, saveLocal, loadLocal, deepMerge } from '../../lib/supabase';
-import { STORAGE, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT } from '../../lib/constants';
+import { STORAGE, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, DEFAULT_CALC_CATEGORIAS } from '../../lib/constants';
 
 export function AdminConfig({ config, setConfig }) {
   const [configDraft, setConfigDraft] = useState(null);
@@ -53,6 +53,33 @@ export function AdminConfig({ config, setConfig }) {
 
   function irA(id) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ─── Calculadora: categorías y tarifa por página ──────────────────────
+  // Se materializa recién al primer edit (si no existe, se usa la semilla y no
+  // marca "Cambios sin guardar" al entrar).
+  const calcCategorias = configDraft.calculadora?.categorias || DEFAULT_CALC_CATEGORIAS;
+
+  function mutarCalcCategorias(updater) {
+    setConfigDraft(current => ({
+      ...current,
+      calculadora: {
+        ...(current.calculadora || {}),
+        categorias: updater((current.calculadora?.categorias || DEFAULT_CALC_CATEGORIAS).map(c => ({ ...c })))
+      }
+    }));
+  }
+
+  function setCalcCat(idx, patch) {
+    mutarCalcCategorias(cats => cats.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
+  }
+
+  function agregarCalcCat() {
+    mutarCalcCategorias(cats => [...cats, { id: `cat_${Date.now().toString(36)}`, nombre: '', precio: 0 }]);
+  }
+
+  function quitarCalcCat(idx) {
+    mutarCalcCategorias(cats => (cats.length <= 1 ? cats : cats.filter((_, i) => i !== idx)));
   }
 
   // ─── Edición de la agenda de turnos (configDraft.carreras[].ventanas) ───
@@ -133,6 +160,7 @@ export function AdminConfig({ config, setConfig }) {
     ['local', 'Local'],
     ['capacidad', 'Producción'],
     ['precios', 'Precios'],
+    ['calculadora', 'Calculadora'],
     ['espirales', 'Espirales'],
     ['pagos', 'Pagos'],
     ['feriados', 'Feriados'],
@@ -214,6 +242,38 @@ export function AdminConfig({ config, setConfig }) {
               <input className="input-field" type="number" value={value} onChange={event => setConfigDraft(current => ({ ...current, ...builder(Number(event.target.value || 0)) }))} />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div id="calculadora" className="card p-5 scroll-mt-6">
+        <div className="font-700 text-sm text-ink-800 mb-1">Calculadora (precio por página)</div>
+        <div className="text-xs text-ink-400 mb-4">Categorías y tarifa que usa la pestaña Calculadora: se cobra por página según el contenido (una hoja puede llevar texto de un lado e imagen del otro).</div>
+        <div className="space-y-2 mb-4">
+          {calcCategorias.map((cat, idx) => (
+            <div key={cat.id || idx} className="flex items-center gap-2 flex-wrap">
+              <input className="input-field flex-1 min-w-[160px]" type="text" placeholder="Ej: Blanco y negro" value={cat.nombre} onChange={event => setCalcCat(idx, { nombre: event.target.value })} />
+              <input className="input-field w-[120px]" type="number" min="0" value={cat.precio} onChange={event => setCalcCat(idx, { precio: Number(event.target.value || 0) })} />
+              <span className="text-xs text-ink-400 font-700">$ / pág</span>
+              <button
+                onClick={() => quitarCalcCat(idx)}
+                disabled={calcCategorias.length <= 1}
+                className="text-ink-400 hover:text-danger disabled:opacity-30 disabled:hover:text-ink-400 text-lg leading-none"
+                title="Quitar categoría"
+              >✕</button>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <button onClick={agregarCalcCat} className="btn-secondary text-xs px-3 py-1.5">+ Agregar categoría</button>
+          <label className="flex items-center gap-2 text-xs font-700 text-ink-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-ink-300"
+              checked={Boolean(configDraft.calculadora?.redondear_impar)}
+              onChange={event => setConfigDraft(current => ({ ...current, calculadora: { ...(current.calculadora || {}), redondear_impar: event.target.checked } }))}
+            />
+            Redondear a par (cuenta la página en blanco con la tarifa más barata)
+          </label>
         </div>
       </div>
 

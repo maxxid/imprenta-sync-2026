@@ -7,9 +7,18 @@ import { AdminCatalogo } from './admin/AdminCatalogo';
 import { AdminConfig } from './admin/AdminConfig';
 import { AdminParserWA } from './admin/AdminParserWA';
 import { AdminWA } from './admin/AdminWA';
+import { AdminCalculadora } from './admin/AdminCalculadora';
+import { AdminPedidoNuevo } from './admin/AdminPedidoNuevo';
 
 export function AdminPanel({ orders, setOrders, books, setBooks, config, setConfig, theme, setTheme, onLogout }) {
   const [tab, setTab] = useState('dashboard');
+  // Borrador compartido entre Calculadora y Pedido Nuevo (vinculación en 2 sentidos):
+  // la Calculadora empuja ítems al pedido y Pedido Nuevo salta a calcular un PDF.
+  const [pedidoDraft, setPedidoDraft] = useState({
+    items: [],
+    form: { nombre: '', whatsapp: '', fecha: new Date().toISOString().split('T')[0], hora: '', pago: 'total', parcial: 0, encuadernacion: 'ninguna' }
+  });
+  const [calcFromOrder, setCalcFromOrder] = useState(false);
 
   return (
     <div>
@@ -17,6 +26,8 @@ export function AdminPanel({ orders, setOrders, books, setBooks, config, setConf
         <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 flex-shrink-0">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: <Icon.Home /> },
+            { id: 'pedido-nuevo', label: 'Pedido Nuevo', icon: <Icon.Edit /> },
+            { id: 'calculadora', label: 'Calculadora', icon: <Icon.Table /> },
             { id: 'pedidos', label: 'Pedidos', icon: <Icon.Cart /> },
             { id: 'whatsapp', label: 'WhatsApp', icon: <Icon.Message /> },
             { id: 'catalogo', label: 'Catálogo', icon: <Icon.Book /> },
@@ -34,6 +45,8 @@ export function AdminPanel({ orders, setOrders, books, setBooks, config, setConf
       </div>
 
       {tab === 'dashboard' && <AdminDashboard orders={orders} books={books} config={config} setTab={setTab} />}
+      {tab === 'pedido-nuevo' && <AdminPedidoNuevo config={config} books={books} setOrders={setOrders} pedidoDraft={pedidoDraft} setPedidoDraft={setPedidoDraft} setTab={setTab} setCalcFromOrder={setCalcFromOrder} />}
+      {tab === 'calculadora' && <AdminCalculadora config={config} setConfig={setConfig} setPedidoDraft={setPedidoDraft} setTab={setTab} calcFromOrder={calcFromOrder} />}
       {tab === 'pedidos' && <AdminPedidos orders={orders} setOrders={setOrders} books={books} config={config} setTab={setTab} />}
       {tab === 'whatsapp' && <AdminWA orders={orders} setOrders={setOrders} config={config} />}
       {tab === 'catalogo' && <AdminCatalogo books={books} setBooks={setBooks} config={config} />}

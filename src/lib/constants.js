@@ -208,3 +208,13 @@ Respondé ÚNICAMENTE con el mensaje de WhatsApp, sin comillas ni JSON.`;
 export const CONFIRMATION_TEMPLATE = `¡Hola {{nombre}}! 😊 ¡Recibimos tu pedido!
 Te lo agendamos para retirarlo el {{fecha_larga}} a las {{hora}} en {{lugar}}.
 Si te surge algo, avisanos por acá y lo reagendamos sin problema.`;
+
+/**
+ * Categorías de la Calculadora: precio POR PÁGINA según el contenido.
+ * Editables en Ajustes → "Calculadora" (alta/baja de categorías + precio).
+ */
+export const DEFAULT_CALC_CATEGORIAS = [
+  { id: 'bn', nombre: 'Blanco y negro', precio: 35 },
+  { id: 'poco_color', nombre: 'Poco color', precio: 40 },
+  { id: 'color', nombre: 'Color', precio: 60 }
+];

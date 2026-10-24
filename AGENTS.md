@@ -38,8 +38,10 @@ imprenta-sync-2026/
             ├── AdminDashboard.jsx  # Dashboard: capacidad, pendientes, saldos
             ├── AdminPedidos.jsx    # Grilla de pedidos con filtros y edición
             ├── AdminCatalogo.jsx   # Grilla de libros con bulk edit
-            ├── AdminConfig.jsx     # Configuración: precios, carreras, feriados
+            ├── AdminConfig.jsx     # Configuración: precios, calculadora, carreras, feriados
             ├── AdminParserWA.jsx   # Parser de mensajes WhatsApp
+            ├── AdminCalculadora.jsx # Tab Calculadora: 1 sub-pestanya por PDF, precio por página
+            ├── AdminPedidoNuevo.jsx # Tab Pedido Nuevo: buscador + formulario + creación manual
             └── AdminWA.jsx         # Tab WhatsApp: confirmación de carga + recordatorio día del retiro
 ```
 
@@ -73,6 +75,18 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 4. Para encuadernar
 5. Listo
 6. Entregado
+
+## Calculadora + Pedido Nuevo (2 tabs vinculados)
+
+Dos pestañas del panel vinculadas en los 2 sentidos (estado compartido `pedidoDraft { items, form }` + `calcFromOrder` en `AdminPanel.jsx`, sobrevive el cambio de tab):
+
+1. **Calculadora** (`admin/AdminCalculadora.jsx`) — sub-pestañas = **1 PDF por archivo**. Carga **páginas por categoría** y cobra **POR PÁGINA** según el contenido. Botones: **Dejar guardado** (`config.calc_borrador`, JSONB → sin migración) y **Cargar los ✓ a Pedido Nuevo** (crea ítems con `origen: 'calculadora'`, `es_unico: true`).
+2. **Pedido Nuevo** (`admin/AdminPedidoNuevo.jsx`) — **buscador del catálogo** (clic = ítem con su precio vía `calcPrecioItem`), botón **Calcular PDF** (salta a Calculadora y vuelve con el resultado), formulario (nombre, WhatsApp, fecha/hora de retiro, pago **nulo/parcial/total**, encuadernación) y **Crear pedido** → `buildOrder` + `saveOrderToSupabase` (queda en Pedidos + confirmación pendiente en WhatsApp). Sin agenda ni control de capacidad: fecha/hora a mano; carrera vacía (retiro en local).
+
+**Precios (decidido con el usuario):**
+- **Página en blanco por impar: NO se cobra**. Toggle opcional en **Ajustes → Calculadora** ("Redondear a par" → `calculadora.redondear_impar`, **default apagado**) que suma 1 página a la tarifa más barata.
+- **Categorías/tarifas editables** en Ajustes → Calculadora (semilla `DEFAULT_CALC_CATEGORIAS`: *Blanco y negro 35 · Poco color 40 · Color 60*).
+- **Encuadernación a nivel PEDIDO** en Pedido Nuevo: *Sin / Cada PDF por su lado / Todos juntos en una*; se cobra como **línea de ítem** y solo sobre `origen === 'calculadora'` (los del catálogo ya la traen en el precio de la variante).
 
 ## Mensajes de WhatsApp (flujo de 2 toques)
 
@@ -133,6 +147,9 @@ El alumno elige el turno de retiro según sus clases → **la hora es clave**. D
   - `localPlace(config)` — `"nombre — dirección"` desde `config.local` (o '' si está vacío)
   - `deliveryPlaceFor(modalidad, career, config)` — Lugar de retiro: local físico (legacy Cadete/domicilio conservados)
 - `getEspiralSize(hojas, config)` — Tamaño de espiral
+- `getCategorias(config)` — Categorías de la Calculadora (`config.calculadora.categorias` o `DEFAULT_CALC_CATEGORIAS`)
+- `calcPdfPaginas(paginasPorCat)` / `calcPdfPrecio(categorias, paginasPorCat, config)` — Páginas y **precio por página** de un PDF (toggle `calculadora.redondear_impar` para contar la página en blanco a la tarifa más barata, default apagado)
+- `calcEncuadernacion(items, modo, config)` — Costo de encuadernación de un pedido: `'ninguna' | 'cada' | 'todos'` sobre los ítems con `origen === 'calculadora'` (usa `encuadernacion.basica` si `hojas >= umbral`; `'todos'` devuelve además `size` vía `getEspiralSize`)
 - `extractTimeFromMessage(text)` — Extrae hora de mensaje WA
 - `buildParserPrompt(template, { fecha, mensaje, catalogo })` — Arma el prompt del parser WA desde `config.prompts.parser_wa` (editable en Ajustes); cae a `DEFAULT_PARSER_PROMPT` y anexa schema JSON si faltó
 - `buildWaPrompt(template, data)` — Arma el prompt del **recordatorio de WhatsApp** (día del retiro: "pedido listo, te esperamos hoy a las X") desde `config.prompts.wa_aviso` (2ª sección de la card Gemini en Ajustes); cae a `DEFAULT_WA_PROMPT` y resuelve `{{fecha}} {{fecha_pedido}} {{hora}} {{nombre}} {{telefono}} {{libros}} {{lugar}} {{saldo}}`

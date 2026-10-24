@@ -339,5 +339,45 @@ check('confirmación sin fecha → "a coordinar"', confSinFecha.includes('a coor
 
 check('confirmación default = CONFIRMATION_TEMPLATE', CONFIRMATION_TEMPLATE.includes('{{fecha_larga}}') && buildConfirmationMessage(pedidoConf).length > 0, true);
 
+// 22. Calculadora (precio por página según contenido + encuadernación del pedido)
+import { getCategorias, calcPdfPaginas, calcPdfPrecio, calcEncuadernacion } from '../src/lib/utils.js';
+import { DEFAULT_CALC_CATEGORIAS } from '../src/lib/constants.js';
+
+// Categorías: semilla por defecto y config propia
+check('calc: categorías default = semilla', getCategorias(config).map(c => c.id), ['bn', 'poco_color', 'color']);
+check('calc: semilla de precios', DEFAULT_CALC_CATEGORIAS.map(c => c.precio), [35, 40, 60]);
+check('calc: categorías vacías → cae a semilla', getCategorias({ calculadora: { categorias: [] } }).length, 3);
+check('calc: categorías custom', getCategorias({ calculadora: { categorias: [{ id: 'x', nombre: 'X', precio: 10 }] } }).map(c => c.id), ['x']);
+
+// Páginas
+check('calc: suma de páginas', calcPdfPaginas({ bn: 3, color: 2 }), 5);
+check('calc: sin páginas → 0', calcPdfPaginas(), 0);
+check('calc: negativas/texto ignoradas', calcPdfPaginas({ bn: -5, color: 'x', poco_color: 4 }), 4);
+
+// Precio por página
+check('calc: 3 bn + 2 color', calcPdfPrecio(getCategorias(config), { bn: 3, color: 2 }, config), 225);
+check('calc: PDF vacío → 0', calcPdfPrecio(getCategorias(config), {}, config), 0);
+check('calc: por página no por hoja (1 pág cuesta 1 tarifa)', calcPdfPrecio(getCategorias(config), { bn: 1 }, config), 35);
+check('calc: precio fraccional redondea a entero', calcPdfPrecio([{ id: 'f', nombre: 'F', precio: 33.3 }], { f: 3 }, {}), 100);
+
+// Redondeo a par (toggle, default apagado → NO se cobra la página en blanco)
+check('calc: impar sin toggle → sin recargo', calcPdfPrecio(getCategorias(config), { bn: 1 }, config), 35);
+check('calc: par con toggle → igual', calcPdfPrecio(getCategorias(config), { bn: 2 }, { calculadora: { redondear_impar: true } }), 70);
+check('calc: impar con toggle → +tarifa más barata', calcPdfPrecio(getCategorias(config), { color: 1 }, { calculadora: { redondear_impar: true } }), 95);
+check('calc: par sin toggle → igual', calcPdfPrecio(getCategorias(config), { color: 2 }, config), 120);
+
+// Encuadernación del pedido (solo ítems de la calculadora; los del catálogo ya la traen)
+const itemCalc = hojas => ({ origen: 'calculadora', hojas });
+const itemCat = hojas => ({ origen: 'catalogo', hojas });
+check('enc: modo ninguna → 0', calcEncuadernacion([itemCalc(100)], 'ninguna', config).costo, 0);
+check('enc: todos juntos sobre umbral → 1 anillado', calcEncuadernacion([itemCalc(60), itemCalc(50)], 'todos', config).costo, 600);
+check('enc: todos juntos bajo umbral → 0', calcEncuadernacion([itemCalc(30)], 'todos', config).costo, 0);
+check('enc: cada uno → cobra solo los que llegan al umbral', calcEncuadernacion([itemCalc(60), itemCalc(20)], 'cada', config).costo, 600);
+check('enc: cada uno → varios anillados', calcEncuadernacion([itemCalc(60), itemCalc(45)], 'cada', config).costo, 1200);
+check('enc: catálogo no suma (ya tiene precio final)', calcEncuadernacion([itemCat(200)], 'todos', config).costo, 0);
+check('enc: hojas = solo ítems de calculadora', calcEncuadernacion([itemCalc(30), itemCat(999)], 'todos', config).hojas, 30);
+check('enc: espiral según hojas totales', calcEncuadernacion([itemCalc(60)], 'todos', config).size, '9 mm');
+check('enc: sin costo → sin tamaño', calcEncuadernacion([itemCalc(10)], 'todos', config).size, null);
+
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

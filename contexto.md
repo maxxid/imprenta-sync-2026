@@ -212,3 +212,20 @@ Decidido con el usuario: **la hora es clave** (los alumnos eligen el turno segú
 **Pendientes del usuario (M3/M4):**
 1. Correr `migration_wa_flujo.sql` en Supabase (`hjtbwnsxgellbtfariog`) **antes** de que el front escriba los campos nuevos (sino el upsert falla por columna inexistente).
 2. Redeployar la función si se tocó `index.ts`: `supabase functions deploy gemini --no-verify-jwt` (el `{{hora}}` del fallback).
+
+### Calculadora + Pedido Nuevo (2026-10-24) — 2 tabs vinculados
+
+Dos pestañas nuevas en el panel, vinculadas en los 2 sentidos:
+
+- **Calculadora** (`admin/AdminCalculadora.jsx`): sub-pestañas = **1 PDF por archivo** (renombrables, ✓ incluir/excluir, quitar). Por PDF se cargan **páginas por categoría** y se cobra **POR PÁGINA** (no por hoja) según el contenido. Abajo: total del presupuesto + **"Dejar guardado"** (persiste en `config.calc_borrador`, JSONB → **sin migración**) + **"Cargar los ✓ a Pedido Nuevo"**.
+- **Pedido Nuevo** (`admin/AdminPedidoNuevo.jsx`): **buscador del catálogo** (título/materia/carrera → clic agrega el ítem con su precio), botón **"Calcular PDF"** (salta a Calculadora con `calcFromOrder` y de ahí se vuelve con el/los PDF ✓), formulario (nombre, WhatsApp, fecha/hora de retiro, pago **nulo/parcial/total**, encuadernación, comentario por ítem) y **Crear pedido** → `buildOrder` + `saveOrderToSupabase`. El pedido entra a **Pedidos** con la **confirmación pendiente en WhatsApp** (`wa_confirmacion`). Carga manual: **sin agenda ni control de capacidad**; carrera vacía (retiro en local).
+- **Estado compartido** en `AdminPanel`: `pedidoDraft { items, form }` + `calcFromOrder` (sobreviven el cambio de tab).
+
+Decisiones de precio (ok del usuario 2026-10-24):
+
+- **Página en blanco por impar: NO se cobra** (el papel va amortizado en la tarifa). Toggle opcional en **Ajustes → Calculadora** → "Redondear a par" (`calculadora.redondear_impar`, **default apagado**) que suma 1 página a la tarifa más barata.
+- **Categorías y tarifas editables** en Ajustes → Calculadora (semilla: *Blanco y negro 35 · Poco color 40 · Color 60*). Helpers en `utils.js`: `getCategorias` / `calcPdfPaginas` / `calcPdfPrecio`.
+- **Encuadernación a nivel PEDIDO** (en Pedido Nuevo): *Sin / Cada PDF por su lado / Todos juntos en una* → `calcEncuadernacion(items, modo, config)` reusa la config actual (`encuadernacion.basica` = 600 si `hojas >= umbral(40)`); "todos juntos" muestra además el tamaño de espiral (`getEspiralSize`). Se cobra como **línea de ítem** y solo se calcula sobre los ítems con `origen === 'calculadora'` (los del catálogo ya traen encuadernación en el precio de la variante → no se duplica).
+- Ítems del pedido ahora pueden traer `origen: 'calculadora' | 'catalogo' | 'encuadernacion'` y `comentario`.
+
+**Smoke: 152 checks** (sección 22 = calculadora: categorías, páginas, precio por página, toggle impar y encuadernación).

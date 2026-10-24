@@ -1,4 +1,4 @@
-import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, CONFIRMATION_TEMPLATE } from './constants.js';
+import { COMBO_KEYS, COMBO_LABELS, ORDER_STATES, PARSER_OUTPUT_SCHEMA, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, CONFIRMATION_TEMPLATE, DEFAULT_CALC_CATEGORIAS } from './constants.js';
 
 export function fmt(n) {
   return `$${Number(n || 0).toLocaleString('es-AR')}`;
@@ -744,6 +744,70 @@ export async function generateRecordatorio(order = {}, config) {
   if (!response.ok) throw new Error('Error generando el recordatorio');
   const result = await response.json();
   return result.msj_ws || null;
+}
+
+// ─── CALCULADORA DE PRECIOS (precio por página según contenido) ────────
+// Cobro POR PÁGINA (no por hoja): una hoja puede tener texto de un lado e imagen
+// del otro, así que se cobra cada página según su contenido. Sin recargo por impar
+// (el papel va amortizado en la tarifa); `calculadora.redondear_impar` es un toggle
+// apagado por default en Ajustes.
+
+/** Categorías vigentes: config.calculadora.categorias o la semilla por defecto. */
+export function getCategorias(config) {
+  const cats = config?.calculadora?.categorias;
+  return Array.isArray(cats) && cats.length ? cats : DEFAULT_CALC_CATEGORIAS;
+}
+
+/** Total de páginas cargadas en un PDF (suma de todas las categorías). */
+export function calcPdfPaginas(paginasPorCat = {}) {
+  return Object.values(paginasPorCat || {}).reduce((acc, n) => acc + Math.max(0, Number(n) || 0), 0);
+}
+
+/**
+ * Precio de un PDF: Σ (páginas por categoría × tarifa).
+ * Si `config.calculadora.redondear_impar` está activo y el total de páginas es impar,
+ * agrega 1 página a la tasa MÁS BARATA (compensación por la hoja a medio usar).
+ */
+export function calcPdfPrecio(categorias, paginasPorCat = {}, config) {
+  const base = (categorias || []).reduce((acc, c) => {
+    const n = Math.max(0, Number(paginasPorCat?.[c?.id]) || 0);
+    return acc + n * Math.max(0, Number(c?.precio) || 0);
+  }, 0);
+  if (config?.calculadora?.redondear_impar) {
+    const total = calcPdfPaginas(paginasPorCat);
+    if (total > 0 && total % 2 === 1) {
+      const barata = (categorias || []).reduce((min, c) => {
+        const p = Math.max(0, Number(c?.precio) || 0);
+        return p < min ? p : min;
+      }, Infinity);
+      return Math.round(base + (Number.isFinite(barata) ? barata : 0));
+    }
+  }
+  return Math.round(base);
+}
+
+/**
+ * Costo de encuadernación de un pedido según el modo:
+ *  - 'ninguna' → 0
+ *  - 'todos'   → un solo costo si el total de hojas llega al umbral
+ *  - 'cada'    → un costo por cada ítem que llegue al umbral
+ * Se calcula SOLO sobre los ítems con `origen === 'calculadora'` (precio de página puro);
+ * los del catálogo ya traen su encuadernación incluida en la variante → no se duplica.
+ */
+export function calcEncuadernacion(items, modo, config) {
+  const calc = (items || []).filter(i => i?.origen === 'calculadora');
+  const hojasDe = i => Math.max(0, Number(i?.hojas) || 0);
+  const hojas = calc.reduce((acc, i) => acc + hojasDe(i), 0);
+  const umbral = Number(config?.encuadernacion?.umbral_anillado_hojas || 40);
+  const basica = Number(config?.encuadernacion?.basica || 600);
+  let costo = 0;
+  if (modo === 'todos') costo = hojas >= umbral ? basica : 0;
+  else if (modo === 'cada') costo = calc.reduce((acc, i) => acc + (hojasDe(i) >= umbral ? basica : 0), 0);
+  return {
+    costo: Math.round(costo),
+    hojas,
+    size: modo === 'todos' && costo > 0 ? getEspiralSize(hojas, config) : null
+  };
 }
 
 // URL del proxy de Gemini (Supabase Edge Function). `integraciones.GEMINI_ENDPOINT`
