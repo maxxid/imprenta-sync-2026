@@ -45,13 +45,31 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
   const [parserError, setParserError] = useState('');
   const [parserImporting, setParserImporting] = useState(false);
   const [parserToast, setParserToast] = useState(null);
+  const [filtroLibros, setFiltroLibros] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
+
+  // Catálogo filtrado para el selector de libros del preview: buscá por título,
+  // materia o carrera (insensible a acentos, vía slug).
+  const qFiltro = slug(filtroLibros.trim());
+  const booksVisibles = books
+    .filter(b => b.activo !== false)
+    .filter(b => !qFiltro
+      || slug(b.titulo || '').includes(qFiltro)
+      || slug(b.materia || '').includes(qFiltro)
+      || slug(b.carrera || '').includes(qFiltro));
+
+  // Opciones de la fila: el libro ya elegido SIEMPRE queda (si no, el <select>
+  // se quedaría sin value aunque esté filtrado por otro término).
+  const opcionesDeLibro = (actual) => (actual?.id && !booksVisibles.some(b => b.id === actual.id))
+    ? [...booksVisibles, actual]
+    : booksVisibles;
 
   async function parseWithGemini(mensaje) {
     if (!mensaje.trim()) {
       setParserPreview(null);
       setParserInput('');
+      setFiltroLibros('');
       return;
     }
     setParserLoading(true);
@@ -232,7 +250,9 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
 
   function addParserLibro() {
     if (!parserPreview) return;
-    const firstBook = books.find(b => b.activo !== false);
+    // Con filtro activo agrega el primer libro que MATCHee; sin filtro, el
+    // primero activo del catálogo (comportamiento viejo).
+    const firstBook = booksVisibles[0];
     if (!firstBook) return;
     const combos = getBookCombinations(firstBook);
     const combo = combos[0];
@@ -371,6 +391,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
       setParserToast('✅ Pedido guardado correctamente');
       setTimeout(() => setParserToast(null), 3000);
       setParserPreview(null);
+      setFiltroLibros('');
     } catch (err) {
       console.error('Error importando parser:', err);
       alert('Error al importar el pedido. Revisá la consola.');
@@ -409,7 +430,27 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
               <div className="flex justify-between items-center"><span className="text-ink-500">Nombre</span><input className="input-field text-xs py-1.5 w-[180px] text-right font-700" value={parserPreview.nombre || ''} onChange={e => updateParserField('nombre', e.target.value)} /></div>
               <div className="flex justify-between items-center"><span className="text-ink-500">Telefono</span><input className="input-field text-xs py-1.5 w-[160px] text-right font-700" value={parserPreview.whatsapp || ''} onChange={e => updateParserField('whatsapp', e.target.value)} placeholder="Sin +54" /></div>
               <div>
-                <span className="text-ink-500 text-xs block mb-2">Libros</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-ink-500 text-xs flex-1">Libros{filtroLibros ? ` · ${booksVisibles.length} de ${books.length}` : ''}</span>
+                  <div className="relative">
+                    <input
+                      className="input-field text-xs py-1 pl-6 pr-6 w-[190px]"
+                      value={filtroLibros}
+                      onChange={e => setFiltroLibros(e.target.value)}
+                      placeholder="Filtrar libros…"
+                      title="Filtrá el catálogo por título, materia o carrera"
+                    />
+                    <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 text-[11px] text-ink-400">🔍</span>
+                    {filtroLibros && (
+                      <button
+                        type="button"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-ink-400 hover:text-ink-700"
+                        onClick={() => setFiltroLibros('')}
+                        title="Limpiar filtro"
+                      >✕</button>
+                    )}
+                  </div>
+                </div>
                 <div className="space-y-2">
                   {parserPreview.libros.map((book, idx) => {
                     const isManual = book._manual;
@@ -468,7 +509,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                             value={book.id || ''}
                             onChange={e => updateParserLibro(idx, e.target.value, book.varianteId || book.formato || '')}
                           >
-                            {books.filter(b => b.activo !== false).map(b => {
+                            {opcionesDeLibro(book).map(b => {
                               const bc = getBookCombinations(b);
                               const lines = bc.map(c => `${c.label}:${fmt(c.precio)}`);
                               const info = lines.join(' | ');
