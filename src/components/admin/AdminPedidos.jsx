@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Icon } from '../Icons';
 import { statusBadge, Alert, Spinner, fechaLabel, buildWhatsAppMessage } from '../UI';
 import { fmt, slug, normalizePhone, calcPrecioItem, HOJAS, getCareer, careerLabel, deriveOrderEstado, normalizeOrder, extractTimeFromMessage, orderPagesForCapacity, getEspiralSize, getBookFormats, roundTotal, RETIRO_LOCAL } from '../../lib/utils';
@@ -89,6 +89,14 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
   const [savingItemStates, setSavingItemStates] = useState({});
   const [resizing, setResizing] = useState(null);
 
+  // ─── Selección de filas (ítems) + Avanzar/Retroceder en bloque ──────────
+  // Igual que en el tab WhatsApp: checkbox por fila, ↑↓ para moverse y
+  // Shift para seleccionar un rango desde el ancla.
+  const [seleccion, setSeleccion] = useState(new Set());
+  const [ancla, setAncla] = useState(null);    // fila ancla para Shift (rango)
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const refsCheck = useRef({});                // checkbox por fila (flechas ↑↓)
+
   const sb = useMemo(() => getSupabase(config), [config.supabase.url, config.supabase.anon_key]);
 
   async function persistOrder(order) {
@@ -178,6 +186,121 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
 
     return result;
   }, [itemRows, hideEntregados, excludedStates, filters, editingOrder, sortConfig]);
+
+  // ─── Selección: helpers ──────────────────────────────────────────────────
+  // Cada fila de la grilla es 1 ÍTEM de un pedido → la clave única es
+  // `pedidoId-itemIndex` (la misma que usa savingItemStates en los ←/→).
+  const rowKey = (row) => `${row.order.id}-${row.itemIndex}`;
+  const keysVisibles = () => filtered.map(rowKey);
+
+  /** Ids entre la fila `a` y la fila `b` (incluidas), en el orden visible. */
+  const rangoIds = (a, b) => {
+    const ids = keysVisibles();
+    const i = ids.indexOf(a);
+    const j = ids.indexOf(b);
+    if (i < 0 || j < 0) return b ? [b] : [];
+    const [desde, hasta] = i <= j ? [i, j] : [j, i];
+    return ids.slice(desde, hasta + 1);
+  };
+
+  /** Clic en el checkbox: Shift = rango (ancla → fila); si no, alterna 1 fila. */
+  const onCheckClick = (key, shiftKey) => {
+    if (shiftKey && ancla) { setSeleccion(new Set(rangoIds(ancla, key))); return; }
+    setSeleccion(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+    setAncla(key);
+  };
+
+  /** Flechas ↑↓ desde un checkbox: mueven el foco; con Shift extienden el rango. */
+  const moverFoco = (key, delta, shiftKey) => {
+    const ids = keysVisibles();
+    const i = ids.indexOf(key);
+    if (i < 0) return;
+    const j = Math.min(ids.length - 1, Math.max(0, i + delta));
+    const nuevo = ids[j];
+    if (!nuevo || nuevo === key) return;
+    refsCheck.current[nuevo]?.focus();
+    if (shiftKey) {
+      const base = ancla || key;
+      setAncla(base);
+      setSeleccion(new Set(rangoIds(base, nuevo)));
+    } else {
+      setAncla(nuevo); // el foco pasa a ser el nuevo ancla del rango
+    }
+  };
+
+  const todasSel = filtered.length > 0 && filtered.every(row => seleccion.has(rowKey(row)));
+  const toggleTodas = () => {
+    if (todasSel) { setSeleccion(new Set()); setAncla(null); return; }
+    const ids = keysVisibles();
+    setSeleccion(new Set(ids));
+    setAncla(ids[ids.length - 1] || null);
+  };
+  const limpiarSel = () => { setSeleccion(new Set()); setAncla(null); };
+
+  // Al cambiar filtros u orden se limpia la selección (evita acciones masivas
+  // sobre filas que el usuario ya no está viendo).
+  useEffect(() => {
+    setSeleccion(new Set());
+    setAncla(null);
+  }, [filters, sortConfig, excludedStates, hideEntregados]);
+
+  // Si una fila dejó de estar visible (cambió de estado y salió del filtro,
+  // se eliminó, etc.) se descarta de la selección en lugar de quedar fantasma.
+  useEffect(() => {
+    const visibles = new Set(keysVisibles());
+    setSeleccion(prev => {
+      const next = new Set([...prev].filter(k => visibles.has(k)));
+      return next.size === prev.size ? prev : next;
+    });
+    setAncla(prev => (prev && !visibles.has(prev)) ? null : prev);
+  }, [filtered]);
+
+  /**
+   * Avanza/retrocede TODAS las filas seleccionadas. Agrupa por pedido para no
+   * pisar cambios: si se marcan 2 ítems del mismo pedido se actualizan en una
+   * sola escritura (una corrida por ítem dejaría el último cambio en el aire).
+   */
+  const aplicarEstadoSeleccion = async (direction) => {
+    const filas = filtered.filter(row => seleccion.has(rowKey(row)));
+    if (!filas.length || bulkSaving) return;
+    const keys = filas.map(rowKey);
+    setBulkSaving(true);
+    setSavingItemStates(prev => { const next = { ...prev }; for (const k of keys) next[k] = true; return next; });
+    try {
+      const cambios = new Map(); // order.id → { order, items, dirty }
+      for (const row of filas) {
+        const { order, itemIndex } = row;
+        let cambio = cambios.get(order.id);
+        if (!cambio) { cambio = { order, items: [...(order.items || [])], dirty: false }; cambios.set(order.id, cambio); }
+        const it = cambio.items[itemIndex];
+        if (!it) continue;
+        const idx = ORDER_STATES.indexOf(it.estado);
+        if (idx < 0) continue;
+        const nIdx = direction === 'next' ? Math.min(ORDER_STATES.length - 1, idx + 1) : Math.max(0, idx - 1);
+        if (nIdx === idx) continue;
+        cambio.items[itemIndex] = { ...it, estado: ORDER_STATES[nIdx] };
+        cambio.dirty = true;
+      }
+      const actualizados = [];
+      for (const { order, items, dirty } of cambios.values()) {
+        if (!dirty) continue;
+        const normalized = normalizeOrder({ ...order, items, estado: deriveOrderEstado(items) }, config);
+        const ok = await persistOrder(normalized);
+        if (ok) actualizados.push(normalized);
+      }
+      if (actualizados.length) {
+        const map = new Map(actualizados.map(o => [o.id, o]));
+        setOrders(prev => prev.map(o => map.get(o.id) || o));
+      }
+    } finally {
+      setSavingItemStates(prev => { const next = { ...prev }; for (const k of keys) delete next[k]; return next; });
+      setBulkSaving(false);
+    }
+  };
 
   const pedidosSummary = useMemo(() => {
     const summary = {};
@@ -465,6 +588,49 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
         )}
       </div>
 
+      {filtered.length > 0 && (
+        <div className="card px-3 py-2 flex items-center gap-3 flex-wrap text-sm">
+          <label className="flex items-center gap-2 cursor-pointer select-none" title="Seleccionar todas las filas visibles">
+            <input
+              type="checkbox"
+              checked={todasSel}
+              onChange={() => {} /* la lógica vive en onClick */}
+              onClick={() => toggleTodas()}
+              className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer"
+            />
+            <span className="text-xs text-ink-500">Seleccionar visibles ({filtered.length})</span>
+          </label>
+          {seleccion.size > 0 && <span className="badge bg-brand-muted text-brand-DEFAULT text-xs">{seleccion.size} seleccionadas</span>}
+          <span className="text-xs text-ink-400">↑↓ moverse · Shift+↑↓ o Shift+clic = rango</span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              className="btn-secondary text-xs px-3 py-1.5"
+              disabled={!seleccion.size || bulkSaving}
+              onClick={() => aplicarEstadoSeleccion('prev')}
+              title="Retrocede un estado todas las filas seleccionadas"
+            >
+              ← Retroceder ({seleccion.size})
+            </button>
+            <button
+              className="btn-primary text-xs px-3 py-1.5"
+              disabled={!seleccion.size || bulkSaving}
+              onClick={() => aplicarEstadoSeleccion('next')}
+              title="Avanza un estado todas las filas seleccionadas"
+            >
+              Avanzar ({seleccion.size}) →
+            </button>
+            <button
+              className="btn-ghost text-xs px-2 py-1.5"
+              disabled={!seleccion.size}
+              onClick={limpiarSel}
+              title="Vaciar la selección"
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="table-shell" onMouseMove={handleResizeMove} onMouseUp={handleResizeEnd} onMouseLeave={handleResizeEnd}>
         <table>
           <thead>
@@ -513,11 +679,29 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
               const { order, item, itemIndex } = row;
               const itemEstado = item.estado || order.estado || 'Pendiente de impresión';
               const totalItems = order.items?.length || 1;
+              // Checkbox de selección (misma clave que los botones ←/→ de estado)
+              const checkSel = (
+                <input
+                  type="checkbox"
+                  ref={el => { refsCheck.current[rowKey(row)] = el; }}
+                  checked={seleccion.has(rowKey(row))}
+                  onChange={() => {} /* la lógica vive en onClick (Shift = rango) */}
+                  onClick={e => onCheckClick(rowKey(row), e.shiftKey)}
+                  onKeyDown={e => {
+                    if (e.key === 'ArrowDown') { e.preventDefault(); moverFoco(rowKey(row), 1, e.shiftKey); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); moverFoco(rowKey(row), -1, e.shiftKey); }
+                  }}
+                  className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer mb-1"
+                  title="Seleccionar fila · ↑↓ moverse · Shift+↑↓ o Shift+clic = rango"
+                  aria-label={`Seleccionar fila ${order.id} ${itemIndex + 1}/${totalItems}`}
+                />
+              );
               return (
                 <tr key={`${order.id}-${itemIndex}`} className={STATE_ROW_BG[itemEstado] || ''}>
                   <td style={!columnVisibility.id ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                     {columnVisibility.id ? (
                       <>
+                        {checkSel}
                         {order.wa_raw ? (
                           <button
                             className="font-700 text-ink-900 text-left hover:text-brand-DEFAULT hover:underline cursor-pointer transition-colors"
@@ -538,7 +722,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
                         <div className="text-xs text-ink-400">{itemIndex + 1}/{totalItems} · {item.hojas || order.hojas} hojas</div>
                       </>
                     ) : (
-                      <span className="text-xs opacity-50">#</span>
+                      {checkSel}
                     )}
                   </td>
                   <td style={!columnVisibility.nombre ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>

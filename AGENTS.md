@@ -36,7 +36,7 @@ imprenta-sync-2026/
         ├── BookFormPanel.jsx # Formulario de edición de libro
         └── admin/
             ├── AdminDashboard.jsx  # Dashboard: capacidad, pendientes, saldos
-            ├── AdminPedidos.jsx    # Grilla de pedidos con filtros y edición
+            ├── AdminPedidos.jsx    # Grilla de pedidos: filtros, edición y selección múltiple (Avanzar/Retroceder en bloque)
             ├── AdminCatalogo.jsx   # Grilla de libros con bulk edit
             ├── AdminConfig.jsx     # Configuración: precios, calculadora, carreras, feriados
             ├── AdminParserWA.jsx   # Parser de mensajes WhatsApp

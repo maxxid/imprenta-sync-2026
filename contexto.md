@@ -245,3 +245,13 @@ Decisiones de precio (ok del usuario 2026-10-24):
 - El prompt **default ya decía "NO hacemos entregas ni en la facultad"**: el error era solo el valor del token.
 - El tab WhatsApp **regenera solo las confirmaciones intactas** (las que son exactamente las guardadas al crear) con el lugar actual; las editadas a mano se respetan.
 - **Pendiente del usuario:** cargar **Ajustes → Local físico** (nombre y dirección); si no, los mensajes quedan en "nuestro local" sin dirección.
+
+### Tab Pedidos: selección múltiple + Avanzar / Retroceder (2026-10-24)
+
+Misma UX que en el tab WhatsApp, adaptada a la grilla de Pedidos. **Cada fila = 1 ítem** (no un pedido) — decisión del usuario: la selección es **por fila = ítem** y las acciones son **solo Avanzar / Retroceder** (sin cambio de estado libre ni borrado masivo).
+
+- **Checkbox por fila** en la columna Pedido (también con esa columna colapsada) + barra sobre la grilla: **"Seleccionar visibles (N)"** (toggle), badge "N seleccionadas", **← Retroceder (N)**, **Avanzar (N) →** y **Limpiar**.
+- **Teclado:** ↑↓ mueven el foco entre checkboxes; **Shift+↑↓ / Shift+clic** seleccionan rango desde la ancla. Clave de fila = `` `${pedidoId}-${itemIndex}` `` (la misma que usa `savingItemStates` de los ←/→ por fila).
+- **`aplicarEstadoSeleccion(direction)` agrupa por pedido y escribe UNA sola vez por pedido**: si se marcan 2 ítems del mismo pedido y se corren por separado, el segundo write partiría de los ítems viejos y pisaría el primero. Recalcula `deriveOrderEstado(items)` y persiste con `normalizeOrder` + `persistOrder` (mismo camino que `advanceItemState`); solo persiste los pedidos que realmente cambiaron.
+- **La selección se limpia** al cambiar filtros/orden/excluir estados/u ocultar entregados, y se **poda sola** si una fila dejó de estar visible (p. ej. cambió de estado y salió del filtro) → nunca quedan claves fantasma que inflen el contador.
+- Durante la corrida se pintan las filas en `savingItemStates` (los ←/→ por fila quedan con spinner y deshabilitados) y `bulkSaving` deshabilita los botones de la barra.
