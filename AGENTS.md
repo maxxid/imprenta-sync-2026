@@ -95,7 +95,7 @@ El alumno elige el turno de retiro según sus clases → **la hora es clave**. D
 1. **Confirmación de carga** — plantilla **FIJA, sin IA** (`CONFIRMATION_TEMPLATE` → `buildConfirmationMessage`). Se arma al crear el pedido (checkout) y entra como **pendiente** al tab. Aplica a presencial y virtual, para agendar al alumno. Campo: `wa_confirmacion`.
 2. **Recordatorio (día del retiro)** — **con IA** (`generateRecordatorio` → prompt `config.prompts.wa_aviso`). Se genera al hacer clic en el tab y se manda el **MISMO DÍA** del retiro pactado. Texto en `wa_message`.
 
-**Tab WhatsApp:** sub-tabs **Hoy** (retiros de hoy + atrasados → recordatorio) y **Próximos** (retiros futuros → confirmaciones). Pendientes arriba; por pedido: mensaje editable, botón **Enviar** (`wa.me`) y **marcar/desmarcar enviado** (toggle). Además: **selección múltiple** (checkbox por fila + "Seleccionar pendientes") con botón **Omitir (N)** + **Deshacer** — reutiliza el flag de enviado (`wa_*_enviado`, **sin migración**) para sacar filas de pendientes.
+**Tab WhatsApp:** sub-tabs **Hoy** (retiros de hoy + atrasados → recordatorio) y **Próximos** (retiros futuros → confirmaciones). Pendientes arriba; por pedido: mensaje editable, botón **Enviar** (`wa.me`) y **marcar/desmarcar enviado** (toggle). Además: **selección múltiple** (checkbox por fila + "Seleccionar pendientes") con botón **Omitir (N)** + **Deshacer** — reutiliza el flag de enviado (`wa_*_enviado`, **sin migración**) para sacar filas de pendientes. Teclado: **↑↓** mueven el foco y **Shift+↑↓ / Shift+clic** seleccionan rango (ancla `ancla`).
 
 **Banderas** (columnas nuevas → `migration_wa_flujo.sql`): `wa_confirmacion_enviada` y `wa_recordatorio_enviado` (TIMESTAMPTZ; NULL = pendiente).
 

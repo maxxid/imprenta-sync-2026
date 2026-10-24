@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Icon } from '../Icons';
 import { fmt, buildConfirmationMessage, generateRecordatorio } from '../../lib/utils';
 import { updateOrderInSupabase } from '../../lib/supabase';
@@ -110,17 +110,57 @@ export function AdminWA({ orders, setOrders, config }) {
   // o con el toggle de la fila.
   const [seleccion, setSeleccion] = useState(new Set());
   const [msg, setMsg] = useState(null); // { texto, ids } → permite deshacer
+  const refsCheck = useRef({});          // checkbox por id de pedido (flechas ↑↓)
+  const [ancla, setAncla] = useState(null); // fila ancla para Shift (rango)
 
-  const toggleSel = (id) => setSeleccion(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
+  const idsVisibles = () => lista.map(o => o.id);
+
+  /** Ids entre la fila `a` y la fila `b` (incluidas), en el orden visible. */
+  const rangoIds = (a, b) => {
+    const ids = idsVisibles();
+    const i = ids.indexOf(a);
+    const j = ids.indexOf(b);
+    if (i < 0 || j < 0) return b ? [b] : [];
+    const [desde, hasta] = i <= j ? [i, j] : [j, i];
+    return ids.slice(desde, hasta + 1);
+  };
+
+  /** Clic en el checkbox: Shift = rango (ancla → fila); si no, alterna 1 fila. */
+  const onCheckClick = (id, shiftKey) => {
+    if (shiftKey && ancla) {
+      setSeleccion(new Set(rangoIds(ancla, id)));
+      return;
+    }
+    setSeleccion(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    setAncla(id);
+  };
+
+  /** Flechas ↑↓ desde un checkbox: mueven el foco; con Shift extienden el rango. */
+  const moverFoco = (id, delta, shiftKey) => {
+    const ids = idsVisibles();
+    const i = ids.indexOf(id);
+    if (i < 0) return;
+    const j = Math.min(ids.length - 1, Math.max(0, i + delta));
+    const nuevo = ids[j];
+    if (!nuevo || nuevo === id) return;
+    refsCheck.current[nuevo]?.focus();
+    if (shiftKey) {
+      const base = ancla || id;
+      setAncla(base);
+      setSeleccion(new Set(rangoIds(base, nuevo)));
+    } else {
+      setAncla(nuevo); // el foco pasa a ser el nuevo ancla del rango
+    }
+  };
 
   const pendientesIds = lista.filter(o => o._pend).map(o => o.id);
   const todosPendSel = pendientesIds.length > 0 && pendientesIds.every(id => seleccion.has(id));
   const seleccionarPendientes = () => setSeleccion(new Set(pendientesIds));
-  const limpiarSel = () => setSeleccion(new Set());
+  const limpiarSel = () => { setSeleccion(new Set()); setAncla(null); };
 
   const showMsg = (texto, ids = []) => {
     setMsg({ texto, ids });
@@ -174,7 +214,7 @@ export function AdminWA({ orders, setOrders, config }) {
           ].map(t => (
             <button
               key={t.id}
-              onClick={() => { setTab(t.id); setSeleccion(new Set()); }}
+              onClick={() => { setTab(t.id); setSeleccion(new Set()); setAncla(null); }}
               className={`px-4 py-2 rounded-lg text-sm font-700 transition-colors ${tab === t.id ? 'bg-brand-DEFAULT text-white shadow-md' : 'text-ink-500 hover:text-ink-700 hover:bg-surface-hover'}`}
             >{t.label}</button>
           ))}
@@ -227,7 +267,9 @@ export function AdminWA({ orders, setOrders, config }) {
               >Omitir ({seleccion.size})</button>
             </>
           )}
-          <span className="ml-auto text-[11px] text-ink-400">Omitir marca la fila como resuelta y la saca de los pendientes (deshacible).</span>
+          <span className="ml-auto text-[11px] text-ink-400">
+            ↑↓ moverse · Shift+↑↓ o Shift+clic = rango · Omitir marca la fila como resuelta y la saca de los pendientes (deshacible).
+          </span>
         </div>
       )}
 
@@ -248,10 +290,17 @@ export function AdminWA({ orders, setOrders, config }) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <input
                         type="checkbox"
+                        ref={el => { refsCheck.current[order.id] = el; }}
                         checked={seleccion.has(order.id)}
-                        onChange={() => toggleSel(order.id)}
-                        className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-brand-DEFAULT cursor-pointer"
-                        title="Seleccionar para omitir"
+                        onChange={() => {}} /* la lógica vive en onClick (Shift = rango) */
+                        onClick={e => onCheckClick(order.id, e.shiftKey)}
+                        onKeyDown={e => {
+                          if (e.key === 'ArrowDown') { e.preventDefault(); moverFoco(order.id, 1, e.shiftKey); }
+                          else if (e.key === 'ArrowUp') { e.preventDefault(); moverFoco(order.id, -1, e.shiftKey); }
+                        }}
+                        className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer"
+                        title="Seleccionar · ↑↓ para moverte · Shift+↑↓ o Shift+clic = rango"
+                        aria-label={`Seleccionar ${order.nombre || order.id}`}
                       />
                       <span className="font-700 text-sm text-ink-800">{order.nombre || 'Sin nombre'}</span>
                       <span className="text-[11px] font-mono text-ink-400">{order.id}</span>
