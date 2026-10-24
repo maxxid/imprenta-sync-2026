@@ -91,7 +91,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
   const [resizing, setResizing] = useState(null);
 
   // ─── Selección de filas (ítems) + Avanzar/Retroceder en bloque ──────────
-  // Igual que en el tab WhatsApp: checkbox por fila, ↑↓ para moverse y
+  // Igual que en el tab Avisos WA: checkbox por fila, ↑↓ para moverse y
   // Shift para seleccionar un rango desde el ancla.
   const [seleccion, setSeleccion] = useState(new Set());
   const [ancla, setAncla] = useState(null);    // fila ancla para Shift (rango)

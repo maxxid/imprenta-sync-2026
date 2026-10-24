@@ -5,6 +5,53 @@ import { getCareers, careerLabel, DIAS, DIAS_ORDER, buildVentana, normalizeVenta
 import { saveConfigToSupabase, saveLocal, loadLocal, deepMerge } from '../../lib/supabase';
 import { STORAGE, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, DEFAULT_CALC_CATEGORIAS } from '../../lib/constants';
 
+// Chips del menú lateral: [id de la card, etiqueta]. El id es también el ancla
+// de scroll (`scroll-mt-6`) y la clave de minimizado.
+const SECCIONES = [
+  ['local', 'Local'],
+  ['capacidad', 'Producción'],
+  ['precios', 'Precios'],
+  ['calculadora', 'Calculadora'],
+  ['espirales', 'Espirales'],
+  ['pagos', 'Pagos'],
+  ['feriados', 'Feriados'],
+  ['gemini', 'Gemini'],
+  ['turnos', 'Turnos']
+];
+
+/**
+ * Card plegable de Ajustes: cabecera (título + descripción opcional + badge
+ * `meta`) con botón **Minimizar / Mostrar**; si está plegada solo se ve la
+ * cabecera (título + desc) y el contenido queda oculto. Las 9 arrancan
+ * minimizadas (decisión del usuario) y los chips del menú lateral las expanden
+ * al navegar (`irA`).
+ */
+function CardAjuste({ id, titulo, desc, meta, plegada, toggle, children }) {
+  return (
+    <div id={id} className="card p-5 scroll-mt-6">
+      <div className={`flex items-start justify-between gap-3 ${plegada ? '' : 'mb-4'}`}>
+        <div className="min-w-0">
+          <div className="font-700 text-sm text-ink-800">{titulo}</div>
+          {desc && <div className="text-xs text-ink-400 mt-1">{desc}</div>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {meta}
+          <button
+            type="button"
+            onClick={() => toggle(id)}
+            className="btn-ghost text-xs px-2 py-1 flex items-center gap-1"
+            title={plegada ? `Mostrar ${titulo}` : `Minimizar ${titulo}`}
+          >
+            <span>{plegada ? 'Mostrar' : 'Minimizar'}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${plegada ? '' : 'rotate-180'}`}><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
+        </div>
+      </div>
+      {!plegada && children}
+    </div>
+  );
+}
+
 export function AdminConfig({ config, setConfig }) {
   const [configDraft, setConfigDraft] = useState(null);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -12,6 +59,17 @@ export function AdminConfig({ config, setConfig }) {
   const [newHoliday, setNewHoliday] = useState({ fecha: '', motivo: '', universidad: '' });
   const [bulkTime, setBulkTime] = useState('19:00');
   const [addTimes, setAddTimes] = useState({}); // horario tipeado en "Agregar" por (carrera|día)
+  // Cards de Ajustes plegables: todas MINIMIZADAS por defecto (decisión del
+  // usuario). Es un Set de ids de SECCIONES.
+  const [plegadas, setPlegadas] = useState(() => new Set(SECCIONES.map(([id]) => id)));
+
+  function toggleCard(id) {
+    setPlegadas(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   const universities = [...new Set(
     (config.carreras || []).filter(c => c.universidad).map(c => c.universidad)
@@ -24,6 +82,9 @@ export function AdminConfig({ config, setConfig }) {
   if (!configDraft) return null;
 
   const hayCambios = JSON.stringify(config) !== JSON.stringify(configDraft);
+  // ¿Falta cargar el local? Se avisa en la cabecera de la card Local (que
+  // arranca minimizada, así el aviso no se pierde).
+  const faltaLocal = !(configDraft.local?.nombre || '').trim() && !(configDraft.local?.direccion || '').trim();
 
   function descartar() {
     setConfigDraft(JSON.parse(JSON.stringify(config)));
@@ -52,6 +113,13 @@ export function AdminConfig({ config, setConfig }) {
   }
 
   function irA(id) {
+    // El chip expande la card destino si estaba minimizada y después scrollea.
+    setPlegadas(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -156,18 +224,6 @@ export function AdminConfig({ config, setConfig }) {
     }));
   }
 
-  const secciones = [
-    ['local', 'Local'],
-    ['capacidad', 'Producción'],
-    ['precios', 'Precios'],
-    ['calculadora', 'Calculadora'],
-    ['espirales', 'Espirales'],
-    ['pagos', 'Pagos'],
-    ['feriados', 'Feriados'],
-    ['gemini', 'Gemini'],
-    ['turnos', 'Turnos']
-  ];
-
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -183,7 +239,7 @@ export function AdminConfig({ config, setConfig }) {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {secciones.map(([id, label]) => (
+        {SECCIONES.map(([id, label]) => (
           <button
             key={id}
             onClick={() => irA(id)}
@@ -192,9 +248,14 @@ export function AdminConfig({ config, setConfig }) {
         ))}
       </div>
 
-      <div id="local" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-1">Local físico</div>
-        <div className="text-xs text-ink-400 mb-4">Lugar donde los alumnos retiran sus pedidos. Se usa en el checkout, en el seguimiento y en los mensajes de WhatsApp.</div>
+      <CardAjuste
+        id="local"
+        titulo="Local físico"
+        desc="Lugar donde los alumnos retiran sus pedidos. Se usa en el checkout, en el seguimiento y en los mensajes de WhatsApp."
+        meta={faltaLocal ? <span className="badge bg-amber-50 text-amber-700 text-xs whitespace-nowrap">⚠ Falta cargar</span> : null}
+        plegada={plegadas.has('local')}
+        toggle={toggleCard}
+      >
         {!(configDraft.local?.nombre || '').trim() && !(configDraft.local?.direccion || '').trim() && (
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800">
             <span className="flex-shrink-0 mt-0.5 text-amber-500"><Icon.AlertCircle /></span>
@@ -211,10 +272,9 @@ export function AdminConfig({ config, setConfig }) {
             <input className="input-field" type="text" placeholder="Ej: Rivadavia 1234, cerca de la facultad" value={configDraft.local?.direccion || ''} onChange={event => setConfigDraft(current => ({ ...current, local: { ...(current.local || {}), direccion: event.target.value } }))} />
           </div>
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="capacidad" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-4">Capacidad de impresión</div>
+      <CardAjuste id="capacidad" titulo="Capacidad de impresión" plegada={plegadas.has('capacidad')} toggle={toggleCard}>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Capacidad diaria</label>
@@ -225,10 +285,9 @@ export function AdminConfig({ config, setConfig }) {
             <input className="input-field" type="number" value={configDraft.produccion.precio_promedio_hoja} onChange={event => setConfigDraft(current => ({ ...current, produccion: { ...current.produccion, precio_promedio_hoja: Number(event.target.value || 0) } }))} />
           </div>
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="precios" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-4">Precios y redondeo</div>
+      <CardAjuste id="precios" titulo="Precios y redondeo" plegada={plegadas.has('precios')} toggle={toggleCard}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {[
             ['A4 menos 50', configDraft.precios.A4.menos_50, value => ({ precios: { ...configDraft.precios, A4: { ...configDraft.precios.A4, menos_50: value } } })],
@@ -243,11 +302,15 @@ export function AdminConfig({ config, setConfig }) {
             </div>
           ))}
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="calculadora" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-1">Calculadora (precio por página)</div>
-        <div className="text-xs text-ink-400 mb-4">Categorías y tarifa que usa la pestaña Calculadora: se cobra por página según el contenido (una hoja puede llevar texto de un lado e imagen del otro).</div>
+      <CardAjuste
+        id="calculadora"
+        titulo="Calculadora (precio por página)"
+        desc="Categorías y tarifa que usa la pestaña Calculadora: se cobra por página según el contenido (una hoja puede llevar texto de un lado e imagen del otro)."
+        plegada={plegadas.has('calculadora')}
+        toggle={toggleCard}
+      >
         <div className="space-y-2 mb-4">
           {calcCategorias.map((cat, idx) => (
             <div key={cat.id || idx} className="flex items-center gap-2 flex-wrap">
@@ -275,10 +338,9 @@ export function AdminConfig({ config, setConfig }) {
             Redondear a par (cuenta la página en blanco con la tarifa más barata)
           </label>
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="espirales" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-4">Espirales (umbral en hojas)</div>
+      <CardAjuste id="espirales" titulo="Espirales (umbral en hojas)" plegada={plegadas.has('espirales')} toggle={toggleCard}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           {((configDraft.encuadernacion?.espirales) || [
             { hasta: 70, size: '9 mm' },
@@ -301,10 +363,9 @@ export function AdminConfig({ config, setConfig }) {
             </div>
           ))}
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="pagos" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-4">Configuración de pagos</div>
+      <CardAjuste id="pagos" titulo="Configuración de pagos" plegada={plegadas.has('pagos')} toggle={toggleCard}>
         <div className="space-y-4">
           <div className="flex items-center gap-4 flex-wrap">
             <label className="flex items-center gap-2 text-sm font-700 text-ink-700 cursor-pointer">
@@ -348,13 +409,15 @@ export function AdminConfig({ config, setConfig }) {
             <input className="input-field" value={configDraft.pagos?.whatsapp_admin || ''} onChange={e => setConfigDraft(current => ({ ...current, pagos: { ...current.pagos, whatsapp_admin: e.target.value } }))} placeholder="5493885888949" />
           </div>
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="feriados" className="card p-5 scroll-mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="font-700 text-sm text-ink-800">Feriados y días inhabilitados</div>
-          <span className="text-xs text-ink-400">{(configDraft.feriados || []).length} registrados</span>
-        </div>
+      <CardAjuste
+        id="feriados"
+        titulo="Feriados y días inhabilitados"
+        meta={<span className="text-xs text-ink-400 whitespace-nowrap">{(configDraft.feriados || []).length} registrados</span>}
+        plegada={plegadas.has('feriados')}
+        toggle={toggleCard}
+      >
         <div className="space-y-2 mb-4">
           {(configDraft.feriados || []).length === 0 && (
             <div className="text-xs text-ink-400 py-2">No hay feriados cargados. Agregá fechas para bloquear días de retiro.</div>
@@ -387,15 +450,17 @@ export function AdminConfig({ config, setConfig }) {
             }} disabled={!newHoliday.fecha || !newHoliday.motivo}>Agregar feriado</button>
           </div>
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="gemini" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-1">Prompts de Gemini</div>
-        <div className="text-xs text-ink-400 mb-4">
-          Dos prompts controlan la IA: el del <span className="font-700">parser</span> (convierte el WhatsApp en pedidos)
+      <CardAjuste
+        id="gemini"
+        titulo="Prompts de Gemini"
+        desc={<>Dos prompts controlan la IA: el del <span className="font-700">parser</span> (convierte el WhatsApp en pedidos)
           y el del <span className="font-700">aviso</span> (redacta el mensaje de "pedido listo para retirar").
-          Se editan acá y quedan activos al guardar, sin redeploy.
-        </div>
+          Se editan acá y quedan activos al guardar, sin redeploy.</>}
+        plegada={plegadas.has('gemini')}
+        toggle={toggleCard}
+      >
 
         <div className="text-xs font-700 text-ink-500 uppercase tracking-wide mb-1.5">Endpoint del proxy de Gemini</div>
         <input
@@ -479,7 +544,7 @@ export function AdminConfig({ config, setConfig }) {
           Redacta <span className="font-700 text-ink-600">EL mensaje importante</span>: el recordatorio que se manda el
           <span className="font-700 text-ink-600"> MISMO DÍA del retiro pactado</span> para avisarle al alumno que su pedido
           está LISTO y a qué hora pasa a buscarlo por el local (eligen el turno según sus clases → por eso importa la hora).
-          Se genera desde el <span className="font-700">tab WhatsApp</span> y con <span className="font-700">🔄 Regenerar</span> del parser.
+          Se genera desde el <span className="font-700">tab Avisos WA</span> y con <span className="font-700">🔄 Regenerar</span> del parser.
           <span className="font-700 text-ink-500"> Vacío = prompt por defecto.</span>
         </div>
         <textarea
@@ -501,14 +566,16 @@ export function AdminConfig({ config, setConfig }) {
           Si borrás un token, ese dato no se inyecta (el resto del prompt se respeta). Dejá siempre la línea final
           "Respondé ÚNICAMENTE con el mensaje de WhatsApp" para que Gemini no agregue texto de más.
         </div>
-      </div>
+      </CardAjuste>
 
-      <div id="turnos" className="card p-5 scroll-mt-6">
-        <div className="font-700 text-sm text-ink-800 mb-1">Universidades y horarios de retiro</div>
-        <div className="text-xs text-ink-400 -mt-1 mb-4">
-          Horarios en los que el alumno pasa a retirar el pedido por el local. Cargá, editá o quitá horarios por día.
-          El punto verde activa/desactiva y el ✕ quita el turno.
-        </div>
+      <CardAjuste
+        id="turnos"
+        titulo="Universidades y horarios de retiro"
+        desc={<>Horarios en los que el alumno pasa a retirar el pedido por el local. Cargá, editá o quitá horarios por día.
+          El punto verde activa/desactiva y el ✕ quita el turno.</>}
+        plegada={plegadas.has('turnos')}
+        toggle={toggleCard}
+      >
 
         {/* Carga masiva */}
         <div className="flex flex-wrap items-center gap-2 mb-4 rounded-xl border border-ink-100 bg-ink-50 p-3">
@@ -612,7 +679,7 @@ export function AdminConfig({ config, setConfig }) {
             );
           })}
         </div>
-      </div>
+      </CardAjuste>
 
       <div className="flex items-center justify-end gap-3 sticky bottom-4 bg-surface-hover/80 backdrop-blur-sm p-3 rounded-xl border border-ink-100 shadow-sm z-10">
         <span className="text-xs mr-auto">

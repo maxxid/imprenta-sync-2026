@@ -200,7 +200,7 @@ Respondé ÚNICAMENTE con el mensaje de WhatsApp, sin comillas ni JSON.`;
 
 /**
  * Mensaje de CONFIRMACIÓN de carga (plantilla FIJA, sin IA). Se genera al crear el
- * pedido (checkout) y entra como PENDIENTE al tab WhatsApp; el admin lo manda desde
+ * pedido (checkout) y entra como PENDIENTE al tab Avisos WA; el admin lo manda desde
  * ahí. A diferencia del recordatorio, NO llama a Gemini: resuelve unos pocos tokens.
  * Aplica a presencial y virtual, para que el cliente quede agendado.
  * Tokens: {{nombre}} {{fecha}} {{fecha_larga}} {{hora}} {{lugar}}

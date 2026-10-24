@@ -746,7 +746,7 @@ function fechaAmigable(fecha) {
 
 /**
  * Mensaje de CONFIRMACIÓN de carga (plantilla FIJA, SIN IA). Se arma al crear el
- * pedido y entra como PENDIENTE al tab WhatsApp. Resuelve unos pocos tokens locales;
+ * pedido y entra como PENDIENTE al tab Avisos WA. Resuelve unos pocos tokens locales;
  * NO llama a Gemini. Firma: (order, config?, template?).
  * Tokens: {{nombre}} {{fecha}} {{fecha_larga}} {{hora}} {{lugar}}
  * El {{lugar}} sale de `lugarRetiro(order, config)` (config vigente, no el valor
@@ -767,7 +767,7 @@ export function buildConfirmationMessage(order = {}, config, template) {
 
 /**
  * Genera el RECORDATORIO (día del retiro) con IA vía la Edge Function. Devuelve el
- * texto o lanza error (el caller decide reintentar). Se usa desde el tab WhatsApp.
+ * texto o lanza error (el caller decide reintentar). Se usa desde el tab Avisos WA.
  */
 export async function generateRecordatorio(order = {}, config) {
   const url = geminiEndpoint(config);

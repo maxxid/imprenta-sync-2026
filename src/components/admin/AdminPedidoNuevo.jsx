@@ -18,7 +18,7 @@ const formBase = () => ({
  * libros al toque, botón "Calcular PDF" (se salta a la Calculadora y vuelve con el
  * resultado) y formulario (nombre, tel, fecha/hora de retiro, monto pagado —vacío
  * = nulo, botón Total—, encuadernación). Crea el pedido en `pedidos` (igual que checkout/parser): queda en
- * Pedidos y deja la confirmación pendiente en el tab WhatsApp.
+ * Pedidos y deja la confirmación pendiente en el tab Avisos WA.
  * El borrador vive en AdminPanel (`pedidoDraft`) para sobrevivir el cambio de tab.
  */
 export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPedidoDraft, setTab, setCalcFromOrder }) {

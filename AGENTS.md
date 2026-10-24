@@ -38,7 +38,7 @@ imprenta-sync-2026/
             ├── AdminDashboard.jsx  # Dashboard: capacidad, pendientes, saldos
             ├── AdminPedidos.jsx    # Grilla de pedidos: filtros, edición y selección múltiple (Avanzar/Retroceder en bloque)
             ├── AdminCatalogo.jsx   # Grilla de libros con bulk edit
-            ├── AdminConfig.jsx     # Configuración: precios, calculadora, carreras, feriados
+            ├── AdminConfig.jsx     # Configuración (cards plegables): precios, calculadora, carreras, feriados
             ├── AdminParserWA.jsx   # Parser de mensajes WhatsApp
             ├── AdminCalculadora.jsx # Tab Calculadora: 1 sub-pestanya por PDF, precio por página
             ├── AdminPedidoNuevo.jsx # Tab Pedido Nuevo: buscador + formulario + creación manual
@@ -80,9 +80,12 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 
 `AdminPanel.jsx` arma el array de tabs en este orden (el `id` es el que se pasa a `setTab`):
 
-**Dashboard → Catálogo → Pedido Nuevo → Parser WA → Calculadora → Pedidos → WhatsApp → Config**
+**Dashboard → Catálogo → Pedidos → Pedido Nuevo → Parser WA → Calculadora → Avisos WA → Config**
 
-Cambiar el orden solo implica reordenar ese array: los ids y los `tab === '...'` del ruteo no cambian.
+- El tab de avisos de WhatsApp se llama **Avisos WA** (id `whatsapp`, componente `AdminWA`); en textos y comentarios se lo referencia por ese nombre (antes "tab WhatsApp").
+- Cambiar el orden solo implica reordenar ese array: los ids y los `tab === '...'` del ruteo no cambian.
+
+**Tab Config (`AdminConfig.jsx`) — cards plegables:** las 9 cards (Local, Producción, Precios, Calculadora, Espirales, Pagos, Feriados, Gemini, Turnos) usan el componente `CardAjuste` con botón **Minimizar / Mostrar** en la cabecera. **Arrancan todas minimizadas** (decisión del usuario; `useState` con un `Set` de ids de `SECCIONES`) y los chips del menú lateral (`irA`) **expanden la card destino** antes del scroll. La cabecera conserva título + descripción (+ badge `meta`: "⚠ Falta cargar" en Local si `local` está vacío, "N registrados" en Feriados) — así el aviso del local se ve aunque la card esté plegada.
 
 ## Calculadora + Pedido Nuevo (2 tabs vinculados)
 
