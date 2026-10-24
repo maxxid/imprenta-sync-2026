@@ -95,7 +95,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
   const [seleccion, setSeleccion] = useState(new Set());
   const [ancla, setAncla] = useState(null);    // fila ancla para Shift (rango)
   const [bulkSaving, setBulkSaving] = useState(false);
-  const refsCheck = useRef({});                // checkbox por fila (flechas ↑↓)
+  const refsFila = useRef({});                 // <tr> por fila (flechas ↑↓)
 
   const sb = useMemo(() => getSupabase(config), [config.supabase.url, config.supabase.anon_key]);
 
@@ -222,7 +222,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     const j = Math.min(ids.length - 1, Math.max(0, i + delta));
     const nuevo = ids[j];
     if (!nuevo || nuevo === key) return;
-    refsCheck.current[nuevo]?.focus();
+    refsFila.current[nuevo]?.focus();
     if (shiftKey) {
       const base = ancla || key;
       setAncla(base);
@@ -596,12 +596,19 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
               checked={todasSel}
               onChange={() => {} /* la lógica vive en onClick */}
               onClick={() => toggleTodas()}
+              onKeyDown={e => {
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+                e.preventDefault();
+                const ids = keysVisibles();
+                const destino = ids[e.key === 'ArrowDown' ? 0 : ids.length - 1];
+                if (destino) refsFila.current[destino]?.focus();
+              }}
               className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer"
             />
             <span className="text-xs text-ink-500">Seleccionar visibles ({filtered.length})</span>
           </label>
           {seleccion.size > 0 && <span className="badge bg-brand-muted text-brand-DEFAULT text-xs">{seleccion.size} seleccionadas</span>}
-          <span className="text-xs text-ink-400">↑↓ moverse · Shift+↑↓ o Shift+clic = rango</span>
+          <span className="text-xs text-ink-400">Clic en la fila = seleccionar · ↑↓ moverse · Shift+↑↓ o Shift+clic = rango</span>
           <div className="ml-auto flex items-center gap-2">
             <button
               className="btn-secondary text-xs px-3 py-1.5"
@@ -679,29 +686,36 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
               const { order, item, itemIndex } = row;
               const itemEstado = item.estado || order.estado || 'Pendiente de impresión';
               const totalItems = order.items?.length || 1;
-              // Checkbox de selección (misma clave que los botones ←/→ de estado)
-              const checkSel = (
-                <input
-                  type="checkbox"
-                  ref={el => { refsCheck.current[rowKey(row)] = el; }}
-                  checked={seleccion.has(rowKey(row))}
-                  onChange={() => {} /* la lógica vive en onClick (Shift = rango) */}
-                  onClick={e => onCheckClick(rowKey(row), e.shiftKey)}
-                  onKeyDown={e => {
-                    if (e.key === 'ArrowDown') { e.preventDefault(); moverFoco(rowKey(row), 1, e.shiftKey); }
-                    else if (e.key === 'ArrowUp') { e.preventDefault(); moverFoco(rowKey(row), -1, e.shiftKey); }
-                  }}
-                  className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer mb-1"
-                  title="Seleccionar fila · ↑↓ moverse · Shift+↑↓ o Shift+clic = rango"
-                  aria-label={`Seleccionar fila ${order.id} ${itemIndex + 1}/${totalItems}`}
-                />
-              );
+              // La fila entera es el "checkbox" (clic = seleccionar): no gasta
+              // una columna en el icono. Misma clave que los botones ←/→.
+              const key = rowKey(row);
+              const sel = seleccion.has(key);
               return (
-                <tr key={`${order.id}-${itemIndex}`} className={STATE_ROW_BG[itemEstado] || ''}>
+                <tr
+                  key={`${order.id}-${itemIndex}`}
+                  ref={el => { refsFila.current[key] = el; }}
+                  tabIndex={0}
+                  onClick={e => {
+                    // Los controles de la fila (botones, links, inputs) tienen
+                    // su propia acción: no seleccionan.
+                    if (e.target !== e.currentTarget && e.target.closest('button, a, input, select, textarea, label')) return;
+                    onCheckClick(key, e.shiftKey);
+                  }}
+                  onKeyDown={e => {
+                    if (e.target !== e.currentTarget) return; // foco en un input → lo maneja él
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      moverFoco(key, e.key === 'ArrowDown' ? 1 : -1, e.shiftKey);
+                    } else if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      onCheckClick(key, e.shiftKey);
+                    }
+                  }}
+                  className={`${STATE_ROW_BG[itemEstado] || ''}${sel ? ' sel-row' : ''}`}
+                >
                   <td style={!columnVisibility.id ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                     {columnVisibility.id ? (
                       <>
-                        {checkSel}
                         {order.wa_raw ? (
                           <button
                             className="font-700 text-ink-900 text-left hover:text-brand-DEFAULT hover:underline cursor-pointer transition-colors"
@@ -722,7 +736,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
                         <div className="text-xs text-ink-400">{itemIndex + 1}/{totalItems} · {item.hojas || order.hojas} hojas</div>
                       </>
                     ) : (
-                      {checkSel}
+                      <span className="text-xs opacity-50">#</span>
                     )}
                   </td>
                   <td style={!columnVisibility.nombre ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>

@@ -513,6 +513,29 @@ input[type=number] {
   background: inherit;
 }
 
+/* ── Selección de filas (tab Pedidos): el clic en la fila reemplaza al
+      checkbox, así que solo queda el efecto visual. El tinte va en los td y
+      es translúcido para que siga verse el color de estado de la fila. ── */
+.table-shell tbody tr { cursor: pointer; }
+.table-shell tbody tr :is(button, a, select, summary) { cursor: pointer; }
+.table-shell tbody tr :is(input, textarea) { cursor: text; }
+
+.table-shell tr.sel-row td {
+  background: color-mix(in srgb, var(--color-brand-DEFAULT) 16%, transparent);
+}
+.table-shell tr.sel-row td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--color-brand-DEFAULT);
+}
+
+/* Fila con foco de teclado (↑↓ / Espacio): tinte más fuerte, sin anillo nativo */
+.table-shell tr:focus-visible { outline: none; }
+.table-shell tr:focus-visible td {
+  background: color-mix(in srgb, var(--color-brand-DEFAULT) 34%, transparent);
+}
+.table-shell tr:focus-visible td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--color-brand-DEFAULT);
+}
+
 .cover-img {
   width: 100%;
   aspect-ratio: 4 / 5;
