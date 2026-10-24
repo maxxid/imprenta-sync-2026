@@ -205,6 +205,7 @@ Decidido con el usuario: **la hora es clave** (los alumnos eligen el turno segú
 2. **Recordatorio (día del retiro)** — **con IA** (`generateRecordatorio` → prompt `config.prompts.wa_aviso`, ahora rotulado "2 · Prompt del recordatorio (día del retiro)" en Ajustes). Se genera con clic en el tab y se manda el **MISMO DÍA** del retiro pactado. Texto en `wa_message`. Token nuevo **`{{hora}}`** en `buildWaPrompt`/`DEFAULT_WA_PROMPT`.
 
 - **Tab:** sub-tabs **Hoy** (retiros de hoy + atrasados → recordatorio) y **Próximos** (futuros → confirmaciones); pendientes arriba; por pedido: mensaje editable + **Enviar** (`wa.me`) + **marcar enviado** (toggle).
+- **Selección múltiple + Omitir (2026-10-24):** checkbox por fila + "Seleccionar pendientes (N)" + botón **Omitir (N)** con **Deshacer** (8 s). Omitir reutiliza el **mismo flag de enviado** (`wa_recordatorio_enviado` / `wa_confirmacion_enviada`, decisión del usuario → **sin migración**): la fila sale de pendientes y queda con el badge "Enviado ✓". Se persiste el pedido **original** de `orders` (nunca el de `lista`, que trae `_pend` derivado → haría fallar el upsert).
 - **NO hay mensaje "listo" separado antes del día**: se concentra todo en el recordatorio del mismo día.
 - Parser: se quitó el **select global A4/A5** redundante; el formato es **por libro** (ya lo era en datos y en cada fila).
 - **Checkout ya NO llama a Gemini** (antes generaba el "listo" prematuro); ahora solo arma la confirmación fija (instantáneo).

@@ -104,6 +104,66 @@ export function AdminWA({ orders, setOrders, config }) {
     setDrafts(prev => { const { [order.id]: _omit, ...resto } = prev; return resto; });
   };
 
+  // ─── Selección múltiple + OMITIR ──────────────────────────────────────
+  // "Omitir" reutiliza el MISMO flag que "enviado" (decisión del usuario, sin
+  // migración): la fila deja de salir en pendientes. Es reversible con "Deshacer"
+  // o con el toggle de la fila.
+  const [seleccion, setSeleccion] = useState(new Set());
+  const [msg, setMsg] = useState(null); // { texto, ids } → permite deshacer
+
+  const toggleSel = (id) => setSeleccion(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const pendientesIds = lista.filter(o => o._pend).map(o => o.id);
+  const todosPendSel = pendientesIds.length > 0 && pendientesIds.every(id => seleccion.has(id));
+  const seleccionarPendientes = () => setSeleccion(new Set(pendientesIds));
+  const limpiarSel = () => setSeleccion(new Set());
+
+  const showMsg = (texto, ids = []) => {
+    setMsg({ texto, ids });
+    setTimeout(() => setMsg(prev => (prev && prev.texto === texto ? null : prev)), 8000);
+  };
+
+  const omitirSeleccion = async () => {
+    const ids = lista.filter(o => seleccion.has(o.id)).map(o => o.id);
+    if (!ids.length) return;
+    const ts = new Date().toISOString();
+    const hechos = [];
+    for (const id of ids) {
+      // Importante: `lista` trae `_pend` (derivado) → se persiste el pedido ORIGINAL.
+      const raw = (orders || []).find(o => o.id === id);
+      if (!raw) continue;
+      const updated = { ...raw, [campoEnviado]: ts };
+      const saved = await updateOrderInSupabase(updated, config);
+      if (!saved) break; // saveOrderToSupabase ya mostró el alert
+      setOrders(prev => prev.map(o => o.id === id ? updated : o));
+      hechos.push(id);
+    }
+    setSeleccion(new Set());
+    const fallaron = ids.length - hechos.length;
+    showMsg(
+      `${hechos.length} omitida${hechos.length === 1 ? '' : 's'} ✓` +
+      (fallaron ? ` · ${fallaron} fallaron` : ''),
+      hechos
+    );
+  };
+
+  const deshacerOmitir = async (ids) => {
+    for (const id of ids || []) {
+      const raw = (orders || []).find(o => o.id === id);
+      if (!raw) continue;
+      const updated = { ...raw, [campoEnviado]: null };
+      const saved = await updateOrderInSupabase(updated, config);
+      if (!saved) break;
+      setOrders(prev => prev.map(o => o.id === id ? updated : o));
+    }
+    setMsg(null);
+    setSeleccion(new Set());
+  };
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -114,15 +174,28 @@ export function AdminWA({ orders, setOrders, config }) {
           ].map(t => (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => { setTab(t.id); setSeleccion(new Set()); }}
               className={`px-4 py-2 rounded-lg text-sm font-700 transition-colors ${tab === t.id ? 'bg-brand-DEFAULT text-white shadow-md' : 'text-ink-500 hover:text-ink-700 hover:bg-surface-hover'}`}
             >{t.label}</button>
           ))}
         </div>
-        <div className="ml-auto text-xs text-ink-400">
-          {pendientes > 0
-            ? <span className="text-warn-DEFAULT font-700">{pendientes} sin enviar</span>
-            : <span className="text-ok-DEFAULT font-700">Todo enviado ✓</span>}
+        <div className="ml-auto flex items-center gap-3 text-xs flex-wrap">
+          {msg && (
+            <span className="flex items-center gap-2">
+              <span className="font-700 text-ok-DEFAULT">{msg.texto}</span>
+              {msg.ids.length > 0 && (
+                <button
+                  onClick={() => deshacerOmitir(msg.ids)}
+                  className="font-700 text-brand-DEFAULT underline hover:no-underline"
+                >Deshacer</button>
+              )}
+            </span>
+          )}
+          <span className="text-ink-400">
+            {pendientes > 0
+              ? <span className="text-warn-DEFAULT font-700">{pendientes} sin enviar</span>
+              : <span className="text-ok-DEFAULT font-700">Todo enviado ✓</span>}
+          </span>
         </div>
       </div>
 
@@ -131,6 +204,32 @@ export function AdminWA({ orders, setOrders, config }) {
           ? <>Retiros de hoy (y atrasados). El recordatorio se manda el MISMO DÍA del retiro pactado; generá el texto con IA y envialo por WhatsApp.</>
           : <>Pedidos con retiro futuro. La confirmación de carga entra acá como pendiente; enviala para que el alumno quede agendado.</>}
       </div>
+
+      {lista.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap card px-4 py-2.5 mb-3">
+          <label className="flex items-center gap-2 text-xs font-700 text-ink-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={todosPendSel}
+              onChange={() => (todosPendSel ? limpiarSel() : seleccionarPendientes())}
+              className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-brand-DEFAULT"
+            />
+            Seleccionar pendientes ({pendientesIds.length})
+          </label>
+          {seleccion.size > 0 && (
+            <>
+              <span className="text-xs text-ink-400">{seleccion.size} seleccionado{seleccion.size === 1 ? '' : 's'}</span>
+              <button onClick={limpiarSel} className="btn-ghost text-xs px-2 py-1">Limpiar</button>
+              <button
+                onClick={omitirSeleccion}
+                className="btn-primary text-xs px-3 py-1.5"
+                title="Marcar las filas seleccionadas como resueltas y sacarlas de pendientes"
+              >Omitir ({seleccion.size})</button>
+            </>
+          )}
+          <span className="ml-auto text-[11px] text-ink-400">Omitir marca la fila como resuelta y la saca de los pendientes (deshacible).</span>
+        </div>
+      )}
 
       {lista.length === 0 ? (
         <div className="card p-8 text-center text-ink-400 text-sm">
@@ -147,6 +246,13 @@ export function AdminWA({ orders, setOrders, config }) {
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
+                      <input
+                        type="checkbox"
+                        checked={seleccion.has(order.id)}
+                        onChange={() => toggleSel(order.id)}
+                        className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-brand-DEFAULT cursor-pointer"
+                        title="Seleccionar para omitir"
+                      />
                       <span className="font-700 text-sm text-ink-800">{order.nombre || 'Sin nombre'}</span>
                       <span className="text-[11px] font-mono text-ink-400">{order.id}</span>
                       {order._pend
