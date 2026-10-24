@@ -128,6 +128,9 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
       const total = matchedBooks.reduce((acc, b) => acc + (b.precio || 0), 0);
       const totalSena = pedidos.reduce((acc, p) => acc + Number(p.sena), 0);
       const formato = pedidos[0]?.formato || 'A4';
+      // Hora detectada en el mensaje: queda visible y editable en el preview
+      // (si no hay, el campo queda vacío = sin hora, sin inventar nada).
+      const horaDetectada = extractTimeFromMessage(mensaje) || '';
       setParserPreview({
         nombre: firstName,
         whatsapp: firstPhone,
@@ -138,7 +141,10 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
         montoPagado: totalSena,
         saldo: Math.max(0, total - totalSena),
         total,
-        entrega: pedidos[0]?.fecha ? { fecha: pedidos[0].fecha } : null,
+        entrega: {
+          ...(pedidos[0]?.fecha ? { fecha: pedidos[0].fecha } : {}),
+          hora: horaDetectada
+        },
         aiPedidos: pedidos,
         aiMsjWs: pedidos[0]?.msj_ws || ''
       });
@@ -273,6 +279,10 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
       if (field === 'entregaFecha') {
         updated.entrega = { ...prev.entrega, fecha: value };
       }
+      if (field === 'entregaHora') {
+        // Editable a mano: vacío = sin hora pactada.
+        updated.entrega = { ...prev.entrega, hora: tieneHora(value) ? String(value).trim() : '' };
+      }
       return updated;
     });
   }
@@ -305,10 +315,12 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
         };
       });
       const career = getCareer(config, books, items[0]?.id_carrera || '');
-      // Si el mensaje trae hora → se agenda con esa hora. Si NO, se agenda SIN
-      // hora (queda editable en Pedidos); nunca se inventa un 10:00/19:00.
-      const msgTime = extractTimeFromMessage(parserInput);
-      const hayHora = tieneHora(msgTime);
+      // La hora sale del preview (detectada al parsear y editable antes de
+      // importar). Si está vacía → se agenda SIN hora; nunca se inventa.
+      const msgTime = tieneHora(parserPreview.entrega?.hora)
+        ? String(parserPreview.entrega.hora).trim()
+        : '';
+      const hayHora = !!msgTime;
       const slot = {
         fecha: parserPreview.entrega?.fecha || today,
         turno: hayHora ? turnoFromHorario(msgTime) : '',
@@ -536,6 +548,10 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
               <div className="flex justify-between items-center"><span className="text-ink-500">Color</span><label className="switch-sm"><input type="checkbox" checked={parserPreview.color} onChange={e => updateParserField('color', e.target.checked)} /><span /></label></div>
               <div className="flex justify-between items-center"><span className="text-ink-500">Express</span><label className="switch-sm"><input type="checkbox" checked={parserPreview.express} onChange={e => updateParserField('express', e.target.checked)} /><span /></label></div>
               <div className="flex justify-between items-center"><span className="text-ink-500">Fecha entrega</span><input className="input-field text-xs py-1.5 w-[150px] text-right font-700" type="date" value={parserPreview.entrega?.fecha || ''} onChange={e => updateParserField('entregaFecha', e.target.value)} /></div>
+              <div className="flex justify-between items-center"><span className="text-ink-500">Hora retiro</span><input className="input-field text-xs py-1.5 w-[150px] text-right font-700" type="time" value={tieneHora(parserPreview.entrega?.hora) ? String(parserPreview.entrega.hora).trim() : ''} onChange={e => updateParserField('entregaHora', e.target.value)} title="Hora pactada de retiro (vacío = sin hora)" /></div>
+              {!tieneHora(parserPreview.entrega?.hora) && (
+                <div className="text-[10px] text-ink-400 -mt-1">No se detectó hora en el mensaje · vacío = sin hora; cargala acá si ya la sabés.</div>
+              )}
             </div>
             {parserPreview.aiMsjWs && (
               <div className="mt-4 p-3 bg-ink-50 rounded-lg">
@@ -550,7 +566,8 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
                         const librosPayload = parserPreview.libros.map(b => ({
                           titulo: b.titulo, hojas: b.hojas || 0, paginas: b.paginas || 0, precio: b.precio || 0
                         }));
-                        const horaWA = extractTimeFromMessage(parserInput) || '';
+                        // La hora sale del preview (editada a mano si hizo falta).
+                        const horaWA = tieneHora(parserPreview.entrega?.hora) ? String(parserPreview.entrega.hora).trim() : '';
                         const data = {
                           nombre: parserPreview.nombre,
                           whatsapp: parserPreview.whatsapp,
