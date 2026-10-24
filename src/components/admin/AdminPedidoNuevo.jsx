@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Icon } from '../Icons';
 import {
   fmt, RETIRO_LOCAL, turnoFromHorario, buildOrder, computeOrderStatus,
-  buildConfirmationMessage, calcEncuadernacion,
+  buildConfirmationMessage, calcEncuadernacion, roundTotal,
   ensureBookVariantes, getBookCombinations, calcPrecioItem, bookCareerId
 } from '../../lib/utils';
 import { saveOrderToSupabase } from '../../lib/supabase';
@@ -10,14 +10,14 @@ import { saveOrderToSupabase } from '../../lib/supabase';
 const hoy = () => new Date().toISOString().split('T')[0];
 const formBase = () => ({
   nombre: '', whatsapp: '', fecha: hoy(), hora: '',
-  pago: 'total', parcial: 0, encuadernacion: 'ninguna'
+  parcial: 0, encuadernacion: 'ninguna'
 });
 
 /**
  * Tab Pedido Nuevo: carga manual de un pedido. Buscador de catálogo para agregar
  * libros al toque, botón "Calcular PDF" (se salta a la Calculadora y vuelve con el
- * resultado) y formulario (nombre, tel, fecha/hora de retiro, pago nulo/parcial/total,
- * encuadernación). Crea el pedido en `pedidos` (igual que checkout/parser): queda en
+ * resultado) y formulario (nombre, tel, fecha/hora de retiro, monto pagado —vacío
+ * = nulo, botón Total—, encuadernación). Crea el pedido en `pedidos` (igual que checkout/parser): queda en
  * Pedidos y deja la confirmación pendiente en el tab WhatsApp.
  * El borrador vive en AdminPanel (`pedidoDraft`) para sobrevivir el cambio de tab.
  */
@@ -84,6 +84,36 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
     setItems(items.map(i => (i.id === id ? { ...i, comentario: valor } : i)));
   }
 
+  /** Variantes (formatos) disponibles de un ítem, desde el catálogo. */
+  function combosDeItem(item) {
+    if (!item?.libroId) return [];
+    const libro = (books || []).find(b => b.id === item.libroId);
+    if (!libro) return [];
+    return getBookCombinations(ensureBookVariantes(libro, config));
+  }
+
+  /** Chip de variante: cambia formato/color y recalcula precio, hojas y tipo. */
+  function setVarianteItem(id, key) {
+    setItems(items.map(i => {
+      if (i.id !== id) return i;
+      const libro = (books || []).find(b => b.id === i.libroId);
+      if (!libro) return i;
+      const wb = ensureBookVariantes(libro, config);
+      const combo = getBookCombinations(wb).find(c => c.key === key);
+      if (!combo) return i;
+      const price = calcPrecioItem(wb, combo.variante || null, 'basica', config);
+      return {
+        ...i,
+        formato: combo.label,
+        varianteId: combo.key,
+        color: Boolean(combo.color),
+        hojas: price.hojas,
+        precio: price.total,
+        tipo: price.tipo
+      };
+    }));
+  }
+
   function irACalculadora() {
     setCalcFromOrder(true);
     setTab('calculadora');
@@ -93,12 +123,19 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
   const subtotal = items.reduce((acc, i) => acc + (Number(i.precio) || 0), 0);
   const enc = calcEncuadernacion(items, form.encuadernacion, config);
   const total = subtotal + enc.costo;
+  const totalFinal = roundTotal(total, config);
+  // Monto pagado: vacío o 0 = nulo; al escribir se acota a ≤ total.
+  const montoPagado = Math.min(Math.max(0, Number(form.parcial) || 0), totalFinal);
+  const pagoResumen = montoPagado === 0
+    ? 'Vacío o 0 = pago nulo.'
+    : montoPagado >= totalFinal
+      ? 'Pago total ✓'
+      : `Parcial · saldo: ${fmt(totalFinal - montoPagado)}`;
 
   async function crearPedido() {
     if (!(form.nombre || '').trim()) { alert('Cargá el nombre del alumno.'); return; }
     if (!items.length) { alert('Agregá al menos un ítem (buscador o calculadora).'); return; }
     if (!form.fecha) { alert('Cargá la fecha de retiro.'); return; }
-    if (form.pago === 'parcial' && !(Number(form.parcial) > 0)) { alert('Cargá el monto pagado (o elegí Nulo / Total).'); return; }
 
     setCreando(true);
     try {
@@ -129,13 +166,11 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
         slot, config, null, 'talo'
       );
 
-      // Pago nulo / parcial / total (buildOrder asume 'total').
-      const monto = form.pago === 'nulo' ? 0
-        : form.pago === 'parcial' ? Math.max(0, Math.min(Number(form.parcial) || 0, order.total))
-        : order.total;
+      // Pago derivado del monto cargado (vacío/0 = nulo, = total → total).
+      const monto = montoPagado;
       order.monto_pagado = monto;
       order.saldo_pendiente = Math.max(0, order.total - monto);
-      order.pago_modalidad = form.pago;
+      order.pago_modalidad = monto === 0 ? 'nulo' : (monto >= order.total ? 'total' : 'parcial');
       order.estado = computeOrderStatus(monto);
       order.items = order.items.map(i => ({ ...i, estado: order.estado }));
       order.encuadernacion_modo = form.encuadernacion;
@@ -207,7 +242,9 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
             </div>
           ) : (
             <div className="space-y-2">
-              {items.map(item => (
+              {items.map(item => {
+                const combos = combosDeItem(item);
+                return (
                 <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg bg-ink-50 flex-wrap">
                   <div className="flex-1 min-w-[160px]">
                     <div className="text-sm font-600 text-ink-800 truncate">{item.titulo}</div>
@@ -216,16 +253,35 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
                       {item.comentario ? ` · ${item.comentario}` : ''}
                     </div>
                   </div>
-                  <input
-                    className="input-field text-xs py-1 w-[180px]"
-                    placeholder="Comentario (opcional)"
-                    value={item.comentario || ''}
-                    onChange={e => setComentario(item.id, e.target.value)}
-                  />
+                  <div className="flex flex-col gap-1 w-[180px]">
+                    <input
+                      className="input-field text-xs py-1"
+                      placeholder="Comentario (opcional)"
+                      value={item.comentario || ''}
+                      onChange={e => setComentario(item.id, e.target.value)}
+                    />
+                    {combos.length > 1 && (
+                      <div className="flex items-center gap-1 flex-wrap" title="Variante del libro (formato/precio)">
+                        {combos.map(c => {
+                          const activa = (item.varianteId || '') === (c.key || '');
+                          return (
+                            <button
+                              key={c.key || c.label}
+                              type="button"
+                              onClick={() => setVarianteItem(item.id, c.key)}
+                              className={`text-[10px] font-700 px-1.5 py-0.5 rounded-full border transition-colors ${activa ? 'bg-brand-DEFAULT text-white border-brand-DEFAULT' : 'bg-surface border-border text-ink-600 hover:border-brand-DEFAULT hover:text-brand-DEFAULT'}`}
+                              title={`Cambiar a ${c.label} — ${fmt(c.precio || 0)}`}
+                            >{c.label}</button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                   <div className="text-sm font-700 text-ink-700 w-[90px] text-right">{fmt(Number(item.precio) || 0)}</div>
                   <button onClick={() => quitarItem(item.id)} className="text-ink-400 hover:text-danger text-lg leading-none" title="Quitar">✕</button>
                 </div>
-              ))}
+                );
+              })}
               {enc.costo > 0 && (
                 <div className="flex items-center justify-between p-2 rounded-lg bg-brand-50 text-sm">
                   <span className="text-ink-600">Encuadernación ({form.encuadernacion === 'todos' ? 'todos juntos' : 'cada PDF'}){enc.size ? ` · espiral ${enc.size}` : ''}</span>
@@ -268,24 +324,24 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
 
           <div>
             <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1">Pago</label>
-            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1">
-              {[['nulo', 'Nulo'], ['parcial', 'Parcial'], ['total', 'Total']].map(([v, l]) => (
-                <button
-                  key={v}
-                  onClick={() => setForm({ pago: v })}
-                  className={`flex-1 px-2 py-1.5 rounded-md text-xs font-700 transition-colors ${form.pago === v ? 'bg-brand-DEFAULT text-white' : 'text-ink-500 hover:text-ink-700'}`}
-                >{l}</button>
-              ))}
-            </div>
-            {form.pago === 'parcial' && (
+            <div className="flex items-center gap-2">
               <input
-                className="input-field mt-2"
+                className="input-field flex-1"
                 type="number"
-                placeholder="Monto pagado"
+                min={0}
+                max={totalFinal}
+                placeholder="Monto pagado (vacío = nulo)"
                 value={form.parcial || ''}
-                onChange={e => setForm({ parcial: Number(e.target.value) || 0 })}
+                onChange={e => setForm({ parcial: Math.min(Math.max(0, Number(e.target.value) || 0), totalFinal) })}
               />
-            )}
+              <button
+                type="button"
+                onClick={() => setForm({ parcial: totalFinal })}
+                className="btn-secondary text-xs px-3 py-2 whitespace-nowrap"
+                title="Autocompletar el monto con el total"
+              >Total</button>
+            </div>
+            <div className="text-xs text-ink-400 mt-1">{pagoResumen}</div>
           </div>
 
           <div>
@@ -299,11 +355,8 @@ export function AdminPedidoNuevo({ config, books, setOrders, pedidoDraft, setPed
 
           <div className="flex items-center justify-between pt-2 border-t border-ink-100">
             <span className="text-sm font-700 text-ink-800">Total</span>
-            <span className="text-lg font-700 text-brand-DEFAULT">{fmt(total)}</span>
+            <span className="text-lg font-700 text-brand-DEFAULT">{fmt(totalFinal)}</span>
           </div>
-          {form.pago === 'parcial' && (
-            <div className="text-xs text-ink-400 -mt-1">Saldo: {fmt(Math.max(0, total - (Number(form.parcial) || 0)))}</div>
-          )}
 
           <button onClick={crearPedido} disabled={creando} className="btn-primary w-full py-3">
             {creando ? '…Creando' : 'Crear pedido'}

@@ -69,7 +69,8 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
   const [hideEntregados, setHideEntregados] = useState(true);
   const [loadingEntregados, setLoadingEntregados] = useState(false);
   const [excludedStates, setExcludedStates] = useState([]);
-  const [filtersVisible, setFiltersVisible] = useState(true);
+  // Minimizado por defecto (decisión del usuario); se despliega con un clic.
+  const [filtersVisible, setFiltersVisible] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState({
     id: true,
     nombre: true,
@@ -489,6 +490,12 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
     { key: null, label: 'Acciones' }
   ];
 
+  // ¿Hay algún filtro distinto del default? Para avisarlo cuando está minimizado.
+  const filtrosActivos = excludedStates.length > 0
+    || filters.estado !== 'all' || filters.fecha !== 'all' || filters.ventana !== 'all'
+    || Boolean(filters.alumno) || Boolean(filters.libro)
+    || filters.formato !== 'all' || filters.modalidad !== 'all' || filters.hojas !== 'all';
+
   return (
     <div className="space-y-5">
       <div className="card p-4">
@@ -496,6 +503,7 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
           <div className="flex items-center gap-2 text-sm font-700 text-ink-800">
             <Icon.Filter /> Multi-filtros
             {excludedStates.length > 0 && <span className="badge bg-accent-muted text-accent text-xs ml-2">Excluyendo {excludedStates.length}</span>}
+            {!filtersVisible && filtrosActivos && <span className="badge bg-accent-muted text-accent text-xs ml-2">Filtros activos</span>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
@@ -533,15 +541,12 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
               Resetear
             </button>
             <button
-              className="btn-ghost text-xs px-2 py-1.5"
+              className="btn-ghost text-xs px-2 py-1.5 flex items-center gap-1"
               onClick={() => setFiltersVisible(!filtersVisible)}
-              title={filtersVisible ? 'Ocultar filtros' : 'Mostrar filtros'}
+              title={filtersVisible ? 'Minimizar filtros' : 'Mostrar filtros'}
             >
-              {filtersVisible ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              )}
+              <span>{filtersVisible ? 'Minimizar' : 'Mostrar'}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${filtersVisible ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9" /></svg>
             </button>
           </div>
         </div>
@@ -630,32 +635,33 @@ export function AdminPedidos({ orders, setOrders, books, config, setTab }) {
           </label>
           {seleccion.size > 0 && <span className="badge bg-brand-muted text-brand-DEFAULT text-xs">{seleccion.size} seleccionadas</span>}
           <span className="text-xs text-ink-400">Clic en la fila = seleccionar · ↑↓ moverse · Shift+↑↓ o Shift+clic = rango</span>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              className="btn-secondary text-xs px-3 py-1.5"
-              disabled={!seleccion.size || bulkSaving}
-              onClick={() => aplicarEstadoSeleccion('prev')}
-              title="Retrocede un estado todas las filas seleccionadas"
-            >
-              ← Retroceder ({seleccion.size})
-            </button>
-            <button
-              className="btn-primary text-xs px-3 py-1.5"
-              disabled={!seleccion.size || bulkSaving}
-              onClick={() => aplicarEstadoSeleccion('next')}
-              title="Avanza un estado todas las filas seleccionadas"
-            >
-              Avanzar ({seleccion.size}) →
-            </button>
-            <button
-              className="btn-ghost text-xs px-2 py-1.5"
-              disabled={!seleccion.size}
-              onClick={limpiarSel}
-              title="Vaciar la selección"
-            >
-              Limpiar
-            </button>
-          </div>
+          {seleccion.size > 0 && (
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                className="btn-secondary text-xs px-3 py-1.5"
+                disabled={bulkSaving}
+                onClick={() => aplicarEstadoSeleccion('prev')}
+                title="Retrocede un estado todas las filas seleccionadas"
+              >
+                ← Retroceder ({seleccion.size})
+              </button>
+              <button
+                className="btn-primary text-xs px-3 py-1.5"
+                disabled={bulkSaving}
+                onClick={() => aplicarEstadoSeleccion('next')}
+                title="Avanza un estado todas las filas seleccionadas"
+              >
+                Avanzar ({seleccion.size}) →
+              </button>
+              <button
+                className="btn-ghost text-xs px-2 py-1.5"
+                onClick={limpiarSel}
+                title="Vaciar la selección"
+              >
+                Limpiar
+              </button>
+            </div>
+          )}
         </div>
       )}
 
