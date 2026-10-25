@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Icon } from '../Icons';
-import { fmt, slug, HOJAS, getBookCombinations, getMinPrice, recalcBookSugeridos, migrateBook, bookCareerId, getCareers, careerLabel, seedDefaultVariantes, applyClassicColumnPatchesToVariantes, prepareBookForSave } from '../../lib/utils';
+import { fmt, slug, getBookCombinations, getMinPrice, recalcBookSugeridos, migrateBook, bookCareerId, getCareers, careerLabel, seedDefaultVariantes, applyClassicColumnPatchesToVariantes, prepareBookForSave } from '../../lib/utils';
 import { getSupabase, saveBookToSupabase, deleteBookFromSupabase, uploadPdfToStorage, subirPortada, fetchBooksFromSupabase, cleanBookPayload } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
 import { BookFormPanel } from '../BookFormPanel';
@@ -18,7 +18,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
   const [abmCareer, setAbmCareer] = useState('');
   const [abmStatus, setAbmStatus] = useState('all');
   const [catSortConfig, setCatSortConfig] = useState({ key: null, direction: 'asc' });
-  const [catColumnVisibility, setCatColumnVisibility] = useState({
+  const [catColumnVisibility] = useState({
     libro: true, carrera: true, paginas: true, variantes: true,
     estado: true, pdf: true, portada: true, acciones: true
   });
@@ -180,7 +180,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                   const sb = getSupabase(config);
                   const shopId = getShopId();
                   const upsertOpts = shopId ? { onConflict: 'id, shop_id' } : { onConflict: 'id' };
-                  const { data: upserted, error } = await sb.from('libros').upsert(migrated, upsertOpts);
+                  const { error } = await sb.from('libros').upsert(migrated, upsertOpts);
                   if (error) { console.error('Supabase upsert error:', error); alert('Error al importar a Supabase:\n' + (error.message || JSON.stringify(error))); return; }
                   const fresh = await fetchBooksFromSupabase(config);
                   if (fresh && fresh.length > 0) setBooks(fresh);

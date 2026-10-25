@@ -8,6 +8,7 @@ Sistema de gestión de pedidos para imprenta universitaria. SPA construida con *
 imprenta-sync-2026/
 ├── index.html              # Entry point (Vite)
 ├── vite.config.js          # Vite + React + Tailwind v4 plugin
+├── eslint.config.js        # ESLint flat config (npm run lint)
 ├── package.json            # Dependencias y scripts
 ├── config.json             # Configuración (Supabase, pagos, carreras)
 ├── libros.json             # Catálogo local (fallback offline)
@@ -56,6 +57,13 @@ imprenta-sync-2026/
 | Pagos      | Talo (códigos de referencia) |
 | Deploy     | Vercel |
 | Fonts      | DM Sans (Google Fonts) |
+| Lint       | ESLint 10 + eslint-plugin-react-hooks (flat config) |
+
+## Rendimiento (code-split)
+
+- **pdfjs-dist bajo demanda:** `Store.jsx` NO lo importa estático; `handlePdfFile` hace `const pdfjsLib = await import('pdfjs-dist')` → los ~410 kB solo los baja quien sube un "PDF propio".
+- **Admin lazy:** `App.jsx` declara `AdminPanel`, `GlobalAdminDashboard` y `PasswordSetup` con `React.lazy` (named export → `.then(m => ({ default: m.X }))`) + `<Suspense fallback={<Spinner/>}>`.
+- Chunks resultantes: `index` ≈ 529 kB (147 kB gz) · `pdf` 410 kB · `AdminPanel` 154 kB · `GlobalAdminDashboard` 11 kB · `PasswordSetup` 2 kB.
 
 ## Flujo de datos
 
@@ -212,6 +220,7 @@ npm run dev       # Servidor de desarrollo (HMR)
 npm run build     # Build de producción
 npm run preview   # Preview del build
 npm run smoke     # Smoke test de la capa de variantes/precios (node, sin build)
+npm run lint      # ESLint (0 errores; ~9 warnings exhaustive-deps informativos)
 ```
 
 ## Multi-tenant (subdominios)

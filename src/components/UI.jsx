@@ -1,5 +1,4 @@
-import React from 'react';
-import { fmt, normalizePhone } from '../lib/utils';
+import { fmt } from '../lib/utils';
 import { STATE_STYLES, STATE_LABELS } from '../lib/constants';
 
 export function statusBadge(status) {

@@ -417,30 +417,6 @@ button:focus {
   font-weight: 700;
 }
 
-.combo-panel {
-  position: absolute;
-  z-index: 30;
-  left: 0;
-  right: 0;
-  top: calc(100% + 8px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(13, 17, 23, .1);
-  max-height: 260px;
-  overflow: auto;
-}
-
-.combo-option {
-  padding: 12px 14px;
-  cursor: pointer;
-  transition: background .15s;
-}
-
-.combo-option:hover {
-  background: var(--surface-hover);
-}
-
 .table-shell {
   overflow: auto;
   border: 1px solid var(--border);

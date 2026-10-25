@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Icon } from './components/Icons';
 import { Spinner } from './components/UI';
 import { Store } from './components/Store';
 import { AdminLogin } from './components/AdminLogin';
-import { AdminPanel } from './components/AdminPanel';
-import { GlobalAdminDashboard } from './components/admin/GlobalAdminDashboard';
-import { PasswordSetup } from './components/admin/PasswordSetup';
+// Code-split del admin: el panel (y sus tabs), el setup de contraseña y el
+// dashboard global se descargan SOLO cuando alguien entra a /admin; el
+// visitante de la tienda no baja ese código.
+const AdminPanel = React.lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const GlobalAdminDashboard = React.lazy(() => import('./components/admin/GlobalAdminDashboard').then(m => ({ default: m.GlobalAdminDashboard })));
+const PasswordSetup = React.lazy(() => import('./components/admin/PasswordSetup').then(m => ({ default: m.PasswordSetup })));
 import { FALLBACK_CONFIG, STORAGE } from './lib/constants';
 import { migrateBook, RETIRO_LOCAL } from './lib/utils';
-import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveConfigToSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig, isShopAdmin, checkPasswordChanged, markPasswordChanged } from './lib/supabase';
-import { setShop as setGlobalShop, getShopId } from './lib/shop';
+import { getSupabase, fetchBooksFromSupabase, fetchOrdersFromSupabase, fetchConfigFromSupabase, saveLocal, loadLocal, loadJson, deepMerge, normalizeConfig, isShopAdmin, checkPasswordChanged } from './lib/supabase';
+import { setShop as setGlobalShop } from './lib/shop';
 
 function getSubdomainSlug() {
   const hostname = window.location.hostname;
@@ -36,7 +39,7 @@ export default function App() {
   const [currentShop, setCurrentShop] = useState(null);
   const [isRootDomain, setIsRootDomain] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
-  const [allShops, setAllShops] = useState([]);
+  const [, setAllShops] = useState([]);
   const [loginError, setLoginError] = useState('');
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
 
@@ -112,7 +115,7 @@ export default function App() {
                 saveLocal(STORAGE.admin, false);
                 setAdminAuthed(false);
               }
-            } catch (e) { saveLocal(STORAGE.admin, false); setAdminAuthed(false); }
+            } catch { saveLocal(STORAGE.admin, false); setAdminAuthed(false); }
           } else {
             saveLocal(STORAGE.admin, false);
             setAdminAuthed(false);
@@ -264,14 +267,16 @@ export default function App() {
     }
     return (
       <div className="min-h-screen bg-ink-50 font-sans text-ink">
-        <GlobalAdminDashboard
-          config={config}
-          onLogout={async () => {
-            try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) {}
-            saveLocal(STORAGE.admin, false);
-            setAdminAuthed(false);
-          }}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center py-20"><Spinner /></div>}>
+          <GlobalAdminDashboard
+            config={config}
+            onLogout={async () => {
+              try { const sb = getSupabase(config); await sb.auth.signOut(); } catch {}
+              saveLocal(STORAGE.admin, false);
+              setAdminAuthed(false);
+            }}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -473,9 +478,12 @@ export default function App() {
               </div>
             )}
             {adminAuthed
-              ? (needsPasswordSetup
-                ? <PasswordSetup config={config} onDone={() => setNeedsPasswordSetup(false)} />
-                : <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); setNeedsPasswordSetup(false); }} />
+              ? (
+                <Suspense fallback={<div className="flex items-center justify-center py-20"><Spinner /></div>}>
+                  {needsPasswordSetup
+                    ? <PasswordSetup config={config} onDone={() => setNeedsPasswordSetup(false)} />
+                    : <AdminPanel orders={orders} setOrders={setOrders} books={books} setBooks={setBooks} config={config} setConfig={setConfig} theme={theme} setTheme={setTheme} onLogout={async () => { try { const sb = getSupabase(config); await sb.auth.signOut(); } catch (e) { console.error('Error en signOut:', e); } saveLocal(STORAGE.admin, false); setAdminAuthed(false); setNeedsPasswordSetup(false); }} />}
+                </Suspense>
               )
               : <AdminLogin config={config} showGoogle={false} onSuccess={async v => {
                 const saved = loadLocal(STORAGE.admin, null);

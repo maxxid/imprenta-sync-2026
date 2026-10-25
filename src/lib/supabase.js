@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone, prepareBookForSave, tieneHora } from './utils.js';
-import { STATE_STYLES, STATE_LABELS, FALLBACK_CONFIG } from './constants.js';
+import { normalizeOrder, orderPagesForCapacity, isWeekend, normalizePhone, prepareBookForSave, tieneHora, fechaLabel } from './utils.js';
+import { FALLBACK_CONFIG } from './constants.js';
 import { getShopId } from './shop.js';
 
 let _sbClient = null;
@@ -342,7 +342,7 @@ export function loadLocal(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
-  } catch (error) {
+  } catch {
     return fallback;
   }
 }
@@ -352,7 +352,7 @@ export async function loadJson(path, fallback) {
     const response = await fetch(path);
     if (!response.ok) throw new Error(path);
     return await response.json();
-  } catch (error) {
+  } catch {
     return fallback;
   }
 }
@@ -550,7 +550,7 @@ export async function checkPasswordChanged(config, shopId, email) {
       .single();
     if (error) return false;
     return data?.password_changed !== false;
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -563,7 +563,7 @@ export async function markPasswordChanged(config, shopId, email) {
       .eq('shop_id', shopId)
       .eq('email', email);
     return true;
-  } catch (err) {
+  } catch {
     return false;
   }
 }

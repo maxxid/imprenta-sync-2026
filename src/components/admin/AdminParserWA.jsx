@@ -1,50 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Icon } from '../Icons';
-import { Alert, Spinner } from '../UI';
-import { fmt, slug, normalizePhone, HOJAS, getBookFormats, getBookCombinations, calcPrecioItem, roundTotal, getCareer, careerAddress, deliveryPlaceFor, lugarRetiro, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint, buildWaPrompt, tieneHora, turnoFromHorario, observacionesSinHora } from '../../lib/utils';
-import { getSupabase, saveOrderToSupabase } from '../../lib/supabase';
-import { ORDER_STATES, STATE_STYLES, DEMO_WHATSAPP } from '../../lib/constants';
+import { Alert } from '../UI';
+import { fmt, slug, HOJAS, getBookCombinations, calcPrecioItem, roundTotal, getCareer, deliveryPlaceFor, lugarRetiro, bookCareerId, extractTimeFromMessage, buildParserPrompt, buildParserCatalogForMode, RETIRO_LOCAL, geminiEndpoint, buildWaPrompt, tieneHora, turnoFromHorario, observacionesSinHora } from '../../lib/utils';
+import { saveOrderToSupabase } from '../../lib/supabase';
+import { DEMO_WHATSAPP } from '../../lib/constants';
 
-function parseWhatsAppMessage(text, books, config) {
-  const lower = slug(text);
-  const matchedBooks = books.filter(book => lower.includes(slug(book.titulo)) || lower.includes(slug(book.materia)));
-  const firstBook = matchedBooks[0] || books[0];
-  const formatoMatch = text.match(/\b(A4|A5)\b/i);
-  const phoneMatch = text.match(/(\+?54\s*9\s*)?(\d[\d\s-]{7,})/);
-  const namedMatch = text.match(/nombre\s*:\s*(.+)/i);
-  const firstTextLine = text.split('\n').map(line => line.trim()).find(line => /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{5,}$/.test(line));
-  const colorMatch = text.match(/\bcolor\b/i);
-  const expressMatch = text.match(/urgente|express/i);
-  const entregaMatch = text.match(/(\d{4}-\d{2}-\d{2})\s*(manana|tarde)?/i);
-  const amountMatch = text.match(/\$\s*([\d\.]+)/);
-  const formato = formatoMatch ? formatoMatch[1].toUpperCase() : (firstBook ? getBookFormats(firstBook)[0] : 'A4');
-  const previewCalc = firstBook ? calcPrecioItem(firstBook, formato, 'basica', config, Boolean(colorMatch) && Number(firstBook.precio_color) > 0, Boolean(expressMatch)) : null;
-  const total = matchedBooks.length > 0
-    ? roundTotal(matchedBooks.reduce((acc, book) => acc + calcPrecioItem(book, formato, 'basica', config, Boolean(colorMatch) && Number(book.precio_color) > 0, Boolean(expressMatch)).total, 0), config)
-    : (previewCalc ? previewCalc.total : 0);
-  const montoPagado = amountMatch ? roundTotal(Number(amountMatch[1].replace(/\./g, '')), config) : 0;
-  return {
-    nombre: (namedMatch?.[1] || firstTextLine || 'Alumno sin identificar').trim(),
-    whatsapp: normalizePhone(phoneMatch?.[2] || ''),
-    libros: matchedBooks.length ? matchedBooks : firstBook ? [firstBook] : [],
-    formato,
-    color: Boolean(colorMatch),
-    express: Boolean(expressMatch),
-    pago: montoPagado >= total && total > 0 ? 'total' : montoPagado > 0 ? 'sena' : 'pendiente',
-    montoPagado,
-    saldo: Math.max(0, total - montoPagado),
-    total,
-    entrega: entregaMatch ? { fecha: entregaMatch[1], turno: (entregaMatch[2] || 'tarde').toLowerCase() } : null
-  };
-}
-
-export function AdminParserWA({ books, config, orders, setOrders }) {
+export function AdminParserWA({ books, config, setOrders }) {
   const [parserInput, setParserInput] = useState(DEMO_WHATSAPP);
   const [parserPreview, setParserPreview] = useState(null);
   const [parserLoading, setParserLoading] = useState(false);
   const [parserError, setParserError] = useState('');
   const [parserImporting, setParserImporting] = useState(false);
-  const [parserToast, setParserToast] = useState(null);
+  const [, setParserToast] = useState(null);
   const [filtroLibros, setFiltroLibros] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
@@ -387,7 +354,7 @@ export function AdminParserWA({ books, config, orders, setOrders }) {
       setOrders(previous => [order, ...previous]);
       try {
         order.wa_message && navigator.clipboard && navigator.clipboard.writeText(order.wa_message);
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
       setParserToast('✅ Pedido guardado correctamente');
       setTimeout(() => setParserToast(null), 3000);
       setParserPreview(null);

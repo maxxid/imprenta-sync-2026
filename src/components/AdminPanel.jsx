@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Icon } from './Icons';
-import { Alert, Spinner } from './UI';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminPedidos } from './admin/AdminPedidos';
 import { AdminCatalogo } from './admin/AdminCatalogo';
@@ -10,7 +9,7 @@ import { AdminWA } from './admin/AdminWA';
 import { AdminCalculadora } from './admin/AdminCalculadora';
 import { AdminPedidoNuevo } from './admin/AdminPedidoNuevo';
 
-export function AdminPanel({ orders, setOrders, books, setBooks, config, setConfig, theme, setTheme, onLogout }) {
+export function AdminPanel({ orders, setOrders, books, setBooks, config, setConfig, onLogout }) {
   const [tab, setTab] = useState('dashboard');
   // Borrador compartido entre Calculadora y Pedido Nuevo (vinculación en 2 sentidos):
   // la Calculadora empuja ítems al pedido y Pedido Nuevo salta a calcular un PDF.

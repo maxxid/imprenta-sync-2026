@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Icon } from '../Icons';
 import {
   fmt, RETIRO_LOCAL, turnoFromHorario, buildOrder, computeOrderStatus,

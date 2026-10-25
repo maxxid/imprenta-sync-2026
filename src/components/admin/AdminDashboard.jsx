@@ -1,11 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { Icon } from '../Icons';
-import { statusBadge } from '../UI';
-import { fmt, orderPagesForCapacity, getCareers, careerLabel } from '../../lib/utils';
-import { ORDER_STATES, STATE_LABELS, STATE_STYLES, STATE_ROW_BG } from '../../lib/constants';
-import { getDayUsage } from '../../lib/supabase';
+import { useMemo } from 'react';
+import { fmt, orderPagesForCapacity } from '../../lib/utils';
+import { ORDER_STATES, STATE_LABELS } from '../../lib/constants';
 
-export function AdminDashboard({ orders, books, config, setTab, refreshOrders }) {
+export function AdminDashboard({ orders, config, setTab }) {
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
   const tomorrow = useMemo(() => {
     const d = new Date(Date.now() + 86400000);
@@ -166,7 +163,7 @@ export function AdminDashboard({ orders, books, config, setTab, refreshOrders })
       <div className="card p-5">
         <div className="font-700 text-sm text-ink-800 mb-4">Capacidad semanal <span className="text-xs text-ink-400 font-normal">— hojas y cupo estimado</span></div>
         <div className="space-y-2.5">
-          {weekData.map((d, i) => (
+          {weekData.map(d => (
             <div key={d.fecha} className="flex items-center gap-3">
               <span className={`text-xs font-700 w-8 flex-shrink-0 ${d.esHoy ? 'text-brand-DEFAULT' : 'text-ink-400'}`}>{d.label}</span>
               <div className="flex-1 min-w-0">

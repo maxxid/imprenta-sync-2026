@@ -1,5 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Icon } from '../Icons';
+import { useState, useMemo, useRef } from 'react';
 import { fmt, buildConfirmationMessage, generateRecordatorio, tieneHora } from '../../lib/utils';
 import { updateOrderInSupabase } from '../../lib/supabase';
 

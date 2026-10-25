@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Icon } from './Icons';
 import { Alert, Spinner } from './UI';
 import { STORAGE } from '../lib/constants';
@@ -16,6 +16,7 @@ export function AdminLogin({ config, onSuccess, showGoogle = true, initialError 
   useEffect(() => { if (initialError) setError(initialError); }, [initialError]);
 
   /* ─── Password reset ─── */
+  // eslint-disable-next-line no-unused-vars -- sin botón en el JSX actual; se reengancha cuando agregue el link "Olvidé mi contraseña"
   async function sendResetLink() {
     if (!email.trim() || !email.includes('@')) {
       setError('Ingresá un email válido.');

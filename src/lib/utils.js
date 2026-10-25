@@ -186,7 +186,7 @@ function resolveVarianteByLabel(book, token, wantsColor = null) {
 
 export function calcSugerido(paginas, formato, config, paginasPorHoja = 2) {
   const hojas = HOJAS(paginas, paginasPorHoja);
-  let sub = 0;
+  let sub;
   if (formato === 'A5') {
     sub = hojas * Number(config.precios?.A5?.unico || 49);
   } else {
@@ -497,7 +497,6 @@ export function buildOrder(items, form, slot, config, career, metodoPago = 'talo
   const saldo = Math.max(0, total - montoPagado);
   const id = `P${String(Date.now()).slice(-6)}`;
   const modalidad = isRetiroLocal(form.modalidad) ? RETIRO_LOCAL : (form.modalidad || RETIRO_LOCAL);
-  const hasWindow = isRetiroLocal(modalidad) && slot;
   return {
     id,
     nombre: form.nombre,

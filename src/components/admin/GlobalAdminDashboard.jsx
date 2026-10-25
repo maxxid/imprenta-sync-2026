@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Icon } from '../Icons';
 import { Spinner } from '../UI';
-import { getSupabase, fetchAllShops, fetchShopStats, createShop, updateShopStatus, fetchShopAdmins, addShopAdmin, removeShopAdmin } from '../../lib/supabase';
-import { getShopId } from '../../lib/shop';
+import { fetchAllShops, fetchShopStats, createShop, updateShopStatus, fetchShopAdmins, addShopAdmin, removeShopAdmin } from '../../lib/supabase';
 
 export function GlobalAdminDashboard({ config, onLogout }) {
   const [shops, setShops] = useState([]);

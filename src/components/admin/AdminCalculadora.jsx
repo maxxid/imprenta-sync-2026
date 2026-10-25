@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { fmt, getCategorias, calcPdfPaginas, calcPdfPrecio } from '../../lib/utils';
 import { saveConfigToSupabase } from '../../lib/supabase';
 import { DEFAULT_CALC_CATEGORIAS } from '../../lib/constants';

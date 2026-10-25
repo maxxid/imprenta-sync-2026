@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Icon } from '../Icons';
-import { Alert } from '../UI';
 import { getCareers, careerLabel, DIAS, DIAS_ORDER, buildVentana, normalizeVentanas, turnoFromHorario, nextHorario, slug } from '../../lib/utils';
-import { saveConfigToSupabase, saveLocal, loadLocal, deepMerge } from '../../lib/supabase';
+import { saveConfigToSupabase, saveLocal, deepMerge } from '../../lib/supabase';
 import { STORAGE, DEFAULT_PARSER_PROMPT, DEFAULT_WA_PROMPT, DEFAULT_CALC_CATEGORIAS } from '../../lib/constants';
 
 // Chips del menú lateral: [id de la card, etiqueta]. El id es también el ancla
@@ -98,7 +97,7 @@ export function AdminConfig({ config, setConfig }) {
     const draft = JSON.parse(JSON.stringify(configDraft));
     (draft.carreras || []).forEach(c => { c.ventanas = normalizeVentanas(c.ventanas); });
     const finalConfig = deepMerge(JSON.parse(JSON.stringify(config)), draft);
-    let ok = false;
+    let ok;
     try {
       saveLocal(STORAGE.config, finalConfig);
       ok = await saveConfigToSupabase(finalConfig, finalConfig);

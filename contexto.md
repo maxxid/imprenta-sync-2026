@@ -19,6 +19,7 @@ Docs profundas: `AGENTS.md` (arquitectura/código) · `ONBOARDING.md` (alta de f
 | Dev | `npm install` → `npm run dev` |
 | Build | `npm run build` |
 | Smoke test | `npm run smoke` (capa variantes/precios, node puro) |
+| Lint | `npm run lint` (ESLint; debe dar **0 errores**) |
 
 ## URLs
 
@@ -171,7 +172,7 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 ## Directivas para el agente
 
 1. **Trabajar en este repo** salvo que se indique otro path.
-2. **Commit + push a `main` tras cada cambio validado** (`npm run build` + `npm run smoke`): el usuario lo estableció así — *"siempre commit and push"* (2026-10-20). No esperar permiso para pushear.
+2. **Commit + push a `main` tras cada cambio validado** (`npm run build` + `npm run smoke`; si se tocó `src/`, también `npm run lint` con 0 errores): el usuario lo estableció así — *"siempre commit and push"* (2026-10-20). No esperar permiso para pushear.
 3. **No commitear secretos nuevos** (`.env`); `config.json` ya tiene anon key pública de Supabase — no ampliar superficie.
 4. **Respetar multi-tenant**: no romper filtros `shop_id` ni `onConflict` compuestos.
 5. **Cambios mínimos** al objetivo; no refactors colaterales.
@@ -188,6 +189,7 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 - Pedidos entregados no vienen en la carga inicial: no asumir que están en `orders` hasta desactivar el toggle o buscar por teléfono.
 - **Encoding**: los `.jsx`/`.js` son UTF-8 con fin de línea LF. No editar con `Get-Content`/`Set-Content` de PowerShell 5 (rompe acentos); usar herramientas de texto que preserven UTF-8 y LF.
 - `npm run smoke` debe pasar después de tocar `src/lib/utils.js` (variantes/precios).
+- `npm run lint` (ESLint flat config) debe dar **0 errores**; los ~9 warnings son `react-hooks/exhaustive-deps` informativos — no se "arreglan" a ciegas (tocar deps de hooks caso por caso).
 
 ## Sesión actual
 
@@ -299,5 +301,15 @@ Misma UX que en el tab WhatsApp, adaptada a la grilla de Pedidos. **Cada fila = 
 ### Prioridad de impresión: OCULTA (2026-10-24)
 
 - **Pedido del usuario: "podrías ocultar lo de prioridad de impresión?"** → flag `MOSTRAR_PRIORIDAD = false` (module-level en `Store.jsx`) que apaga: (1) la **card naranja "¿Necesitás prioridad de impresión?"** + su modal (ventanas express, +20%, "Solicitar prioridad") en la **ficha** del libro, y (2) el badge **"N en modo Express"** en el resumen del **checkout**.
-- **No se borró nada**: estados (`showExpressModal`, `expressSlotSel`, `expressCartWarn`), `buildCartItem(true)`, `handleAgregar(item, true)` y `getNextSlots(config, pedidos, career, true)` quedan; con el flag en `true` todo vuelve. El carrito vive **solo en memoria** → no quedan ítems express de sesiones anteriores (el modal express del carrito ya era inalcanzable: `toggleExpress` no se invoca).
+- **No se borró nada**: estados (`showExpressModal`, `expressSlotSel`, `expressCartWarn`), `buildCartItem(true)`, `handleAgregar(item, true)` y `getNextSlots(config, pedidos, career, true)` quedan; con el flag en `true` todo vuelve. El carrito vive **solo en memoria** → no quedan ítems express de sesiones anteriores (el modal express del checkout era inalcanzable y después se borró en la limpieza de ESLint, ver abajo).
 - La copia *"…coordinar la prioridad"* del aviso **"Retiro dividido"** (capacidad/agenda) **no** es parte de esto y queda igual.
+
+### Rendimiento + ESLint + limpieza de código muerto (2026-10-24)
+
+- **Plan propuesto y elegido por el usuario** (4 de 5 opciones): pdfjs bajo demanda · limpieza de código muerto · ESLint base · code-split del admin.
+- **pdfjs bajo demanda:** `Store.jsx` dejó de importar `pdfjs-dist` estático; `handlePdfFile` hace `await import('pdfjs-dist')` (chunk `pdf`, 410 kB) solo para quien sube un **"PDF propio"**. Bundle del visitante: **1.106 kB / 306 kB gz → 529 kB / 147 kB gz (−52 %)**.
+- **Code-split del admin:** `App.jsx` declara `AdminPanel`, `GlobalAdminDashboard` y `PasswordSetup` con `React.lazy` (named export → `.then(m => ({ default: m.X }))`) + `<Suspense fallback={<Spinner/>}>` → el visitante no baja el panel (AdminPanel 154 kB · GlobalAdmin 11 kB · PasswordSetup 2 kB).
+- **Limpieza:** borrados el CSS `.combo-panel`/`.combo-option` (era el `CareerCombobox`), el express del checkout (`toggleExpress`, `activateExpress`, estados `expressItem`/`expressConfirm` y el modal "¡Salta la fila!"), el parser regex legacy `parseWhatsAppMessage` (en `AdminPedidos` **y** `AdminParserWA`; el parser vivo es Gemini) y ~85 imports/vars sin uso. La card **"Gestión de tu pedido"** (`false &&` en el tracking) se **conserva** con `eslint-disable` comentado (reagendar/saldo: se reactiva quitando el `false`). `sendResetLink` (AdminLogin) también se conserva con disable documentado.
+- **Bugfix hallado por el lint:** `supabase.js` usaba `fechaLabel` **sin importarla** → `ReferenceError` latente en `getNextSlots` si alguna ventana de agenda quedaba sin `label`. Ahora se importa de `./utils.js`.
+- **ESLint nuevo:** `eslint.config.js` (flat config — ESLint 10 + `@eslint/js` + `globals` + `eslint-plugin-react-hooks`), script **`npm run lint`**. Reglas: recommended de JS + `rules-of-hooks` (error) + `exhaustive-deps` (warn) + `no-unused-vars` (warn, hoy **0**). Ignora `dist/`; `public/rounding.js` corre con globals de navegador.
+- **Estado: 0 errores / 9 warnings** (todos `exhaustive-deps`, informativos) · build ✓ · smoke ✓.

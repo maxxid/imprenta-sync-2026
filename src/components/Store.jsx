@@ -1,10 +1,9 @@
 import React from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
-import { Cover, Alert, Spinner, fechaLabel } from './UI';
-import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, buildConfirmationMessage, tieneHora } from '../lib/utils';
+import { Cover, Alert, fechaLabel } from './UI';
+import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, deliveryPlaceFor, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, buildConfirmationMessage, tieneHora } from '../lib/utils';
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
-import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
+import { saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
 /**
  * ⚡ Prioridad de impresión (express): OCULTA para el visitante (decisión del
@@ -261,11 +260,14 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
+      // pdfjs-dist (~425 kB) se carga SOLO acá, bajo demanda: lo usa únicamente
+      // quien sube un "PDF propio"; si no, el visitante no lo descarga.
+      const pdfjsLib = await import('pdfjs-dist');
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
       setPdfPages(pdf.numPages);
       setPdfDetected(pdf.numPages);
-    } catch (err) {
+    } catch {
       setPdfDetected(null);
     }
   }
@@ -452,7 +454,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
                               </div>
                             ) : (
                               <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                                {expressSlots.filter(s => s.disponible).slice(0, 8).map((slot, idx) => (
+                                {expressSlots.filter(s => s.disponible).slice(0, 8).map(slot => (
                                   <button
                                     key={`${slot.fecha}-${slot.turno}`}
                                     onClick={() => setExpressSlotSel(slot)}
@@ -557,8 +559,6 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
   const [slotSel, setSlotSel] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [pedidoConfirmado, setPedidoConfirmado] = React.useState(null);
-  const [expressItem, setExpressItem] = React.useState(null);
-  const [expressConfirm, setExpressConfirm] = React.useState(null);
   const pagosConfig = config.pagos || { talo_activo: true, transferencia_activa: false, datos_bancarios: {}, whatsapp_admin: '5493885888949' };
   const [metodoPago, setMetodoPago] = React.useState(
     pagosConfig.talo_activo !== false ? 'talo' : (pagosConfig.transferencia_activa ? 'transferencia' : 'talo')
@@ -603,22 +603,6 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
     if (estado === 'Listo') return 2;
     if (estado === 'Entregado') return 3;
     return 0;
-  }
-
-  function toggleExpress(item) {
-    if (item.express) {
-      setCarrito(current => current.map(ci => ci.id === item.id ? { ...ci, express: false, precio: ci.precio / 1.2, expressRecargo: 0 } : ci));
-    } else {
-      setExpressItem(item);
-      setExpressConfirm(null);
-    }
-  }
-
-  function activateExpress(item) {
-    const recargo = Math.round(item.precio * 0.2);
-    const roundedRecargo = roundTotal(recargo, config);
-    setCarrito(current => current.map(ci => ci.id === item.id ? { ...ci, express: true, precio: ci.precio + roundedRecargo, expressRecargo: roundedRecargo } : ci));
-    setExpressItem(null);
   }
 
   React.useEffect(() => {
@@ -868,39 +852,6 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
               <span className="font-800 text-xl text-ink-900">{fmt(totalRounded)}</span>
             </div>
           </div>
-
-          {expressItem && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setExpressItem(null)}>
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-              <div className="relative card p-6 max-w-sm w-full slide-up" onClick={e => e.stopPropagation()}>
-                <div className="w-14 h-14 rounded-2xl bg-accent-muted flex items-center justify-center mx-auto mb-4 text-accent">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-                </div>
-                <div className="text-center mb-4">
-                  <div className="font-800 text-xl text-ink-900 mb-1">Salta la fila!</div>
-                  <div className="text-sm text-ink-500 leading-relaxed">
-                    Este libro entra en <strong className="text-ink-800">produccion inmediata</strong>. Nos salteamos la cola y nos ponemos a trabajar YA.
-                  </div>
-                </div>
-                <div className="bg-ink-50 rounded-xl p-4 mb-4 space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-ink-500">Libro</span><span className="font-600 text-right ml-4 truncate max-w-[140px]">{expressItem.titulo}</span></div>
-                  <div className="flex justify-between"><span className="text-ink-500">Precio base</span><span className="font-600">{fmt(expressItem.precio)}</span></div>
-                  <div className="flex justify-between"><span className="text-ink-500">Recargo express (20%)</span><span className="font-700 text-accent">+{fmt(roundTotal(Math.round(expressItem.precio * 0.2), config))}</span></div>
-                  <div className="flex justify-between font-800 border-t border-ink-200 pt-2"><span>Nuevo precio</span><span>{fmt(expressItem.precio + roundTotal(Math.round(expressItem.precio * 0.2), config))}</span></div>
-                </div>
-                <div className="bg-accent-muted/40 rounded-xl p-3 mb-5 flex items-start gap-2.5">
-                  <span className="text-accent text-sm flex-shrink-0 mt-0.5"><Icon.AlertCircle /></span>
-                  <span className="text-xs text-accent/80 font-600">Al activar Express te contactamos al toque para coordinar la entrega prioritaria.</span>
-                </div>
-                <div className="flex gap-2">
-                  <button className="btn-primary flex-1 bg-accent hover:bg-accent-light" onClick={() => activateExpress(expressItem)}>
-                    <Icon.Zap /> Activar Express
-                  </button>
-                  <button className="btn-secondary" onClick={() => setExpressItem(null)}>Cancelar</button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {step === 1 && (
             <div className="slide-up">
@@ -1427,6 +1378,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
             </div>
           </div>
 
+          {/* eslint-disable-next-line no-constant-binary-expression -- card "Gestión de tu pedido" apagada a propósito; se reactiva quitando el false */}
           {false && selectedOrder.estado !== 'Entregado' && (
             <div className="card p-5">
               <div className="font-700 text-sm text-ink-800 mb-3">Gestion de tu pedido</div>
@@ -1531,7 +1483,7 @@ function AyudaScreen({ config, onVolver }) {
   );
 }
 
-export function Store({ books, config, orders, setOrders, screen, setScreen, carrito, setCarrito, bookSel, setBookSel, theme, setTheme, checkoutForm, setCheckoutForm, cliente, setCliente }) {
+export function Store({ books, config, orders, setOrders, screen, setScreen, carrito, setCarrito, bookSel, setBookSel, checkoutForm, setCheckoutForm }) {
   const [catalogFilters, setCatalogFilters] = React.useState({ career: '', query: '', materia: '' });
 
   if (screen === 'book' || screen === 'ficha') {
