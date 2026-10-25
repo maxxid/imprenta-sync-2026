@@ -104,6 +104,7 @@ Dos pestañas del panel vinculadas en los 2 sentidos (estado compartido `pedidoD
 - **Un solo buscador** (decisión del usuario): input **"Buscar materia o libro"** (columna ancha, `1.6fr`, es el principal) + **selector `<select>` de Carrera** al costado (`1fr`) con **"Todas las carreras" por defecto** y las carreras del config (ej: Abogacía, Enfermería). Antes había **dos inputs con 🔍** lado a lado (el `CareerCombobox` + el de materia/libro); el combobox **se eliminó** de `UI.jsx` (quedó sin uso, junto con sus imports `Icon`/`slug`/`careerLabel` ahí).
 - Chips de materia debajo (filtra por materia; `setCareer` sigue limpiando `materia` al cambiar de carrera) y badge con la dirección de la carrera elegida.
 - Estado compartido: `catalogFilters { career, query, materia }`.
+- **⚡ Prioridad de impresión (express): OCULTA** (decisión del usuario, 2026-10-24) — flag `MOSTRAR_PRIORIDAD = false` (module-level en `Store.jsx`): no se muestra ni la card "¿Necesitás prioridad de impresión?" de la ficha ni el aviso "N en modo Express" del checkout. El código express (modal, +20%, `getNextSlots(..., true)`) queda intacto; con el flag en `true` vuelve.
 
 ## Mensajes de WhatsApp (flujo de 2 toques)
 

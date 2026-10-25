@@ -295,3 +295,9 @@ Misma UX que en el tab WhatsApp, adaptada a la grilla de Pedidos. **Cada fila = 
 - **Antes** había dos inputs con 🔍 lado a lado en la card de filtros: el **`CareerCombobox`** (`UI.jsx`, input "Buscar carrera" con panel desplegable) y el **"Buscar materia o libro"**.
 - **Ahora:** **un único buscador principal** — *"Buscar materia o libro"* (`1.6fr`, primero) — + **selector `<select>` simple de Carrera** (`1fr`) con **"Todas las carreras" por defecto** y las opciones del config (Abogacía, Enfermería…) vía `getCareers(config, books)` + `careerLabel`.
 - Se **eliminó `CareerCombobox`** de `UI.jsx` (quedó sin uso) y sus imports ahí (`Icon`, `slug`, `careerLabel`). Los chips de materia, el badge de dirección y el resto del home quedan igual (`setCareer` sigue limpiando `materia`).
+
+### Prioridad de impresión: OCULTA (2026-10-24)
+
+- **Pedido del usuario: "podrías ocultar lo de prioridad de impresión?"** → flag `MOSTRAR_PRIORIDAD = false` (module-level en `Store.jsx`) que apaga: (1) la **card naranja "¿Necesitás prioridad de impresión?"** + su modal (ventanas express, +20%, "Solicitar prioridad") en la **ficha** del libro, y (2) el badge **"N en modo Express"** en el resumen del **checkout**.
+- **No se borró nada**: estados (`showExpressModal`, `expressSlotSel`, `expressCartWarn`), `buildCartItem(true)`, `handleAgregar(item, true)` y `getNextSlots(config, pedidos, career, true)` quedan; con el flag en `true` todo vuelve. El carrito vive **solo en memoria** → no quedan ítems express de sesiones anteriores (el modal express del carrito ya era inalcanzable: `toggleExpress` no se invoca).
+- La copia *"…coordinar la prioridad"* del aviso **"Retiro dividido"** (capacidad/agenda) **no** es parte de esto y queda igual.

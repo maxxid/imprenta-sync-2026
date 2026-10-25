@@ -6,6 +6,15 @@ import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, cal
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
 
+/**
+ * ⚡ Prioridad de impresión (express): OCULTA para el visitante (decisión del
+ * usuario, 2026-10-24). El código queda por si se quiere habilitar de nuevo:
+ * con `false` no se muestra ni la card "¿Necesitás prioridad de impresión?"
+ * de la ficha ni el aviso "N en modo Express" del checkout. El carrito vive
+ * solo en memoria, así que no quedan ítems express de sesiones anteriores.
+ */
+const MOSTRAR_PRIORIDAD = false;
+
 function isDeliveryDay(order) {
   if (!order.fecha) return false;
   const today = new Date().toISOString().split('T')[0];
@@ -374,7 +383,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
               </button>
             </div>
 
-            {pricing.hojas <= (config.produccion.capacidad_express_paginas || 300) && (
+            {MOSTRAR_PRIORIDAD && pricing.hojas <= (config.produccion.capacidad_express_paginas || 300) && (
               <>
                 <div className="rounded-2xl border-2 border-orange-200 bg-orange-50/70 p-4 mb-3">
                   <div className="flex items-start gap-3 mb-3">
@@ -1100,7 +1109,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                 <div className="flex justify-between"><span className="text-ink-500">Modalidad</span><span className="font-600">{form.modalidad}</span></div>
                 <div className="flex justify-between"><span className="text-ink-500">Ventana</span><span className="font-600 text-right ml-4">{needsSlot ? (slotSel ? `${fechaLabel(slotSel.fecha, slotSel.dOffset)} · ${slotSel.horario}` : '-') : 'Se coordina por WhatsApp'}</span></div>
                 <div className="flex justify-between"><span className="text-ink-500">Lugar</span><span className="font-600 text-right ml-4">{deliveryPlaceFor(form.modalidad, activeCareer, config)}</span></div>
-                {carrito.some(item => item.express) && (
+                {MOSTRAR_PRIORIDAD && carrito.some(item => item.express) && (
                   <div className="flex items-center gap-2 mt-2 pt-2 border-t border-ink-100">
                     <span className="text-accent"><Icon.Zap /></span>
                     <span className="text-xs font-700 text-accent">{carrito.filter(i => i.express).length} libro{carrito.filter(i => i.express).length > 1 ? 's' : ''} en modo Express</span>
