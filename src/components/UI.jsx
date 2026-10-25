@@ -1,6 +1,5 @@
 import React from 'react';
-import { Icon } from './Icons';
-import { slug, fmt, normalizePhone, careerLabel } from '../lib/utils';
+import { fmt, normalizePhone } from '../lib/utils';
 import { STATE_STYLES, STATE_LABELS } from '../lib/constants';
 
 export function statusBadge(status) {
@@ -23,67 +22,6 @@ export function Spinner() {
 
 export function Cover({ src, alt }) {
   return <img className="cover-img" src={src} alt={alt} />;
-}
-
-export function CareerCombobox({ careers, value, onChange }) {
-  const [open, setOpen] = React.useState(false);
-  const selected = careers.find(item => item.id_carrera === value);
-  const [query, setQuery] = React.useState(selected ? careerLabel(selected) : '');
-  const ref = React.useRef(null);
-
-  React.useEffect(() => {
-    const current = careers.find(item => item.id_carrera === value);
-    setQuery(current ? careerLabel(current) : '');
-  }, [value, careers]);
-
-  React.useEffect(() => {
-    function handleClick(event) {
-      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const filtered = careers.filter(item => slug(`${careerLabel(item)} ${item.direccion_entrega || ''}`).includes(slug(query)));
-
-  return (
-    <div className="relative" ref={ref}>
-      <div className="relative">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400"><Icon.Search /></span>
-        <input
-          className="input-field"
-          style={{paddingLeft: '2.75rem', paddingRight: '2.75rem'}}
-          value={query}
-          placeholder="Buscar carrera"
-          onFocus={() => setOpen(true)}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            onChange('');
-            setOpen(true);
-          }}
-        />
-        {query && (
-          <button className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-400" onClick={() => { setQuery(''); onChange(''); }}>
-            <Icon.X />
-          </button>
-        )}
-      </div>
-      {open && (
-        <div className="combo-panel">
-          <button className="combo-option w-full text-left text-sm font-700 text-ink-900 border-b border-ink-50" onClick={() => { onChange(''); setQuery(''); setOpen(false); }}>
-            Todas las carreras
-          </button>
-          {filtered.length === 0 && <div className="combo-option text-sm text-ink-400">No hay coincidencias</div>}
-          {filtered.map(item => (
-            <button key={item.id_carrera} className="combo-option w-full text-left" onClick={() => { onChange(item.id_carrera); setQuery(careerLabel(item)); setOpen(false); }}>
-              <div className="text-sm font-700 text-ink-900">{careerLabel(item)}</div>
-              <div className="text-xs text-ink-400 mt-0.5">{item.direccion_entrega}</div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function fechaLabel(fecha, offset) {

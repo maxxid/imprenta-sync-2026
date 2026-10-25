@@ -99,6 +99,12 @@ Dos pestañas del panel vinculadas en los 2 sentidos (estado compartido `pedidoD
 - **Categorías/tarifas editables** en Ajustes → Calculadora (semilla `DEFAULT_CALC_CATEGORIAS`: *Blanco y negro 35 · Poco color 40 · Color 60*).
 - **Encuadernación a nivel PEDIDO** en Pedido Nuevo: *Sin / Cada PDF por su lado / Todos juntos en una*; se cobra como **línea de ítem** y solo sobre `origen === 'calculadora'` (los del catálogo ya la traen en el precio de la variante).
 
+## Home / Catálogo de la tienda (Store.jsx · `HomeScreen`)
+
+- **Un solo buscador** (decisión del usuario): input **"Buscar materia o libro"** (columna ancha, `1.6fr`, es el principal) + **selector `<select>` de Carrera** al costado (`1fr`) con **"Todas las carreras" por defecto** y las carreras del config (ej: Abogacía, Enfermería). Antes había **dos inputs con 🔍** lado a lado (el `CareerCombobox` + el de materia/libro); el combobox **se eliminó** de `UI.jsx` (quedó sin uso, junto con sus imports `Icon`/`slug`/`careerLabel` ahí).
+- Chips de materia debajo (filtra por materia; `setCareer` sigue limpiando `materia` al cambiar de carrera) y badge con la dirección de la carrera elegida.
+- Estado compartido: `catalogFilters { career, query, materia }`.
+
 ## Mensajes de WhatsApp (flujo de 2 toques)
 
 El alumno elige el turno de retiro según sus clases → **la hora es clave**. Dos mensajes, gestionados desde el **tab WhatsApp** (`AdminWA.jsx`):

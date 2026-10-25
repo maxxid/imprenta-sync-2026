@@ -1,7 +1,7 @@
 import React from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from './Icons';
-import { Cover, Alert, Spinner, CareerCombobox, fechaLabel } from './UI';
+import { Cover, Alert, Spinner, fechaLabel } from './UI';
 import { fmt, slug, normalizePhone, getBookCombinations, getMinPrice, HOJAS, calcPrecioItem, roundTotal, getCareers, getCareer, careerLabel, careerAddress, deliveryPlaceFor, getEspiralSize, computeOrderStatus, buildOrder, recalcBookSugeridos, bookCareerId, seedDefaultVariantes, findVariante, RETIRO_LOCAL, isRetiroLocal, buildConfirmationMessage, tieneHora } from '../lib/utils';
 import { STORAGE, STATE_STYLES, STATE_LABELS } from '../lib/constants';
 import { getSupabase, saveOrderToSupabase, updateOrderInSupabase, getNextSlots, getNextBusinessDay, saveLocal, copyToClipboard, fetchOrdersByPhoneFromSupabase } from '../lib/supabase';
@@ -87,17 +87,22 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
       </div>
 
       <div className="card p-4 mb-4">
-        <div className="grid gap-4 sm:grid-cols-[1.1fr_1fr]">
-          <div>
-            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Carrera</label>
-            <CareerCombobox careers={careers} value={career} onChange={setCareer} />
-          </div>
+        <div className="grid gap-4 sm:grid-cols-[1.6fr_1fr]">
           <div>
             <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Buscar materia o libro</label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400"><Icon.Search /></span>
               <input className="input-field" style={{paddingLeft: '2.75rem'}} value={query} onChange={event => setQuery(event.target.value)} placeholder="Ej: Anatomia, Constitucional..." />
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Carrera</label>
+            <select className="input-field" value={career} onChange={event => setCareer(event.target.value)}>
+              <option value="">Todas las carreras</option>
+              {careers.map(item => (
+                <option key={item.id_carrera} value={item.id_carrera}>{careerLabel(item)}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
