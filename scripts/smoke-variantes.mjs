@@ -4,7 +4,8 @@ import {
   applyClassicColumnPatchesToVariantes, prepareBookForSave, getMinPrice, getBookFormats,
   buildOrder, seedDefaultVariantes, normalizeVariante, newVarianteId, slug,
   RETIRO_LOCAL, isRetiroLocal, localPlace, deliveryPlaceFor, normalizeOrder, geminiEndpoint,
-  DIAS_ORDER, turnoFromHorario, buildVentana, normalizeVentanas, nextHorario
+  DIAS_ORDER, turnoFromHorario, buildVentana, normalizeVentanas, nextHorario,
+  splitCoverTitle, normalizePortada, coverTitleFor, isCustomCover, coverSrc, COVER_MAX_FILAS
 } from '../src/lib/utils.js';
 import { FALLBACK_CONFIG } from '../src/lib/constants.js';
 
@@ -483,6 +484,35 @@ check('obs: saca "14hs" suelto', observacionesSinHora('14hs'), '');
 check('obs: deja el resto intacto', observacionesSinHora('📍Lavalle · 🚨espiral'), '📍Lavalle · 🚨espiral');
 check('obs: vacío sigue vacío', observacionesSinHora(''), '');
 check('obs: idempotente (2 pasadas = 1)', observacionesSinHora(observacionesSinHora('🕒18hs 📍Lavalle')), '📍Lavalle');
+
+// 25. Portada automática (título propio + filas, sin placehold.co)
+const TITULO_LARGO = 'Derecho Constitucional - Tomo I';
+
+check('portada: 1 fila = título completo', splitCoverTitle(TITULO_LARGO, 1), [TITULO_LARGO]);
+const enDos = splitCoverTitle(TITULO_LARGO, 2);
+check('portada: 2 filas → 2 líneas', enDos.length, 2);
+check('portada: 2 filas no pierden palabras', enDos.join(' '), TITULO_LARGO);
+check('portada: 2 filas sin desborde (ninguna > 24 chars)', enDos.every(line => line.length <= 24), true);
+check('portada: un separador no arranca fila', enDos.every(line => !/^[-–—·:|]/.test(line)), true);
+check('portada: no inventa filas si hay menos palabras', splitCoverTitle('Álgebra', 4), ['Álgebra']);
+check('portada: vacío → sin líneas', splitCoverTitle('', 2), []);
+
+check('portada: filas fuera de rango se acota', normalizePortada({ filas: 99 }).filas, COVER_MAX_FILAS);
+check('portada: filas 0 → 1', normalizePortada({ filas: 0 }).filas, 1);
+check('portada: sin datos = default', normalizePortada(undefined), { titulo: '', filas: 1 });
+
+check('portada: título vacío usa el del libro', coverTitleFor({ titulo: 'Álgebra', portada: { titulo: '' } }), 'Álgebra');
+check('portada: título propio pisa el del libro', coverTitleFor({ titulo: 'Álgebra', portada: { titulo: 'Tomo I' } }), 'Tomo I');
+check('portada: sin título ni libro → "Sin título"', coverTitleFor({}), 'Sin título');
+
+check('portada: sin imagen = genérica', isCustomCover(''), false);
+check('portada: placeholder viejo = genérica', isCustomCover('https://placehold.co/420x520/E8ECF2/0D1117?text=Álgebra'), false);
+check('portada: imagen propia = custom', isCustomCover('https://x.supabase.co/portadas/a.jpg'), true);
+check('portada: src propio se respeta', coverSrc('https://x.supabase.co/portadas/a.jpg', { titulo: 'Álgebra' }), 'https://x.supabase.co/portadas/a.jpg');
+const svg = decodeURIComponent(coverSrc('', { titulo: 'Álgebra', portada: { filas: 1 } }));
+check('portada: genera SVG con el título', svg.includes('>Álgebra</text>'), true);
+check('portada: SVG con título largo en 2 filas', decodeURIComponent(coverSrc('', { titulo: TITULO_LARGO, portada: { filas: 2 } })).split('</text>').length - 1, 2);
+check('portada: escapa caracteres del título', decodeURIComponent(coverSrc('', { titulo: 'A & B <C>' })).includes('A &amp; B &lt;C&gt;'), true);
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodos los checks pasaron');
 process.exit(fails ? 1 : 0);

@@ -2,6 +2,8 @@
 
 Sistema de gestión de pedidos para imprenta universitaria. SPA construida con **Vite + React 19 + Tailwind CSS 4**. Deploy en Vercel, backend en Supabase.
 
+**Antes de buscar en el repo:** abrí `ESTRUCTURA.md` — tiene el recetario "quiero cambiar X → archivo Y", el grafo de imports, el índice `export → archivo#Línea` y las funciones de paso obligado. Se regenera con `npm run mapa`.
+
 ## Arquitectura
 
 ```
@@ -137,6 +139,15 @@ El alumno elige el turno de retiro según sus clases → **la hora es clave**. D
 - `getBookFormats(book)`, `getBookCombinations(book)` — opciones habilitadas (desde variantes)
 - `migrateBook(book, config)` — Migra legacy + asegura variantes
 - `recalcBookSugeridos(book, config)` — Recalcula sugeridos de a4_bn / a5_bn
+
+### Portadas (src/lib/utils.js + `UI.jsx`)
+- Modelo: `libro.portada = { titulo, filas }` (JSONB; *migración `migration_portada.sql`*). `titulo: ''` = usa `libro.titulo`; `filas` = 1..4 líneas del texto (**default 1**).
+- `isCustomCover(src)` — ¿hay imagen propia? Placeholder viejo de `placehold.co` y `''` cuentan como genérica.
+- `normalizePortada(portada)` — valida/acota `{ titulo, filas }`; `coverTitleFor(book)` — título a mostrar (propio o del libro).
+- `splitCoverTitle(titulo, filas)` — corta en líneas balanceadas (minimiza la más larga; un separador suelto `-` no arranca fila).
+- `genericCoverSvg(titulo, portada)` / `coverSrc(src, book)` — SVG 420×520 (título escalado al ancho) y `data:` URI para el `<img>`.
+- **`Cover`** (`UI.jsx`) es la única puerta: recibe `src`, `alt` y `portada`; si no hay imagen propia usa `coverSrc`. No uses `<img src={book.imagen_url}>` para portadas (se rompe con las genéricas).
+- Editable en **`BookFormPanel.jsx`** (título en la portada + filas, con vista previa).
 
 ### Pedidos (src/lib/utils.js)
 - `buildOrder(items, form, slot, config, career, metodoPago)` — Crea nuevo pedido

@@ -29,7 +29,7 @@ export async function fetchBooksFromSupabase(config) {
   }
 }
 
-export const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url','encuadernacion','shop_id','variantes'];
+export const LIBRO_COLUMNS = ['id','id_libro','titulo','materia','id_carrera','carrera','autor','paginas','paginas_por_hoja','pdf_url','activo','a4_bn_habilitado','a4_bn_sugerido','a4_bn_ajuste','a4_bn_final','a4_color_habilitado','a4_color_final','a5_bn_habilitado','a5_bn_sugerido','a5_bn_ajuste','a5_bn_final','a5_color_habilitado','a5_color_final','imagen_url','portada','encuadernacion','shop_id','variantes'];
 
 export function cleanBookPayload(book) {
   const cleaned = {};
@@ -53,7 +53,10 @@ export async function saveBookToSupabase(book, config) {
     return true;
   } catch (err) {
     console.error('Error guardando libro en Supabase:', err);
-    alert('No se pudo guardar el libro en Supabase. Revisá la consola.');
+    const faltaPortada = /portada/i.test(String(err?.message || ''));
+    alert(faltaPortada
+      ? 'No se pudo guardar: falta la columna libros.portada. Corré migration_portada.sql en Supabase.'
+      : 'No se pudo guardar el libro en Supabase. Revisá la consola.');
     return false;
   }
 }

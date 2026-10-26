@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../Icons';
-import { fmt, slug, getBookCombinations, getMinPrice, recalcBookSugeridos, migrateBook, bookCareerId, getCareers, careerLabel, seedDefaultVariantes, applyClassicColumnPatchesToVariantes, prepareBookForSave } from '../../lib/utils';
+import { fmt, slug, getBookCombinations, getMinPrice, recalcBookSugeridos, migrateBook, bookCareerId, getCareers, careerLabel, seedDefaultVariantes, applyClassicColumnPatchesToVariantes, prepareBookForSave, coverSrc, isCustomCover } from '../../lib/utils';
 import { getSupabase, saveBookToSupabase, deleteBookFromSupabase, uploadPdfToStorage, subirPortada, fetchBooksFromSupabase, cleanBookPayload } from '../../lib/supabase';
 import { getShopId } from '../../lib/shop';
 import { BookFormPanel } from '../BookFormPanel';
@@ -101,7 +101,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
       else if (catSortConfig.key === 'variantes') { aVal = getMinPriceSafe(a); bVal = getMinPriceSafe(b); }
       else if (catSortConfig.key === 'estado') { aVal = a.activo !== false ? 1 : 0; bVal = b.activo !== false ? 1 : 0; }
       else if (catSortConfig.key === 'pdf') { aVal = a.pdf_url ? 1 : 0; bVal = b.pdf_url ? 1 : 0; }
-      else if (catSortConfig.key === 'portada') { aVal = a.imagen_url && !a.imagen_url.startsWith('https://placehold.co/') ? 1 : 0; bVal = b.imagen_url && !b.imagen_url.startsWith('https://placehold.co/') ? 1 : 0; }
+      else if (catSortConfig.key === 'portada') { aVal = isCustomCover(a.imagen_url) ? 1 : 0; bVal = isCustomCover(b.imagen_url) ? 1 : 0; }
       else { aVal = a[catSortConfig.key]; bVal = b[catSortConfig.key]; }
       if (typeof aVal === 'string') { aVal = slug(aVal); bVal = slug(bVal); }
       if (aVal == null) aVal = ''; if (bVal == null) bVal = '';
@@ -155,7 +155,8 @@ export function AdminCatalogo({ books, setBooks, config }) {
               titulo: '', materia: '', id_carrera: config.carreras[0]?.id_carrera || '', carrera: config.carreras[0]?.nombre || '',
               autor: '', paginas, paginas_por_hoja: pph, pdf_url: '', activo: true,
               variantes: seedDefaultVariantes(paginas, config, pph),
-              imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=Nuevo+Libro'
+              imagen_url: '',
+              portada: { titulo: '', filas: 1 }
             };
             setEditingBook(recalcBookSugeridos(newBook, config));
           }}><Icon.Book /> Nuevo libro</button>
@@ -261,7 +262,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                     <tr key={b.id}>
                       <td>
                         <div className="flex items-center gap-2 min-w-[160px]">
-                          <img src={b.imagen_url} alt="" className="w-8 h-10 object-cover rounded border border-ink-100 flex-shrink-0" />
+                          <img src={coverSrc(b.imagen_url, b)} alt="" className="w-8 h-10 object-cover rounded border border-ink-100 flex-shrink-0" />
                           <input className="input-field text-sm py-1" value={cur.titulo} onChange={e => set('titulo', e.target.value)} style={{minWidth:'120px'}} />
                         </div>
                       </td>
@@ -367,7 +368,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                       </td>
                       <td style={{width:'60px'}}>
                         <label className="flex items-center justify-center w-10 h-10 mx-auto rounded-lg border-2 border-dashed border-ink-200 hover:border-brand-DEFAULT cursor-pointer transition-colors bg-ink-50 relative overflow-hidden" title="Arrastrá o click para subir portada">
-                          {cur.imagen_url && !cur.imagen_url.startsWith('https://placehold.co/') ? (
+                          {isCustomCover(cur.imagen_url) ? (
                             <img src={cur.imagen_url} className="w-full h-full object-cover absolute inset-0" alt="" />
                           ) : (
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-ink-300"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
@@ -409,7 +410,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                   <td style={!catColumnVisibility.libro ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                     {catColumnVisibility.libro ? (
                       <div className="flex items-center gap-3">
-                        <img src={b.imagen_url} alt="" className="w-10 h-12 object-cover rounded-lg border border-ink-100 flex-shrink-0" />
+                        <img src={coverSrc(b.imagen_url, b)} alt="" className="w-10 h-12 object-cover rounded-lg border border-ink-100 flex-shrink-0" />
                         <div>
                           <div className="font-700 text-ink-900 text-sm">{b.titulo || 'Sin título'}</div>
                           <div className="text-xs text-ink-400">{b.materia} · {b.autor}</div>
@@ -475,10 +476,10 @@ export function AdminCatalogo({ books, setBooks, config }) {
                   </td>
                   <td style={!catColumnVisibility.portada ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}} className="text-center">
                     {catColumnVisibility.portada ? (
-                      b.imagen_url && !b.imagen_url.startsWith('https://placehold.co/')
+                      isCustomCover(b.imagen_url)
                         ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0066FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto" title="Portada personalizada"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                         : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9BAABB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto opacity-40" title="Portada genérica"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg>
-                    ) : <span className="text-xs opacity-50">{b.imagen_url && !b.imagen_url.startsWith('https://placehold.co/') ? '✓' : '✕'}</span>}
+                    ) : <span className="text-xs opacity-50">{isCustomCover(b.imagen_url) ? '✓' : '✕'}</span>}
                   </td>
                   <td style={!catColumnVisibility.acciones ? { width: '40px', minWidth: '40px', maxWidth: '40px', overflow: 'hidden', padding: '8px' } : {}}>
                     {catColumnVisibility.acciones ? (

@@ -105,7 +105,7 @@ export function AdminParserWA({ books, config, setOrders }) {
           titulo: p.libro, materia: '', carrera: '', id_carrera: '',
           paginas: fallbackPaginas, paginas_por_hoja: 2, pdf_url: '', activo: true,
           variantes: [{ id: 'a4_bn', label: 'A4 B/N', paginas_por_hoja: 2, color: false, precio: Number(p.precio) || 0, habilitado: true, sugerido: 0 }],
-          imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=' + encodeURIComponent(p.libro),
+          imagen_url: '',
           formato: p.formato || 'A4 B/N', color: false, hojas: HOJAS(fallbackPaginas, 2),
           precio: Number(p.precio) || 0, combosDisponibles: [], _manual: true
         };
@@ -247,7 +247,7 @@ export function AdminParserWA({ books, config, setOrders }) {
       titulo: '', materia: '', carrera: '', id_carrera: '',
       paginas: 100, paginas_por_hoja: 2, pdf_url: '', activo: true,
       variantes: [{ id: 'a4_bn', label: 'A4 B/N', paginas_por_hoja: 2, color: false, precio: 0, habilitado: true, sugerido: 0 }],
-      imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=Manual',
+      imagen_url: '',
       formato: parserPreview.formato || 'A4 B/N', color: false, hojas: HOJAS(100, 2),
       precio: 0, combosDisponibles: [], _manual: true
     };

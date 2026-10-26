@@ -6,7 +6,7 @@
 
 SPA de pedidos para imprenta universitaria (multi-tenant por subdominio).  
 Stack: **React 19 + Vite 8 + Tailwind 4 + Supabase + Vercel**.  
-Docs profundas: `AGENTS.md` (arquitectura/código) · `ONBOARDING.md` (alta de fotocopiadora).
+Docs profundas: `AGENTS.md` (arquitectura/código) · `ESTRUCTURA.md` (mapa de archivos, dependencias e índice de funciones → usar antes de buscar en el código) · `ONBOARDING.md` (alta de fotocopiadora).
 
 ## Repo y entorno local
 
@@ -186,6 +186,7 @@ Se eliminó la dependencia del **Google Apps Script**. El proxy de Gemini (parse
 - `rounding.js` es script global (`window.roundingUtils`), no módulo ES.
 - Catálogo offline de respaldo: `libros.json`.
 - Columna `libros.variantes` debe existir en Supabase (`migration_variantes.sql`); sin ella el upsert de libros puede fallar.
+- Columna `libros.portada` (JSONB) debe existir en Supabase (`migration_portada.sql`); sin ella el upsert de libros falla con un aviso propio.
 - Pedidos entregados no vienen en la carga inicial: no asumir que están en `orders` hasta desactivar el toggle o buscar por teléfono.
 - **Encoding**: los `.jsx`/`.js` son UTF-8 con fin de línea LF. No editar con `Get-Content`/`Set-Content` de PowerShell 5 (rompe acentos); usar herramientas de texto que preserven UTF-8 y LF.
 - `npm run smoke` debe pasar después de tocar `src/lib/utils.js` (variantes/precios).
@@ -313,3 +314,17 @@ Misma UX que en el tab WhatsApp, adaptada a la grilla de Pedidos. **Cada fila = 
 - **Bugfix hallado por el lint:** `supabase.js` usaba `fechaLabel` **sin importarla** → `ReferenceError` latente en `getNextSlots` si alguna ventana de agenda quedaba sin `label`. Ahora se importa de `./utils.js`.
 - **ESLint nuevo:** `eslint.config.js` (flat config — ESLint 10 + `@eslint/js` + `globals` + `eslint-plugin-react-hooks`), script **`npm run lint`**. Reglas: recommended de JS + `rules-of-hooks` (error) + `exhaustive-deps` (warn) + `no-unused-vars` (warn, hoy **0**). Ignora `dist/`; `public/rounding.js` corre con globals de navegador.
 - **Estado: 0 errores / 9 warnings** (todos `exhaustive-deps`, informativos) · build ✓ · smoke ✓.
+
+### Portadas genéricas dinámicas (2026-10-26)
+
+**Pedido del usuario:** la portada genérica era un enlace de `placehold.co` (una sola línea, texto chico a veces). Quería algo **dinámico y automático pero editable**: input para el título (vacío = título del libro) y elegir la **cantidad de filas**.
+
+- **Ya no hay imagen externa:** `coverSrc(src, book)` (utils) devuelve la imagen propia si existe o un **SVG generado** (`genericCoverSvg`, 420×520, hoja clara con barra azul) como `data:` URI. El `<img>` de `Cover` (`UI.jsx`) es la única puerta: recibe `src`, `alt` y `portada`.
+- **El título se agranda solo:** `splitCoverTitle(titulo, filas)` parte el título en 1–4 líneas balanceadas (minimiza la línea más larga, así entra en tipografía más grande; un separador suelto `-` se pega al final de la línea anterior, no la arranca). El SVG escala la letra al ancho y a la altura disponibles (tope 54 px de cuerpo).
+- **Dato por libro:** `libro.portada = { titulo, filas }` (JSONB) → **migración nueva `migration_portada.sql`** (agregada a `LIBRO_COLUMNS`). `titulo: ''` = usa `libro.titulo`; `filas` 1..4, **default 1**.
+- **Editable en `BookFormPanel`:** card "Portada automática" bajo la URL (que ahora es opcional): input de título (placeholder = título del libro) + select de filas + vista previa en vivo. Si hay imagen propia, avisa "Usando imagen propia" (las opciones quedan guardadas por si se borra la URL).
+- **Señales de portada:** `isCustomCover()` reemplaza el chequeo repetido `startsWith('https://placehold.co/')` en `AdminCatalogo` (orden, icono de la columna Port y miniaturas). Las miniaturas usan `coverSrc`.
+- **Limpieza:** libro nuevo, "PDF propio" y los ítems del parser ya no generan URLs de `placehold.co` (`imagen_url: ''`). Los libros viejos con esa URL se siguen viendo como genéricos.
+- **Smoke: 226 checks** (sección 25: split en filas, normalización, título propio vs. del libro, detección de imagen propia y SVG escapado).
+
+**Pendiente del usuario:** correr `migration_portada.sql` en Supabase (`hjtbwnsxgellbtfariog`) **antes** de guardar libros desde la web nueva (sin esa columna el upsert falla; el alert lo dice).

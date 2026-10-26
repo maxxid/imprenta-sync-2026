@@ -139,7 +139,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
               carrera: selectedCareer?.nombre || 'Carrera a seleccionar', id_carrera: selectedCareer?.id_carrera || '',
               autor: 'Archivo subido', paginas, paginas_por_hoja: pph, pdf_url: '', activo: true,
               variantes: seedDefaultVariantes(paginas, config, pph).map(v => ({ ...v, habilitado: v.id === 'a4_bn' || v.id === 'a5_bn' })),
-              imagen_url: 'https://placehold.co/420x520/E8ECF2/0D1117?text=PDF+Propio', isPdfPropio: true
+              imagen_url: '', isPdfPropio: true
             });
           }}>
             <Icon.Upload /> Subir PDF
@@ -160,7 +160,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
           return (
             <button key={book.id} onClick={() => onSelectLibro(book)} className="card p-4 text-left hover:bg-surface-hover hover:border-brand hover:shadow-lg hover:shadow-brand-DEFAULT/20 transition-all btn-press">
               <div className="grid grid-cols-[88px_1fr] gap-4 items-start">
-                <Cover src={book.imagen_url} alt={book.titulo} />
+                <Cover src={book.imagen_url} alt={book.titulo} portada={book.portada} />
                 <div>
                   <span className="badge bg-ink-100 text-ink-500 mb-2">{book.carrera}</span>
                   <div className="font-700 text-sm text-ink-900 leading-tight mb-1">{book.titulo}</div>
@@ -248,6 +248,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
       precio: price.total,
       tipo: price.tipo,
       imagen_url: workingBook.imagen_url,
+      portada: workingBook.portada,
       origen: book.isPdfPropio ? 'pdf-propio' : 'catalogo'
     };
   }
@@ -278,7 +279,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
       <div className="card p-6">
         <div className="grid gap-5 grid-cols-1 md:grid-cols-[240px_1fr]">
           <div className="space-y-3 w-full">
-            <Cover src={workingBook.imagen_url} alt={workingBook.titulo} />
+            <Cover src={workingBook.imagen_url} alt={workingBook.titulo} portada={workingBook.portada} />
             {workingBook.pdf_url && (
               <button
                 onClick={() => setShowPdfModal(true)}
@@ -827,7 +828,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
             <div className="space-y-3">
               {carrito.map(item => (
                 <div key={item.id} className={`grid grid-cols-[56px_1fr_auto] gap-3 items-center rounded-xl p-2 transition-all ${item.express ? 'bg-accent-muted/50 border border-accent/20' : ''}`}>
-                  <Cover src={item.imagen_url} alt={item.titulo} />
+                  <Cover src={item.imagen_url} alt={item.titulo} portada={item.portada} />
                   <div className="min-w-0">
                     <div className="text-sm font-700 text-ink-900 truncate">{item.titulo}</div>
                     <div className="text-xs text-ink-400">{item.formato} · {item.hojas} hojas · {item.tipo === 'anillado' ? 'Anillado' : 'Abrochado'}{item.express ? ' · Express' : ''}</div>

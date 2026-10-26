@@ -12,6 +12,128 @@ export function normalizePhone(value) {
   return String(value || '').replace(/\D/g, '');
 }
 
+/* ── Portada genérica ───────────────────────────────────────────────── */
+
+export const COVER_MAX_FILAS = 4;
+
+/** true si `imagen_url` es una portada propia (ni vacía ni el placeholder viejo de placehold.co). */
+export function isCustomCover(src) {
+  const url = String(src || '').trim();
+  return Boolean(url) && !url.startsWith('https://placehold.co/');
+}
+
+/** Preferencias de la portada automática: `{ titulo, filas }` (título vacío = el del libro). */
+export function normalizePortada(portada) {
+  const p = portada && typeof portada === 'object' ? portada : {};
+  const filas = Math.round(Number(p.filas) || 1);
+  return {
+    titulo: p.titulo == null ? '' : String(p.titulo),
+    filas: Math.min(COVER_MAX_FILAS, Math.max(1, filas))
+  };
+}
+
+export function coverTitleFor(book) {
+  const propio = normalizePortada(book?.portada).titulo.trim();
+  return propio || String(book?.titulo || '').trim() || 'Sin título';
+}
+
+/** Ancho aproximado de un texto en "em" (para escalar el título al ancho de la tapa). */
+export function coverLineEm(text) {
+  let em = 0;
+  for (const ch of String(text || '')) {
+    if (ch === ' ') em += 0.3;
+    else if ("iljI.,:;!'|()[]-".includes(ch)) em += 0.32;
+    else if ('ftrJ'.includes(ch)) em += 0.4;
+    else if ('mwMW@%'.includes(ch)) em += 0.9;
+    else if (ch === ch.toUpperCase() && ch !== ch.toLowerCase()) em += 0.66;
+    else em += 0.55;
+  }
+  return Math.max(em, 0.5);
+}
+
+/** Corta el título en `filas` líneas balanceadas (minimiza la línea más larga). */
+export function splitCoverTitle(title, filas = 1) {
+  const words = String(title || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const n = Math.min(Math.max(1, Math.round(Number(filas) || 1)), COVER_MAX_FILAS, words.length);
+  if (n <= 1) return [words.join(' ')];
+  const acc = [0];
+  for (const word of words) acc.push(acc[acc.length - 1] + word.length);
+  const lineLen = (from, to) => acc[to] - acc[from] + Math.max(0, to - from - 1);
+  const best = Array.from({ length: n + 1 }, () => new Array(words.length + 1).fill(Infinity));
+  const cut = Array.from({ length: n + 1 }, () => new Array(words.length + 1).fill(0));
+  best[0][0] = 0;
+  for (let g = 1; g <= n; g++) {
+    for (let i = g; i <= words.length; i++) {
+      for (let j = g - 1; j < i; j++) {
+        const cost = Math.max(best[g - 1][j], lineLen(j, i));
+        if (cost < best[g][i]) { best[g][i] = cost; cut[g][i] = j; }
+      }
+    }
+  }
+  const lines = [];
+  let i = words.length;
+  for (let g = n; g >= 1; g--) {
+    const j = cut[g][i];
+    lines.unshift(words.slice(j, i).join(' '));
+    i = j;
+  }
+  // Un separador suelto ("-", "·", ":") no arranca una fila: se pega al final de la anterior.
+  for (let k = 1; k < lines.length; k++) {
+    const [first, ...rest] = lines[k].split(' ');
+    if (rest.length && /^[-–—·:|]$/.test(first)) {
+      lines[k - 1] = `${lines[k - 1]} ${first}`;
+      lines[k] = rest.join(' ');
+    }
+  }
+  return lines.filter(Boolean);
+}
+
+function xmlEscape(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * SVG de la portada automática: hoja 4:5 con el título (en `filas` líneas) escalado
+ * al ancho disponible. Es 100% generado, así el título se ve nítido y grande.
+ */
+export function genericCoverSvg(titulo, portada) {
+  const title = String(titulo || '').trim() || 'Sin título';
+  const { filas } = normalizePortada(portada);
+  const lines = splitCoverTitle(title, filas);
+  const maxEm = Math.max(...lines.map(coverLineEm));
+  const fontSize = Math.max(15, Math.min(336 / maxEm, 344 / (lines.length * 1.14), 54));
+  const lineHeight = fontSize * 1.14;
+  const blockH = lineHeight * lines.length;
+  const firstY = 262 - blockH / 2 + lineHeight / 2;
+  const textos = lines.map((line, index) => {
+    const squeeze = coverLineEm(line) * fontSize > 336 ? ' textLength="336" lengthAdjust="spacingAndGlyphs"' : '';
+    return `<text x="212" y="${(firstY + index * lineHeight).toFixed(1)}"${squeeze}>${xmlEscape(line)}</text>`;
+  }).join('');
+  const ruleY = (firstY + blockH - lineHeight / 2 + 18).toFixed(1);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${xmlEscape(title)}">`
+    + '<rect width="420" height="520" fill="#E8ECF2"/>'
+    + '<path d="M420 520H0l420-150z" fill="#0066FF" fill-opacity="0.06"/>'
+    + '<rect width="420" height="6" fill="#0066FF"/>'
+    + '<rect width="8" height="520" fill="#0066FF" fill-opacity="0.16"/>'
+    + '<rect x="42" y="92" width="46" height="5" rx="2.5" fill="#0066FF"/>'
+    + `<g fill="#0D1117" font-family="DM Sans, Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="${fontSize.toFixed(1)}" letter-spacing="-0.4" text-anchor="middle" dominant-baseline="central">${textos}</g>`
+    + `<rect x="42" y="${ruleY}" width="46" height="5" rx="2.5" fill="#0066FF" fill-opacity="0.35"/>`
+    + '</svg>';
+}
+
+/** src para un `<img>` de portada: la imagen propia si existe, si no la portada generada. */
+export function coverSrc(src, book = {}) {
+  if (isCustomCover(src)) return src;
+  const data = book || {};
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(genericCoverSvg(coverTitleFor(data), data.portada))}`;
+}
+
 export function isWeekend(date) {
   const dow = date.getDay();
   return dow === 0 || dow === 6;

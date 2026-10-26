@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Icon } from './Icons';
-import { Alert } from './UI';
+import { Alert, Cover } from './UI';
 import {
   fmt, HOJAS, getBookCombinations, recalcBookSugeridos, careerLabel,
-  ensureBookVariantes, mirrorLegacyColumns, prepareBookForSave, newVarianteId, normalizeVariante
+  ensureBookVariantes, mirrorLegacyColumns, prepareBookForSave, newVarianteId, normalizeVariante,
+  isCustomCover, normalizePortada, COVER_MAX_FILAS
 } from '../lib/utils';
 
 export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
-  const [form, setForm] = useState(() => ensureBookVariantes({ ...book }, config));
+  const [form, setForm] = useState(() => ensureBookVariantes({ ...book, portada: normalizePortada(book.portada) }, config));
 
   /**
    * Normaliza el form, pero conserva los labels de variantes tal como los está
@@ -35,6 +36,10 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
   function handleCareerChange(id) {
     const career = careers.find(c => c.id_carrera === id);
     setFormBook({ ...form, id_carrera: id, carrera: career?.nombre || '' });
+  }
+
+  function updatePortada(patch) {
+    setFormBook({ ...form, portada: normalizePortada({ ...normalizePortada(form.portada), ...patch }) });
   }
 
   function updateVariante(id, patch) {
@@ -116,8 +121,33 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">URL de portada</label>
-                <input className="input-field" value={form.imagen_url} onChange={e => update('imagen_url', e.target.value)} placeholder="https://..." />
+                <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">URL de portada <span className="text-ink-300 font-normal">(opcional)</span></label>
+                <input className="input-field" value={form.imagen_url} onChange={e => update('imagen_url', e.target.value)} placeholder="https://... (vacío = portada automática)" />
+              </div>
+              <div className="md:col-span-2 rounded-xl border border-ink-100 bg-ink-50/60 p-4">
+                <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                  <div>
+                    <div className="font-700 text-xs text-ink-700">Portada automática</div>
+                    <div className="text-[11px] text-ink-400">Se genera sola a partir del título cuando no hay imagen propia.</div>
+                  </div>
+                  {isCustomCover(form.imagen_url) && <span className="badge bg-brand-muted text-brand-dark">Usando imagen propia</span>}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+                  <div>
+                    <label className="text-xs text-ink-500">Título en la portada</label>
+                    <input className="input-field mt-1" value={form.portada.titulo} onChange={e => updatePortada({ titulo: e.target.value })} placeholder={form.titulo || 'Título del libro'} />
+                    <div className="text-[11px] text-ink-400 mt-1">Vacío = usa el título del libro.</div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink-500">Filas</label>
+                    <select className="input-field mt-1" value={form.portada.filas} onChange={e => updatePortada({ filas: Number(e.target.value) })}>
+                      {Array.from({ length: COVER_MAX_FILAS }, (_, i) => i + 1).map(n => (
+                        <option key={n} value={n}>{n} fila{n > 1 ? 's' : ''}</option>
+                      ))}
+                    </select>
+                    <div className="text-[11px] text-ink-400 mt-1">Más filas = letra más grande.</div>
+                  </div>
+                </div>
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Vista previa PDF <span className="text-ink-300 font-normal">(opcional)</span></label>
@@ -222,7 +252,10 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
           </div>
 
           <div className="flex gap-3">
-            <button className="btn-primary flex-1" disabled={!canSave} onClick={() => onSave(prepareBookForSave(form))}>Guardar libro</button>
+            <button className="btn-primary flex-1" disabled={!canSave} onClick={() => onSave(prepareBookForSave({
+              ...form,
+              portada: { ...form.portada, titulo: form.portada.titulo.trim() }
+            }))}>Guardar libro</button>
             <button className="btn-secondary" onClick={onCancel}>Cancelar</button>
           </div>
         </div>
@@ -230,7 +263,9 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
         <div className="space-y-4">
           <div className="font-700 text-xs text-ink-400 uppercase tracking-widest">Vista previa alumno</div>
           <div className="card p-4">
-            <img src={form.imagen_url} alt="" className="cover-img mb-3" />
+            <div className="mb-3">
+              <Cover src={form.imagen_url} alt={form.titulo} portada={form.portada} />
+            </div>
             <span className="badge bg-ink-100 text-ink-500 mb-2">{form.carrera || 'Carrera'}</span>
             <div className="font-700 text-sm text-ink-900 mb-1">{form.titulo || 'Título del libro'}</div>
             <div className="text-xs text-ink-400 mb-1">{form.materia || 'Materia'}</div>

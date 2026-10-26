@@ -1,4 +1,4 @@
-import { fmt } from '../lib/utils';
+import { fmt, coverSrc } from '../lib/utils';
 import { STATE_STYLES, STATE_LABELS } from '../lib/constants';
 
 export function statusBadge(status) {
@@ -19,8 +19,8 @@ export function Spinner() {
   return <div className="w-5 h-5 border-2 border-brand-DEFAULT border-t-transparent rounded-full animate-spin" />;
 }
 
-export function Cover({ src, alt }) {
-  return <img className="cover-img" src={src} alt={alt} />;
+export function Cover({ src, alt, portada }) {
+  return <img className="cover-img" src={coverSrc(src, { titulo: alt, portada })} alt={alt} />;
 }
 
 export function fechaLabel(fecha, offset) {
