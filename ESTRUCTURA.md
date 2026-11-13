@@ -41,9 +41,8 @@ src/
 │       ├── AdminDashboard.jsx     capacidad, pendientes, saldos
 │       ├── AdminCatalogo.jsx      grilla de libros + bulk edit
 │       ├── AdminPedidos.jsx       grilla de pedidos (↑↓, Shift+clic, Avanzar/Retroceder)
-│       ├── AdminPedidoNuevo.jsx   alta manual de pedido
+│       ├── AdminPedidoNuevo.jsx   alta manual: buscador de catálogo + compositor PDF propio (unificó la Calculadora)
 │       ├── AdminParserWA.jsx      parser de mensajes de WhatsApp (Gemini)
-│       ├── AdminCalculadora.jsx   1 PDF por sub-pestaña, precio por página
 │       ├── AdminWA.jsx            avisos de WhatsApp (Hoy / Próximos)
 │       ├── AdminConfig.jsx        config del shop (9 cards plegables)
 │       ├── GlobalAdminDashboard.jsx  panel multi-tenant (admin.imprenta.store)
@@ -96,7 +95,7 @@ Si una de estas cambia, cambia en **un solo lugar**. Toda la app pasa por acá:
 | Cambiar la agenda de turnos de retiro | `AdminConfig.jsx` (editor semanal) + `utils` `DIAS`/`turnoFromHorario`/`buildVentana`/`normalizeVentanas`/`nextHorario` + `getNextSlots` |
 | Tocar el checkout del alumno | `Store.jsx` → `buildOrder` + `buildConfirmationMessage` + `saveOrderToSupabase` |
 | Tocar el tracking del alumno | `Store.jsx` → `fetchOrdersByPhoneFromSupabase` (incluye entregados) + `normalizeOrder` |
-| Cambiar la calculadora (tarifas, páginas) | `AdminCalculadora.jsx` + `utils` `getCategorias`/`calcPdfPaginas`/`calcPdfPrecio`; semilla en `DEFAULT_CALC_CATEGORIAS` |
+| Cambiar el compositor de PDF (tarifas, páginas) | `AdminPedidoNuevo.jsx` (⚙ Tarifas inline) + `utils` `getCategorias`/`calcPdfPaginas`/`calcPdfPrecio`; semilla en `DEFAULT_CALC_CATEGORIAS` |
 | Cambiar encuadernación de un pedido | `utils.calcEncuadernacion` + `AdminPedidoNuevo.jsx` (+ `getEspiralSize`) |
 | Agregar un campo al libro en la DB | `supabase.js` → `LIBRO_COLUMNS` + `cleanBookPayload` + migración SQL |
 | Agregar una query de pedidos/libros | `supabase.js` (filtrar **siempre** por `getShopId()`) |
@@ -115,7 +114,7 @@ Alumno      Store.jsx ──buildOrder/buildConfirmationMessage──▶ supabas
                        └─fetchOrdersByPhoneFromSupabase──────▶ tracking
 
 Admin tabs  AdminPanel.jsx ─▶ admin/Admin* (cada tab se monta solo; el panel NO pasa props de dominio)
-            AdminPanel retiene: pedidoDraft { items, form } + calcFromOrder  ← vínculo Calculadora ⇄ Pedido Nuevo
+            AdminPanel retiene: pedidoDraft { items, form }  ← borrador único de Nuevo pedido
 
 Parser WA   AdminParserWA.jsx ─▶ buildParserCatalogForMode + buildParserPrompt
                               ─▶ fetch(geminiEndpoint)  ─▶ Edge Function ─▶ Gemini
@@ -125,7 +124,7 @@ Avisos WA   AdminWA.jsx ─┬ buildConfirmationMessage (fijo, sin IA)
                          └ generateRecordatorio ─▶ fetch(geminiEndpoint) ─▶ "pedido listo"
                          └ updateOrderInSupabase (flags wa_*_enviado)
 
-Config      AdminConfig.jsx / AdminCalculadora.jsx ─▶ saveConfigToSupabase ─▶ config (JSONB)
+Config      AdminConfig.jsx / AdminPedidoNuevo.jsx (⚙ Tarifas) ─▶ saveConfigToSupabase ─▶ config (JSONB)
                     └ los prompts viajan en config.prompts.{parser_wa, wa_aviso, catalogo_modo}
 ```
 
@@ -166,25 +165,24 @@ por props desde `AdminPanel`. `Store.jsx` y `AdminPanel.jsx` **no comparten esta
 | [`scripts/test-msgs-reales.mjs`](./scripts/test-msgs-reales.mjs) | 33 | `lib/utils.js` | — |
 | [`App.jsx`](./src/App.jsx) | 516 | `comp/AdminLogin.jsx` · `comp/Icons.jsx` · `comp/Store.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` · `lib/utils.js` · `comp/AdminPanel.jsx (lazy)` · `comp/admin/GlobalAdminDashboard.jsx (lazy)` · `comp/admin/PasswordSetup.jsx (lazy)` | `main.jsx` |
 | [`comp/AdminLogin.jsx`](./src/components/AdminLogin.jsx) | 191 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` | `App.jsx` |
-| [`comp/AdminPanel.jsx`](./src/components/AdminPanel.jsx) | 57 | `comp/admin/AdminCalculadora.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminDashboard.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/AdminWA.jsx` · `comp/Icons.jsx` | `App.jsx` (lazy) |
+| [`comp/AdminPanel.jsx`](./src/components/AdminPanel.jsx) | 53 | `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminDashboard.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/AdminWA.jsx` · `comp/Icons.jsx` | `App.jsx` (lazy) |
 | [`comp/BookFormPanel.jsx`](./src/components/BookFormPanel.jsx) | 286 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/utils.js` | `comp/admin/AdminCatalogo.jsx` |
 | [`comp/Icons.jsx`](./src/components/Icons.jsx) | 30 | — | `App.jsx` · `comp/AdminLogin.jsx` · `comp/AdminPanel.jsx` · `comp/BookFormPanel.jsx` · `comp/Store.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/GlobalAdminDashboard.jsx` · `comp/admin/PasswordSetup.jsx` |
 | [`comp/Store.jsx`](./src/components/Store.jsx) | 1554 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `App.jsx` |
 | [`comp/UI.jsx`](./src/components/UI.jsx) | 53 | `lib/constants.js` · `lib/utils.js` | `App.jsx` · `comp/AdminLogin.jsx` · `comp/BookFormPanel.jsx` · `comp/Store.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/GlobalAdminDashboard.jsx` · `comp/admin/PasswordSetup.jsx` |
-| [`comp/admin/AdminCalculadora.jsx`](./src/components/admin/AdminCalculadora.jsx) | 338 | `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminCatalogo.jsx`](./src/components/admin/AdminCatalogo.jsx) | 503 | `comp/BookFormPanel.jsx` · `comp/Icons.jsx` · `lib/shop.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminConfig.jsx`](./src/components/admin/AdminConfig.jsx) | 696 | `comp/Icons.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminDashboard.jsx`](./src/components/admin/AdminDashboard.jsx) | 221 | `lib/constants.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminParserWA.jsx`](./src/components/admin/AdminParserWA.jsx) | 619 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
-| [`comp/admin/AdminPedidoNuevo.jsx`](./src/components/admin/AdminPedidoNuevo.jsx) | 370 | `comp/Icons.jsx` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
+| [`comp/admin/AdminPedidoNuevo.jsx`](./src/components/admin/AdminPedidoNuevo.jsx) | 626 | `comp/Icons.jsx` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminPedidos.jsx`](./src/components/admin/AdminPedidos.jsx) | 1057 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminWA.jsx`](./src/components/admin/AdminWA.jsx) | 360 | `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/GlobalAdminDashboard.jsx`](./src/components/admin/GlobalAdminDashboard.jsx) | 308 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/supabase.js` | `App.jsx` (lazy) |
 | [`comp/admin/PasswordSetup.jsx`](./src/components/admin/PasswordSetup.jsx) | 68 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` | `App.jsx` (lazy) |
-| [`lib/constants.js`](./src/lib/constants.js) | 228 | — | `scripts/smoke-variantes.mjs` · `App.jsx` · `comp/AdminLogin.jsx` · `comp/Store.jsx` · `comp/UI.jsx` · `comp/admin/AdminCalculadora.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminDashboard.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/PasswordSetup.jsx` · `lib/supabase.js` · `lib/utils.js` |
+| [`lib/constants.js`](./src/lib/constants.js) | 228 | — | `scripts/smoke-variantes.mjs` · `App.jsx` · `comp/AdminLogin.jsx` · `comp/Store.jsx` · `comp/UI.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminDashboard.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/PasswordSetup.jsx` · `lib/supabase.js` · `lib/utils.js` |
 | [`lib/shop.js`](./src/lib/shop.js) | 20 | — | `App.jsx` · `comp/AdminLogin.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/PasswordSetup.jsx` · `lib/supabase.js` |
-| [`lib/supabase.js`](./src/lib/supabase.js) | 597 | `lib/constants.js` · `lib/shop.js` · `lib/utils.js` | `App.jsx` · `comp/AdminLogin.jsx` · `comp/Store.jsx` · `comp/admin/AdminCalculadora.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/AdminWA.jsx` · `comp/admin/GlobalAdminDashboard.jsx` · `comp/admin/PasswordSetup.jsx` |
-| [`lib/utils.js`](./src/lib/utils.js) | 1066 | `lib/constants.js` | `scripts/smoke-variantes.mjs` · `scripts/test-msgs-reales.mjs` · `App.jsx` · `comp/BookFormPanel.jsx` · `comp/Store.jsx` · `comp/UI.jsx` · `comp/admin/AdminCalculadora.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminDashboard.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/AdminWA.jsx` · `lib/supabase.js` |
+| [`lib/supabase.js`](./src/lib/supabase.js) | 597 | `lib/constants.js` · `lib/shop.js` · `lib/utils.js` | `App.jsx` · `comp/AdminLogin.jsx` · `comp/Store.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/AdminWA.jsx` · `comp/admin/GlobalAdminDashboard.jsx` · `comp/admin/PasswordSetup.jsx` |
+| [`lib/utils.js`](./src/lib/utils.js) | 1066 | `lib/constants.js` | `scripts/smoke-variantes.mjs` · `scripts/test-msgs-reales.mjs` · `App.jsx` · `comp/BookFormPanel.jsx` · `comp/Store.jsx` · `comp/UI.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminDashboard.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/AdminWA.jsx` · `lib/supabase.js` |
 | [`main.jsx`](./src/main.jsx) | 11 | `App.jsx` · `index.css` | — |
 | [`supabase/functions/gemini/index.ts`](./supabase/functions/gemini/index.ts) | 276 | — | — |
 
@@ -346,7 +344,7 @@ Ir directo a la definición: `archivo#Línea`.
 - `AdminLogin` — [`comp/AdminLogin.jsx`](./src/components/AdminLogin.jsx#L8)
 
 **[`comp/AdminPanel.jsx`](./src/components/AdminPanel.jsx)** · 1 exports
-- `AdminPanel` — [`comp/AdminPanel.jsx`](./src/components/AdminPanel.jsx#L12)
+- `AdminPanel` — [`comp/AdminPanel.jsx`](./src/components/AdminPanel.jsx#L11)
 
 **[`comp/BookFormPanel.jsx`](./src/components/BookFormPanel.jsx)** · 1 exports
 - `BookFormPanel` — [`comp/BookFormPanel.jsx`](./src/components/BookFormPanel.jsx#L10)
@@ -356,9 +354,6 @@ Ir directo a la definición: `archivo#Línea`.
 
 **[`comp/Store.jsx`](./src/components/Store.jsx)** · 1 exports
 - `Store` — [`comp/Store.jsx`](./src/components/Store.jsx#L1487)
-
-**[`comp/admin/AdminCalculadora.jsx`](./src/components/admin/AdminCalculadora.jsx)** · 1 exports
-- `AdminCalculadora` — [`comp/admin/AdminCalculadora.jsx`](./src/components/admin/AdminCalculadora.jsx#L17)
 
 **[`comp/admin/AdminCatalogo.jsx`](./src/components/admin/AdminCatalogo.jsx)** · 1 exports
 - `AdminCatalogo` — [`comp/admin/AdminCatalogo.jsx`](./src/components/admin/AdminCatalogo.jsx#L12)
@@ -373,7 +368,7 @@ Ir directo a la definición: `archivo#Línea`.
 - `AdminParserWA` — [`comp/admin/AdminParserWA.jsx`](./src/components/admin/AdminParserWA.jsx#L8)
 
 **[`comp/admin/AdminPedidoNuevo.jsx`](./src/components/admin/AdminPedidoNuevo.jsx)** · 1 exports
-- `AdminPedidoNuevo` — [`comp/admin/AdminPedidoNuevo.jsx`](./src/components/admin/AdminPedidoNuevo.jsx#L24)
+- `AdminPedidoNuevo` — [`comp/admin/AdminPedidoNuevo.jsx`](./src/components/admin/AdminPedidoNuevo.jsx#L30)
 
 **[`comp/admin/AdminPedidos.jsx`](./src/components/admin/AdminPedidos.jsx)** · 1 exports
 - `AdminPedidos` — [`comp/admin/AdminPedidos.jsx`](./src/components/admin/AdminPedidos.jsx#L24)

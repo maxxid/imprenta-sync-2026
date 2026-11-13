@@ -43,8 +43,7 @@ imprenta-sync-2026/
             ├── AdminCatalogo.jsx   # Grilla de libros con bulk edit
             ├── AdminConfig.jsx     # Configuración (cards plegables): precios, calculadora, carreras, feriados
             ├── AdminParserWA.jsx   # Parser de mensajes WhatsApp
-            ├── AdminCalculadora.jsx # Tab Calculadora: 1 sub-pestanya por PDF, precio por página
-            ├── AdminPedidoNuevo.jsx # Tab Pedido Nuevo: buscador + formulario + creación manual
+            ├── AdminPedidoNuevo.jsx # Tab Nuevo pedido: catálogo + compositor PDF inline + formulario
             └── AdminWA.jsx         # Tab WhatsApp: confirmación de carga + recordatorio día del retiro
 ```
 
@@ -90,24 +89,30 @@ Admin → Dashboard/Pedidos → Supabase ← Estado pedidos
 
 `AdminPanel.jsx` arma el array de tabs en este orden (el `id` es el que se pasa a `setTab`):
 
-**Dashboard → Catálogo → Pedidos → Pedido Nuevo → Parser WA → Calculadora → Avisos WA → Config**
+**Dashboard → Catálogo → Pedidos → Nuevo pedido → Parser WA → Avisos WA → Config**
 
 - El tab de avisos de WhatsApp se llama **Avisos WA** (id `whatsapp`, componente `AdminWA`); en textos y comentarios se lo referencia por ese nombre (antes "tab WhatsApp").
+- El tab de alta manual se llama **Nuevo pedido** (id `pedido-nuevo`, componente `AdminPedidoNuevo`). **Unifica la vieja Calculadora**: catálogo y PDF propio se cargan en el mismo lugar (sin saltos de tab).
 - Cambiar el orden solo implica reordenar ese array: los ids y los `tab === '...'` del ruteo no cambian.
 
 **Tab Config (`AdminConfig.jsx`) — cards plegables:** las 9 cards (Local, Producción, Precios, Calculadora, Espirales, Pagos, Feriados, Gemini, Turnos) usan el componente `CardAjuste` con botón **Minimizar / Mostrar** en la cabecera. **Arrancan todas minimizadas** (decisión del usuario; `useState` con un `Set` de ids de `SECCIONES`) y los chips del menú lateral (`irA`) **expanden la card destino** antes del scroll. La cabecera conserva título + descripción (+ badge `meta`: "⚠ Falta cargar" en Local si `local` está vacío, "N registrados" en Feriados) — así el aviso del local se ve aunque la card esté plegada.
 
-## Calculadora + Pedido Nuevo (2 tabs vinculados)
+## Nuevo pedido (tab único: catálogo + PDF propio)
 
-Dos pestañas del panel vinculadas en los 2 sentidos (estado compartido `pedidoDraft { items, form }` + `calcFromOrder` en `AdminPanel.jsx`, sobrevive el cambio de tab):
+Un solo tab (`admin/AdminPedidoNuevo.jsx`) que absorbió la vieja Calculadora. Antes eran **2 tabs vinculados** (`pedidoDraft` + `calcFromOrder`) y había que saltar de uno al otro; ahora ambos flujos conviven en la misma pantalla y el borrador (`pedidoDraft { items, form }`) vive en `AdminPanel.jsx` para sobrevivir el cambio de tab.
 
-1. **Calculadora** (`admin/AdminCalculadora.jsx`) — sub-pestañas = **1 PDF por archivo**. Carga **páginas por categoría** y cobra **POR PÁGINA** según el contenido. Botón **⚙ Ajustes** (header) → panel chico con los costos y variables de la pestaña: tarifas por categoría (agregar/quitar), **Redondear a par**, **Anillado ($)** y **Anillado desde (hojas)** — borrador local + `saveConfigToSupabase` (mismo camino que "Dejar guardado"; ✕/Cancelar descarta). Botones: **Dejar guardado** (`config.calc_borrador`, JSONB → sin migración) y **Cargar los ✓ a Pedido Nuevo** (crea ítems con `origen: 'calculadora'`, `es_unico: true`).
-2. **Pedido Nuevo** (`admin/AdminPedidoNuevo.jsx`) — **buscador del catálogo** (clic = ítem con su precio vía `calcPrecioItem`), botón **Calcular PDF** (salta a Calculadora y vuelve con el resultado), formulario (nombre, WhatsApp, fecha/hora de retiro, **monto pagado**: input único —vacío o 0 = **nulo**, acotado a ≤ total, botón **Total** autocompleta—, encuadernación) y **Crear pedido** → `buildOrder` + `saveOrderToSupabase` (queda en Pedidos + confirmación pendiente en WhatsApp). Cada ítem de catálogo muestra **chips de variante bajo "Comentario"** (`combosDeItem`/`setVarianteItem` → recalcula precio, hojas y tipo; antes elegía `combos[0]` sin poder cambiarlo). Sin agenda ni control de capacidad: fecha/hora a mano; carrera vacía (retiro en local).
+- **Buscador del catálogo** (foco inicial, `autoFocus`): **↑↓** mueve la selección, **Enter** agrega el resultado resaltado, **Esc** limpia. Al agregar, el foco vuelve al buscador. El ítem entra con su precio vía `calcPrecioItem`.
+- **Compositor de PDF propio inline** (antes sub-pestañas = 1 PDF por archivo): nombre opcional + **páginas por categoría** (cobra **POR PÁGINA**) con subtotal en vivo. **Enter** agrega el PDF como ítem (`origen: 'calculadora'`, `es_unico: true`, hojas = `ceil(páginas/2)`) y deja el foco listo para otro. Se pueden cargar varios PDFs, cada uno como ítem propio.
+- **⚙ Tarifas**: panel plegable dentro del compositor para editar tarifas por categoría y **Redondear a par** (`config.calculadora`), persiste con `saveConfigToSupabase` (mismo camino que Ajustes → Calculadora, que sigue existiendo).
+- **Chips de variante** por ítem de catálogo (`combosPorItem` memoizado por `items`/`books`/`config`; `setVarianteItem` recalcula formato, precio, hojas y tipo).
+- **Formulario** (nombre, WhatsApp, fecha/hora de retiro, **monto pagado** —vacío o 0 = nulo, acotado a ≤ total, botón **Total** autocompleta—, encuadernación). **Enter** en un campo crea el pedido; **Ctrl+Enter** crea desde cualquier lado; **`/`** enfoca el buscador. Validaciones como texto inline (no `alert`).
+- **Crear pedido** → `buildOrder` + `saveOrderToSupabase` (queda en Pedidos + confirmación pendiente en Avisos WA). Sin agenda ni control de capacidad: fecha/hora a mano; carrera vacía (retiro en local).
+- **Se eliminó** `admin/AdminCalculadora.jsx`, el tab `calculadora`, el estado `calcFromOrder` y la persistencia `config.calc_borrador` (el borrador ahora es `pedidoDraft`, en memoria y a prueba de cambio de tab).
 
 **Precios (decidido con el usuario):**
-- **Página en blanco por impar: NO se cobra**. Toggle opcional en **Ajustes → Calculadora** ("Redondear a par" → `calculadora.redondear_impar`, **default apagado**) que suma 1 página a la tarifa más barata.
-- **Categorías/tarifas editables** en Ajustes → Calculadora (semilla `DEFAULT_CALC_CATEGORIAS`: *Blanco y negro 35 · Poco color 40 · Color 60*).
-- **Encuadernación a nivel PEDIDO** en Pedido Nuevo: *Sin / Cada PDF por su lado / Todos juntos en una*; se cobra como **línea de ítem** y solo sobre `origen === 'calculadora'` (los del catálogo ya la traen en el precio de la variante).
+- **Página en blanco por impar: NO se cobra**. Toggle opcional en **Ajustes → Calculadora** y en **⚙ Tarifas** del tab Nuevo pedido ("Redondear a par" → `calculadora.redondear_impar`, **default apagado**) que suma 1 página a la tarifa más barata.
+- **Categorías/tarifas editables** en Ajustes → Calculadora o en ⚙ Tarifas (semilla `DEFAULT_CALC_CATEGORIAS`: *Blanco y negro 35 · Poco color 40 · Color 60*).
+- **Encuadernación a nivel PEDIDO**: *Sin / Cada PDF por su lado / Todos juntos en una*; se cobra como **línea de ítem** y solo sobre `origen === 'calculadora'` (los del catálogo ya la traen en el precio de la variante).
 
 ## Home / Catálogo de la tienda (Store.jsx · `HomeScreen`)
 
