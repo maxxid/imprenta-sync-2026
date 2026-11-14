@@ -163,8 +163,8 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
                 <div className="font-700 text-sm text-ink-800">Variantes de impresión</div>
                 <div className="text-xs text-ink-400">Título libre, papel, pph y precio por opción</div>
               </div>
-              <div className="flex gap-2">
-                <button type="button" className="btn-ghost text-xs" onClick={recalc}><Icon.Zap /> Recalcular A4/A5 B/N</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn-ghost text-xs" onClick={recalc}><Icon.Zap /> Recalcular <span className="hidden sm:inline">A4/A5 B/N</span></button>
                 <button type="button" className="btn-secondary text-xs" onClick={addVariante}>+ Agregar variante</button>
               </div>
             </div>
@@ -191,14 +191,14 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
                       </button>
                       <button
                         type="button"
-                        className="text-danger text-lg font-700 px-1 disabled:opacity-30"
+                        className="text-danger text-lg font-700 px-2 py-1 min-h-[36px] min-w-[36px] inline-flex items-center justify-center disabled:opacity-30"
                         disabled={form.variantes.length <= 1}
                         onClick={() => removeVariante(v.id)}
                         title="Eliminar variante"
                       >×</button>
                     </div>
                     {v.habilitado && (
-                      <div className="grid gap-3 sm:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div>
                           <label className="text-xs text-ink-500">Pág. por hoja</label>
                           <select
@@ -260,7 +260,7 @@ export function BookFormPanel({ book, config, careers, onSave, onCancel }) {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="hidden xl:block space-y-4">
           <div className="font-700 text-xs text-ink-400 uppercase tracking-widest">Vista previa alumno</div>
           <div className="card p-4">
             <div className="mb-3">

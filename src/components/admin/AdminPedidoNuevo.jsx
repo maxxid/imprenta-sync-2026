@@ -332,16 +332,16 @@ export function AdminPedidoNuevo({ config, setConfig, books, setOrders, pedidoDr
       <div className="flex items-end gap-3 flex-wrap mb-4">
         <div>
           <div className="text-lg font-700 text-ink-800 leading-tight">Nuevo pedido</div>
-          <div className="text-xs text-ink-400">
+          <div className="hidden sm:block text-xs text-ink-400">
             <span className="font-700">Tab</span> para moverte · <span className="font-700">Enter</span> agrega ítems / crea · <span className="font-700">↑↓</span> en el buscador · <span className="font-700">Ctrl+Enter</span> crea
           </div>
         </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-wide text-ink-400 font-700">Total</div>
-            <div className="text-xl font-700 text-brand-DEFAULT leading-none">{fmt(totalFinal)}</div>
+            <div className="text-lg sm:text-xl font-700 text-brand-DEFAULT leading-none">{fmt(totalFinal)}</div>
           </div>
-          <button onClick={crearPedido} disabled={creando} className="btn-primary px-5 py-2.5">
+          <button onClick={crearPedido} disabled={creando} className="btn-primary px-4 sm:px-5 py-2.5">
             {creando ? 'Creando…' : 'Crear pedido'}
           </button>
         </div>
@@ -407,7 +407,7 @@ export function AdminPedidoNuevo({ config, setConfig, books, setOrders, pedidoDr
             </div>
 
             <div className="flex items-end gap-2 flex-wrap" onKeyDown={onPdfKeyDown}>
-              <div className="flex-1 min-w-[170px]">
+              <div className="flex-1 min-w-0 sm:min-w-[170px]">
                 <label className="text-[10px] font-700 text-ink-400 uppercase block mb-1">Nombre (opcional)</label>
                 <input
                   ref={pdfNameRef}
@@ -418,7 +418,7 @@ export function AdminPedidoNuevo({ config, setConfig, books, setOrders, pedidoDr
                 />
               </div>
               {categorias.map(cat => (
-                <div key={cat.id} className="w-[96px]">
+                <div key={cat.id} className="w-[80px] sm:w-[96px]">
                   <label className="text-[10px] font-700 text-ink-400 uppercase block mb-1 truncate" title={`${cat.nombre} — ${fmt(Number(cat.precio) || 0)} /pág`}>
                     {cat.nombre}
                   </label>
@@ -502,7 +502,7 @@ export function AdminPedidoNuevo({ config, setConfig, books, setOrders, pedidoDr
                   const combos = combosPorItem[item.id] || [];
                   return (
                     <div key={item.id} className="flex items-center gap-3 p-2 rounded-xl bg-ink-50 flex-wrap">
-                      <div className="flex-1 min-w-[160px]">
+                      <div className="flex-1 min-w-0 sm:min-w-[160px]">
                         <div className="text-sm font-600 text-ink-800 truncate">
                           {item.titulo}
                           {item.origen === 'calculadora' && <span className="ml-2 badge bg-brand-muted text-brand-DEFAULT align-middle">PDF</span>}
@@ -512,7 +512,7 @@ export function AdminPedidoNuevo({ config, setConfig, books, setOrders, pedidoDr
                           {item.comentario ? ` · ${item.comentario}` : ''}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-1 w-[180px]">
+                      <div className="flex flex-col gap-1 w-full sm:w-[180px]">
                         <input
                           className="input-field text-xs py-1"
                           placeholder="Comentario (opcional)"
@@ -536,8 +536,8 @@ export function AdminPedidoNuevo({ config, setConfig, books, setOrders, pedidoDr
                           </div>
                         )}
                       </div>
-                      <div className="text-sm font-700 text-ink-700 w-[90px] text-right">{fmt(Number(item.precio) || 0)}</div>
-                      <button onClick={() => quitarItem(item.id)} className="text-ink-400 hover:text-danger text-lg leading-none" title="Quitar">✕</button>
+                      <div className="text-sm font-700 text-ink-700 w-full sm:w-[90px] text-left sm:text-right">{fmt(Number(item.precio) || 0)}</div>
+                      <button onClick={() => quitarItem(item.id)} className="text-ink-400 hover:text-danger text-lg leading-none p-1.5" title="Quitar">✕</button>
                     </div>
                   );
                 })}
@@ -570,7 +570,7 @@ export function AdminPedidoNuevo({ config, setConfig, books, setOrders, pedidoDr
             <input className="input-field" value={form.whatsapp} onChange={e => setForm({ whatsapp: e.target.value })} placeholder="3885111222" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1">Fecha retiro</label>
               <input className="input-field" type="date" value={form.fecha} onChange={e => setForm({ fecha: e.target.value })} />

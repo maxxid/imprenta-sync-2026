@@ -394,14 +394,14 @@ export function AdminParserWA({ books, config, setOrders }) {
         ) : (
           <>
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between items-center"><span className="text-ink-500">Nombre</span><input className="input-field text-xs py-1.5 w-[180px] text-right font-700" value={parserPreview.nombre || ''} onChange={e => updateParserField('nombre', e.target.value)} /></div>
-              <div className="flex justify-between items-center"><span className="text-ink-500">Telefono</span><input className="input-field text-xs py-1.5 w-[160px] text-right font-700" value={parserPreview.whatsapp || ''} onChange={e => updateParserField('whatsapp', e.target.value)} placeholder="Sin +54" /></div>
+              <div className="flex justify-between items-center"><span className="text-ink-500">Nombre</span><input className="input-field text-xs py-1.5 w-[120px] sm:w-[180px] text-right font-700" value={parserPreview.nombre || ''} onChange={e => updateParserField('nombre', e.target.value)} /></div>
+              <div className="flex justify-between items-center"><span className="text-ink-500">Telefono</span><input className="input-field text-xs py-1.5 w-[120px] sm:w-[160px] text-right font-700" value={parserPreview.whatsapp || ''} onChange={e => updateParserField('whatsapp', e.target.value)} placeholder="Sin +54" /></div>
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-ink-500 text-xs flex-1">Libros{filtroLibros ? ` · ${booksVisibles.length} de ${books.length}` : ''}</span>
                   <div className="relative">
                     <input
-                      className="input-field text-xs py-1 pl-6 pr-6 w-[190px]"
+                      className="input-field text-xs py-1 pl-6 pr-6 w-[130px] sm:w-[190px]"
                       value={filtroLibros}
                       onChange={e => setFiltroLibros(e.target.value)}
                       placeholder="Filtrar libros…"
@@ -485,7 +485,7 @@ export function AdminParserWA({ books, config, setOrders }) {
                           </select>
                           {(book.combosDisponibles || []).length > 1 ? (
                             <select
-                              className="input-field text-xs py-1.5 w-[140px]"
+                              className="input-field text-xs py-1.5 w-[110px] sm:w-[140px]"
                               value={book.varianteId || book.combosDisponibles[0]?.key || ''}
                               onChange={e => updateParserLibro(idx, book.id, e.target.value)}
                             >
@@ -550,13 +550,13 @@ export function AdminParserWA({ books, config, setOrders }) {
                   </div>
                 );
               })()}
-              <div className="flex justify-between items-center"><span className="text-ink-500">Seña / pago</span><input className="input-field text-xs py-1.5 w-[130px] text-right font-700" type="number" value={parserPreview.montoPagado || 0} onChange={e => updateParserField('montoPagado', Number(e.target.value) || 0)} /></div>
+              <div className="flex justify-between items-center"><span className="text-ink-500">Seña / pago</span><input className="input-field text-xs py-1.5 w-[100px] sm:w-[130px] text-right font-700" type="number" value={parserPreview.montoPagado || 0} onChange={e => updateParserField('montoPagado', Number(e.target.value) || 0)} /></div>
               <div className="flex justify-between"><span className="text-ink-500">Saldo</span><span className="font-700">{fmt(parserPreview.saldo)}</span></div>
               <div className="flex justify-between"><span className="text-ink-500">Total</span><span className="font-700">{fmt(parserPreview.total)}</span></div>
               <div className="flex justify-between items-center"><span className="text-ink-500">Color</span><label className="switch-sm"><input type="checkbox" checked={parserPreview.color} onChange={e => updateParserField('color', e.target.checked)} /><span /></label></div>
               <div className="flex justify-between items-center"><span className="text-ink-500">Express</span><label className="switch-sm"><input type="checkbox" checked={parserPreview.express} onChange={e => updateParserField('express', e.target.checked)} /><span /></label></div>
-              <div className="flex justify-between items-center"><span className="text-ink-500">Fecha entrega</span><input className="input-field text-xs py-1.5 w-[150px] text-right font-700" type="date" value={parserPreview.entrega?.fecha || ''} onChange={e => updateParserField('entregaFecha', e.target.value)} /></div>
-              <div className="flex justify-between items-center"><span className="text-ink-500">Hora retiro</span><input className="input-field text-xs py-1.5 w-[150px] text-right font-700" type="time" value={tieneHora(parserPreview.entrega?.hora) ? String(parserPreview.entrega.hora).trim() : ''} onChange={e => updateParserField('entregaHora', e.target.value)} title="Hora pactada de retiro (vacío = sin hora)" /></div>
+              <div className="flex justify-between items-center"><span className="text-ink-500">Fecha entrega</span><input className="input-field text-xs py-1.5 w-[120px] sm:w-[150px] text-right font-700" type="date" value={parserPreview.entrega?.fecha || ''} onChange={e => updateParserField('entregaFecha', e.target.value)} /></div>
+              <div className="flex justify-between items-center"><span className="text-ink-500">Hora retiro</span><input className="input-field text-xs py-1.5 w-[120px] sm:w-[150px] text-right font-700" type="time" value={tieneHora(parserPreview.entrega?.hora) ? String(parserPreview.entrega.hora).trim() : ''} onChange={e => updateParserField('entregaHora', e.target.value)} title="Hora pactada de retiro (vacío = sin hora)" /></div>
               {!tieneHora(parserPreview.entrega?.hora) && (
                 <div className="text-[10px] text-ink-400 -mt-1">No se detectó hora en el mensaje · vacío = sin hora; cargala acá si ya la sabés.</div>
               )}

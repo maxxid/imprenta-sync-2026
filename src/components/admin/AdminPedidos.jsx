@@ -465,8 +465,8 @@ export function AdminPedidos({ orders, setOrders, config }) {
   return (
     <div className="space-y-5">
       <div className="card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-sm font-700 text-ink-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2 text-sm font-700 text-ink-800 min-w-0">
             <Icon.Filter /> Multi-filtros
             {excludedStates.length > 0 && <span className="badge bg-accent-muted text-accent text-xs ml-2">Excluyendo {excludedStates.length}</span>}
             {!filtersVisible && filtrosActivos && <span className="badge bg-accent-muted text-accent text-xs ml-2">Filtros activos</span>}
@@ -595,14 +595,14 @@ export function AdminPedidos({ orders, setOrders, config }) {
                 const destino = ids[e.key === 'ArrowDown' ? 0 : ids.length - 1];
                 if (destino) refsFila.current[destino]?.focus();
               }}
-              className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer"
+              className="w-5 h-5 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer"
             />
             <span className="text-xs text-ink-500">Seleccionar visibles ({filtered.length})</span>
           </label>
           {seleccion.size > 0 && <span className="badge bg-brand-muted text-brand-DEFAULT text-xs">{seleccion.size} seleccionadas</span>}
-          <span className="text-xs text-ink-400">Clic en la fila = seleccionar · ↑↓ moverse · Shift+↑↓ o Shift+clic = rango</span>
+          <span className="hidden sm:inline text-xs text-ink-400">Clic en la fila = seleccionar · ↑↓ moverse · Shift+↑↓ o Shift+clic = rango</span>
           {seleccion.size > 0 && (
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2 w-full sm:w-auto flex-wrap">
               <button
                 className="btn-secondary text-xs px-3 py-1.5"
                 disabled={bulkSaving}
@@ -632,7 +632,7 @@ export function AdminPedidos({ orders, setOrders, config }) {
       )}
 
       <div className="table-shell" onMouseMove={handleResizeMove} onMouseUp={handleResizeEnd} onMouseLeave={handleResizeEnd}>
-        <table>
+        <table className="min-w-[920px]">
           <thead>
             <tr>
               {columns.map((col, idx) => {
@@ -898,7 +898,7 @@ export function AdminPedidos({ orders, setOrders, config }) {
                         {editingOrder === order.id ? (
                           <>
                             <button
-                              className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-all ${savingOrder === order.id ? 'bg-brand-muted text-brand-DEFAULT' : 'bg-ok-muted text-ok-DEFAULT hover:bg-ok-muted/80'}`}
+                              className={`inline-flex items-center justify-center w-10 h-10 lg:w-9 lg:h-9 rounded-full transition-all ${savingOrder === order.id ? 'bg-brand-muted text-brand-DEFAULT' : 'bg-ok-muted text-ok-DEFAULT hover:bg-ok-muted/80'}`}
                               onClick={() => saveEditedOrder(order.id)}
                               disabled={savingOrder !== null}
                               title="Guardar cambios"
@@ -910,7 +910,7 @@ export function AdminPedidos({ orders, setOrders, config }) {
                               )}
                             </button>
                             <button
-                              className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-all ${savingOrder === order.id ? 'bg-red-50/50 text-red-400' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}
+                              className={`inline-flex items-center justify-center w-10 h-10 lg:w-9 lg:h-9 rounded-full transition-all ${savingOrder === order.id ? 'bg-red-50/50 text-red-400' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}
                               onClick={() => deleteOrder(order.id)}
                               disabled={savingOrder !== null}
                               title="Eliminar pedido"
@@ -922,7 +922,7 @@ export function AdminPedidos({ orders, setOrders, config }) {
                               )}
                             </button>
                             <button
-                              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-ink-100 text-ink-500 hover:bg-ink-200 transition-colors"
+                              className="inline-flex items-center justify-center w-10 h-10 lg:w-9 lg:h-9 rounded-full bg-ink-100 text-ink-500 hover:bg-ink-200 transition-colors"
                               onClick={() => setEditingOrder(null)}
                               title="Cancelar edición"
                             >
@@ -933,7 +933,7 @@ export function AdminPedidos({ orders, setOrders, config }) {
                           <>
                             {itemIndex === 0 && order.metodo_pago === 'transferencia' && itemEstado === 'Pendiente de pago' && (
                               <button
-                                className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-all ${savingOrder === order.id ? 'bg-blue-50/50 text-blue-400' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                                className={`inline-flex items-center justify-center w-10 h-10 lg:w-9 lg:h-9 rounded-full transition-all ${savingOrder === order.id ? 'bg-blue-50/50 text-blue-400' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                                 disabled={savingOrder !== null}
                                 onClick={async () => {
                                   if (savingOrder) return;
@@ -951,14 +951,14 @@ export function AdminPedidos({ orders, setOrders, config }) {
                               </button>
                             )}
                             <button
-                              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-ink-100 text-ink-500 hover:bg-ink-200 transition-colors"
+                              className="inline-flex items-center justify-center w-10 h-10 lg:w-9 lg:h-9 rounded-full bg-ink-100 text-ink-500 hover:bg-ink-200 transition-colors"
                               onClick={() => setEditingOrder(order.id)}
                               title="Editar pedido"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                             <a
-                              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#25D366] text-white hover:bg-[#128C7E] transition-colors"
+                              className="inline-flex items-center justify-center w-10 h-10 lg:w-9 lg:h-9 rounded-full bg-[#25D366] text-white hover:bg-[#128C7E] transition-colors"
                               href={`https://wa.me/54${order.whatsapp}?text=${encodeURIComponent(buildWhatsAppMessage(order))}`}
                               target="_blank"
                               rel="noreferrer"
@@ -978,7 +978,7 @@ export function AdminPedidos({ orders, setOrders, config }) {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="8" className="text-center text-ink-400 py-10">No hay pedidos que coincidan con los filtros actuales.</td>
+                <td colSpan={columns.length} className="text-center text-ink-400 py-10">No hay pedidos que coincidan con los filtros actuales.</td>
               </tr>
             )}
           </tbody>
@@ -996,7 +996,7 @@ export function AdminPedidos({ orders, setOrders, config }) {
             </div>
           )}
           <button
-            className="ml-auto inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-ink-100 text-ink-400 transition-colors"
+            className="ml-auto inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-ink-100 text-ink-400 transition-colors"
             onClick={() => setSummaryVisible(v => !v)}
             title={summaryVisible ? 'Ocultar resumen' : 'Mostrar resumen'}
           >
@@ -1006,8 +1006,8 @@ export function AdminPedidos({ orders, setOrders, config }) {
           </button>
         </div>
         {summaryVisible && (
-          <div className="overflow-x-auto flex justify-center">
-            <table className="text-sm">
+          <div className="overflow-x-auto">
+            <table className="text-sm min-w-[420px]">
               <thead>
                 <tr className="border-b border-ink-100">
                   <th className="text-left py-1.5 pr-3 text-xs text-ink-400 font-600">Estado</th>

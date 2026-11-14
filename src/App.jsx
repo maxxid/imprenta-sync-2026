@@ -47,6 +47,14 @@ export default function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
+  // Bloquear el scroll del body mientras el drawer móvil está abierto.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [sidebarOpen]);
+
   useEffect(() => {
     async function init() {
       const slug = getSubdomainSlug();
@@ -234,11 +242,11 @@ export default function App() {
   }, [checkoutForm, loading]);
 
   const navItems = [
-    { id: 'home', label: 'Catalogo', icon: <Icon.Book /> },
-    { id: 'checkout', label: 'Mi pedido', icon: <Icon.Cart />, badge: carrito.length },
-    { id: 'tracking', label: 'Segui tu pedido', icon: <Icon.Bell /> },
-    { id: 'ayuda', label: 'Ayuda', icon: <Icon.Help /> },
-    { id: 'admin', label: 'Administracion', icon: <Icon.Settings /> }
+    { id: 'home', label: 'Catalogo', short: 'Catálogo', icon: <Icon.Book /> },
+    { id: 'checkout', label: 'Mi pedido', short: 'Pedido', icon: <Icon.Cart />, badge: carrito.length },
+    { id: 'tracking', label: 'Segui tu pedido', short: 'Seguí', icon: <Icon.Bell /> },
+    { id: 'ayuda', label: 'Ayuda', short: 'Ayuda', icon: <Icon.Help /> },
+    { id: 'admin', label: 'Administracion', short: 'Admin', icon: <Icon.Settings /> }
   ];
   const isAdmin = screen === 'admin';
 
@@ -249,7 +257,7 @@ export default function App() {
   if (isGlobalAdmin) {
     if (!adminAuthed) {
       return (
-        <div className="min-h-screen bg-ink-50 font-sans text-ink">
+        <div className="min-h-dvh bg-ink-50 font-sans text-ink">
           <AdminLogin config={config} initialError={loginError} onSuccess={v => {
             setLoginError('');
             const saved = loadLocal(STORAGE.admin, null);
@@ -266,7 +274,7 @@ export default function App() {
       );
     }
     return (
-      <div className="min-h-screen bg-ink-50 font-sans text-ink">
+      <div className="min-h-dvh bg-ink-50 font-sans text-ink">
         <Suspense fallback={<div className="flex items-center justify-center py-20"><Spinner /></div>}>
           <GlobalAdminDashboard
             config={config}
@@ -283,7 +291,7 @@ export default function App() {
 
   if (isRootDomain) {
     return (
-      <div className="min-h-screen bg-ink-50 font-sans text-ink">
+      <div className="min-h-dvh bg-ink-50 font-sans text-ink">
         {loginError && (
           <div className="bg-red-50 border-b border-red-200 text-red-700 text-sm text-center py-3 px-4">
             {loginError}
@@ -297,7 +305,7 @@ export default function App() {
               <span className="font-800 text-ink-900 dark:text-white text-base">Imprenta <span className="text-brand-DEFAULT">Sync 2026</span></span>
             </div>
             <div className="flex items-center gap-3">
-              <a href="https://demo.imprenta.store" className="btn-secondary text-sm font-700 px-4 py-2" target="_blank" rel="noreferrer">
+              <a href="https://demo.imprenta.store" className="hidden sm:inline-flex btn-secondary text-sm font-700 px-4 py-2" target="_blank" rel="noreferrer">
                 <Icon.Book /> Ver demo
               </a>
               <a href={`https://wa.me/${config?.pagos?.whatsapp_admin || '5493885888949'}`} target="_blank" rel="noreferrer" className="btn-primary text-sm px-4 py-2">
@@ -391,12 +399,15 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-50 font-sans text-ink">
+    <div className="min-h-dvh bg-ink-50 font-sans text-ink">
       <nav className="bg-surface border-b border-ink-100 sticky top-0 z-50">
         <div className={`mx-auto px-4 h-14 flex items-center justify-between ${isAdmin ? 'max-w-[1440px]' : 'max-w-6xl'}`}>
-          <button onClick={() => setScreen('home')} className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-ink-900 flex items-center justify-center text-white text-sm dark:bg-white dark:text-black">IS</div>
-            <span className="font-800 text-ink-900 dark:text-white text-base leading-none">{currentShop?.name || 'Imprenta'}<br /><span className="text-brand-DEFAULT text-xs font-700">Sync 2026</span></span>
+          <button onClick={() => setScreen('home')} className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-ink-900 flex items-center justify-center text-white text-sm dark:bg-white dark:text-black flex-shrink-0">IS</div>
+            <span className="font-800 text-ink-900 dark:text-white text-sm sm:text-base leading-tight min-w-0 max-w-[52vw] sm:max-w-none">
+              <span className="block truncate">{currentShop?.name || 'Imprenta'}</span>
+              <span className="block text-brand-DEFAULT text-xs font-700">Sync 2026</span>
+            </span>
           </button>
           <div className="hidden sm:flex items-center gap-1">
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-700 transition-colors" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
@@ -415,12 +426,12 @@ export default function App() {
           </div>
           <div className="flex sm:hidden items-center gap-2">
             {carrito.length > 0 && (
-              <button onClick={() => setScreen('checkout')} className="relative">
+              <button onClick={() => setScreen('checkout')} className="relative p-2" aria-label="Mi pedido">
                 <Icon.Cart />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-white rounded-full text-xs flex items-center justify-center font-800">{carrito.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent text-white rounded-full text-xs flex items-center justify-center font-800">{carrito.length}</span>
               </button>
             )}
-            <button onClick={() => setSidebarOpen(true)} className="p-1"><Icon.Menu /></button>
+            <button onClick={() => setSidebarOpen(true)} className="p-2.5 -mr-1" aria-label="Abrir menú"><Icon.Menu /></button>
           </div>
         </div>
       </nav>
@@ -428,10 +439,10 @@ export default function App() {
       {sidebarOpen && (
         <div className="fixed inset-0 z-50" onClick={() => setSidebarOpen(false)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-          <div className="absolute right-0 top-0 bottom-0 w-64 bg-surface shadow-xl p-4" onClick={event => event.stopPropagation()}>
+          <div className="absolute right-0 top-0 bottom-0 w-72 max-w-[85vw] bg-surface shadow-xl p-4 overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={event => event.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
               <span className="font-800 text-ink-900">Menu</span>
-              <button onClick={() => setSidebarOpen(false)}><Icon.X /></button>
+              <button onClick={() => setSidebarOpen(false)} className="p-2 -mr-2" aria-label="Cerrar menú"><Icon.X /></button>
             </div>
             {navItems.map(item => (
               <button key={item.id} onClick={() => { setScreen(item.id); setSidebarOpen(false); }} className={`sidebar-link w-full ${screen === item.id ? 'active' : ''}`}>
@@ -452,7 +463,7 @@ export default function App() {
         </div>
       )}
 
-      <main className={`mx-auto py-6 pb-24 ${isAdmin ? 'max-w-full px-8' : 'max-w-6xl px-4'}`}>
+      <main className={`mx-auto py-6 pb-24 ${isAdmin ? 'max-w-full px-3 sm:px-6 lg:px-8' : 'max-w-6xl px-4'}`}>
         {screen === 'home' && <Store screen="home" books={books} config={config} carrito={carrito} setCarrito={setCarrito} setBookSel={setBookSel} setScreen={setScreen} orders={orders} setOrders={setOrders} catalogFilters={catalogFilters} setCatalogFilters={setCatalogFilters} />}
         {screen === 'ficha' && bookSel && (
           <Store
@@ -501,12 +512,12 @@ export default function App() {
         )}
       </main>
 
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-ink-100 flex z-40">
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-ink-100 flex z-40 pb-[env(safe-area-inset-bottom)]">
         {navItems.map(item => (
-          <button key={item.id} onClick={() => setScreen(item.id)} className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-700 transition-colors relative ${screen === item.id || (screen === 'ficha' && item.id === 'home') ? 'text-brand-DEFAULT' : 'text-ink-400'}`}>
+          <button key={item.id} onClick={() => setScreen(item.id)} className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 px-0.5 pt-2.5 pb-2 text-[10px] leading-tight font-700 transition-colors relative ${screen === item.id || (screen === 'ficha' && item.id === 'home') ? 'text-brand-DEFAULT' : 'text-ink-400'}`}>
             {item.icon}
-            <span>{item.label}</span>
-            {item.badge > 0 && <span className="absolute top-2 right-1/4 w-4 h-4 bg-accent text-white rounded-full text-xs flex items-center justify-center font-800">{item.badge}</span>}
+            <span className="truncate max-w-full">{item.short || item.label}</span>
+            {item.badge > 0 && <span className="absolute top-1 right-1/4 w-4 h-4 bg-accent text-white rounded-full text-xs flex items-center justify-center font-800">{item.badge}</span>}
           </button>
         ))}
       </div>

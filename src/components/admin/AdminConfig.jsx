@@ -38,10 +38,10 @@ function CardAjuste({ id, titulo, desc, meta, plegada, toggle, children }) {
           <button
             type="button"
             onClick={() => toggle(id)}
-            className="btn-ghost text-xs px-2 py-1 flex items-center gap-1"
+            className="btn-ghost text-xs px-2 py-1.5 min-h-[36px] flex items-center gap-1"
             title={plegada ? `Mostrar ${titulo}` : `Minimizar ${titulo}`}
           >
-            <span>{plegada ? 'Mostrar' : 'Minimizar'}</span>
+            <span className="hidden sm:inline">{plegada ? 'Mostrar' : 'Minimizar'}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${plegada ? '' : 'rotate-180'}`}><polyline points="6 9 12 15 18 9" /></svg>
           </button>
         </div>
@@ -314,8 +314,8 @@ export function AdminConfig({ config, setConfig }) {
           {calcCategorias.map((cat, idx) => (
             <div key={cat.id || idx} className="flex items-center gap-2 flex-wrap">
               <input className="input-field flex-1 min-w-[160px]" type="text" placeholder="Ej: Blanco y negro" value={cat.nombre} onChange={event => setCalcCat(idx, { nombre: event.target.value })} />
-              <input className="input-field w-[120px]" type="number" min="0" value={cat.precio} onChange={event => setCalcCat(idx, { precio: Number(event.target.value || 0) })} />
-              <span className="text-xs text-ink-400 font-700">$ / pág</span>
+              <input className="input-field w-20 sm:w-[120px]" type="number" min="0" value={cat.precio} onChange={event => setCalcCat(idx, { precio: Number(event.target.value || 0) })} />
+              <span className="hidden sm:inline text-xs text-ink-400 font-700">$ / pág</span>
               <button
                 onClick={() => quitarCalcCat(idx)}
                 disabled={calcCategorias.length <= 1}
@@ -340,7 +340,7 @@ export function AdminConfig({ config, setConfig }) {
       </CardAjuste>
 
       <CardAjuste id="espirales" titulo="Espirales (umbral en hojas)" plegada={plegadas.has('espirales')} toggle={toggleCard}>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
           {((configDraft.encuadernacion?.espirales) || [
             { hasta: 70, size: '9 mm' },
             { hasta: 100, size: '12 mm' },
@@ -422,14 +422,14 @@ export function AdminConfig({ config, setConfig }) {
             <div className="text-xs text-ink-400 py-2">No hay feriados cargados. Agregá fechas para bloquear días de retiro.</div>
           )}
           {(configDraft.feriados || []).map((f, idx) => (
-            <div key={idx} className="flex items-center gap-3 rounded-lg border border-ink-100 bg-ink-50 p-3">
+            <div key={idx} className="flex flex-wrap items-center gap-2 sm:gap-3 rounded-lg border border-ink-100 bg-ink-50 p-3">
               <div className="flex items-center gap-1.5 min-w-[110px]">
                 <Icon.Calendar />
                 <span className="font-700 text-sm text-ink-900">{f.fecha}</span>
               </div>
-              <div className="text-xs text-ink-600 flex-1">{f.motivo}</div>
-              <span className={`badge text-xs ${f.universidad ? 'bg-accent-muted text-accent' : 'bg-red-50 text-red-600'}`}>{f.universidad || 'Todas las universidades'}</span>
-              <button className="text-xs text-red-500 hover:text-red-700 font-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors" onClick={() => setConfigDraft(current => ({ ...current, feriados: (current.feriados || []).filter((_, i) => i !== idx) }))}>Eliminar</button>
+              <span className={`badge text-xs whitespace-nowrap ${f.universidad ? 'bg-accent-muted text-accent' : 'bg-red-50 text-red-600'}`}>{f.universidad || 'Todas las universidades'}</span>
+              <button className="ml-auto text-xs text-red-500 hover:text-red-700 font-700 px-2 py-1.5 min-h-[32px] rounded-lg hover:bg-red-50 transition-colors" onClick={() => setConfigDraft(current => ({ ...current, feriados: (current.feriados || []).filter((_, i) => i !== idx) }))}>Eliminar</button>
+              <div className="text-xs text-ink-600 w-full sm:w-auto sm:flex-1 order-last sm:order-none">{f.motivo}</div>
             </div>
           ))}
         </div>
@@ -583,7 +583,7 @@ export function AdminConfig({ config, setConfig }) {
           <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => bulkAdd([1, 2, 3, 4, 5], bulkTime)}>Lun a Vie</button>
           <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => bulkAdd([1, 2, 3, 4, 5, 6], bulkTime)}>Lun a Sáb</button>
           <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => bulkAdd(DIAS_ORDER, bulkTime)}>Todos</button>
-          <span className="text-[11px] text-ink-400 ml-auto">No duplica horarios existentes.</span>
+          <span className="hidden sm:inline text-[11px] text-ink-400 ml-auto">No duplica horarios existentes.</span>
         </div>
 
         <div className="space-y-5">
@@ -616,19 +616,21 @@ export function AdminConfig({ config, setConfig }) {
                     const addVal = addTimes[addKey] || '';
                     return (
                       <div key={dia} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2 border-t border-ink-100 first:border-t-0">
-                        <div className="w-[136px] flex items-center gap-2 shrink-0">
+                        <div className="w-24 sm:w-[136px] flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => {
                               if (delDia.length === 0) agregarTurno(careerKey, dia, '19:00');
                               else toggleDia(careerKey, dia, !diaAbierto);
                             }}
-                            className={`w-2.5 h-2.5 rounded-full shrink-0 transition-colors ${diaAbierto ? 'bg-emerald-500' : 'bg-gray-300 hover:bg-gray-400'}`}
+                            className="w-7 h-7 -ml-1.5 rounded-full shrink-0 flex items-center justify-center"
                             title={delDia.length === 0 ? 'Abrir este día (agrega 19:00)' : diaAbierto ? 'Cerrar este día' : 'Abrir este día'}
-                          />
+                          >
+                            <span className={`block w-2.5 h-2.5 rounded-full transition-colors ${diaAbierto ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                          </button>
                           <span className={`text-xs font-700 ${diaAbierto ? 'text-ink-800' : 'text-ink-400'}`}>{DIAS[dia]}</span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-[180px]">
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0 sm:min-w-[180px]">
                           {delDia.length === 0 && <span className="text-[11px] text-ink-400">Cerrado</span>}
                           {delDia.map(({ v, gi }) => {
                             const isActive = v.activa !== false;
@@ -639,18 +641,20 @@ export function AdminConfig({ config, setConfig }) {
                               >
                                 <button
                                   onClick={() => toggleTurno(careerKey, gi)}
-                                  className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                                  className="w-6 h-6 -ml-1 rounded-full shrink-0 flex items-center justify-center"
                                   title={isActive ? 'Clic para desactivar' : 'Clic para activar'}
-                                />
+                                >
+                                  <span className={`block w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                </button>
                                 <input
                                   type="time"
                                   value={v.horario || ''}
                                   onChange={e => setHora(careerKey, gi, e.target.value)}
-                                  className={`bg-transparent text-xs font-700 outline-none w-[58px] ${isActive ? 'text-ink-800' : 'text-ink-400'}`}
+                                  className={`bg-transparent text-xs font-700 outline-none w-[72px] ${isActive ? 'text-ink-800' : 'text-ink-400'}`}
                                 />
                                 <button
                                   onClick={() => quitarTurno(careerKey, gi)}
-                                  className="text-ink-400 hover:text-red-500 leading-none px-0.5 text-sm"
+                                  className="text-ink-400 hover:text-red-500 leading-none px-1.5 -mr-0.5 min-h-[28px] min-w-[28px] inline-flex items-center justify-center text-sm"
                                   title="Quitar turno"
                                 >×</button>
                               </span>
@@ -680,15 +684,15 @@ export function AdminConfig({ config, setConfig }) {
         </div>
       </CardAjuste>
 
-      <div className="flex items-center justify-end gap-3 sticky bottom-4 bg-surface-hover/80 backdrop-blur-sm p-3 rounded-xl border border-ink-100 shadow-sm z-10">
-        <span className="text-xs mr-auto">
+      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 sticky bottom-2 sm:bottom-4 bg-surface-hover/80 backdrop-blur-sm p-3 rounded-xl border border-ink-100 shadow-sm z-10">
+        <span className="text-xs w-full sm:w-auto sm:mr-auto">
           {saveMsg === 'ok' ? <span className="text-emerald-600 font-700">Cambios guardados ✓</span>
             : saveMsg === 'local' ? <span className="text-amber-600 font-700">Guardado solo local · falló la nube</span>
             : hayCambios ? <span className="text-amber-600 font-700">Cambios sin guardar</span>
             : <span className="text-ink-400">Sin cambios</span>}
         </span>
-        <button className="btn-secondary text-sm px-4 py-2" onClick={descartar} disabled={savingConfig || !hayCambios}>Descartar</button>
-        <button className="btn-primary text-sm px-4 py-2" disabled={savingConfig || !hayCambios} onClick={guardar}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
+        <button className="btn-secondary text-sm px-4 py-2 flex-1 sm:flex-none" onClick={descartar} disabled={savingConfig || !hayCambios}>Descartar</button>
+        <button className="btn-primary text-sm px-4 py-2 flex-1 sm:flex-none" disabled={savingConfig || !hayCambios} onClick={guardar}>{savingConfig ? <span className="flex items-center gap-1"><span className="spinner-sm" /> Guardando...</span> : 'Guardar cambios'}</button>
       </div>
     </div>
   );

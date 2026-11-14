@@ -107,7 +107,7 @@ export function AdminDashboard({ orders, config, setTab }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <button onClick={() => goToOrders()} className="stat-card text-left hover:bg-surface-hover transition-colors">
           <div className="text-2xl font-800 text-ink-900">{orders.length}</div>
           <div className="text-xs text-ink-400 mt-0.5">Total pedidos</div>
@@ -176,7 +176,7 @@ export function AdminDashboard({ orders, config, setTab }) {
                   </div>
                 </div>
               </div>
-              <span className="text-[11px] text-ink-500 w-[100px] flex-shrink-0 text-right">
+              <span className="text-[11px] text-ink-500 w-[72px] sm:w-[100px] flex-shrink-0 text-right whitespace-nowrap">
                 {d.paginas.toLocaleString('es-AR')} hojas · <span className="font-600">{fmt(d.cupo)}</span>
               </span>
             </div>
@@ -186,7 +186,7 @@ export function AdminDashboard({ orders, config, setTab }) {
 
       <div className="card p-5">
         <div className="font-700 text-sm text-ink-800 mb-4">Estados del flujo <span className="text-xs text-ink-400 font-normal">— clickeá para filtrar</span></div>
-        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {stateMeta.map(({ state, count, totalPaginas, color }) => (
             <button key={state} onClick={() => goToOrders()} className={`rounded-xl border p-4 text-left hover:bg-surface-hover transition-all ${color}`}>
               <div className="text-sm font-700">{STATE_LABELS[state] || state}</div>

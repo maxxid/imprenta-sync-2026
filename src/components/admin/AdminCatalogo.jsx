@@ -214,7 +214,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
       </div>
 
       <div className="table-shell" style={{overflowX: 'auto'}} onMouseMove={handleResizeMove} onMouseUp={handleResizeEnd} onMouseLeave={handleResizeEnd}>
-        <table style={{minWidth: bulkEdit ? '1100px' : 'auto'}}>
+        <table style={{minWidth: bulkEdit ? '1100px' : '760px'}}>
           <thead>
             <tr>
               {bulkEdit ? (
@@ -310,7 +310,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                       </td>
                       <td>
                         <div className="flex flex-col items-center gap-0.5">
-                          <button onClick={() => set('a4_bn_habilitado', !cur.a4_bn_habilitado)} className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${cur.a4_bn_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
+                          <button onClick={() => set('a4_bn_habilitado', !cur.a4_bn_habilitado)} className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${cur.a4_bn_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
                             <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${cur.a4_bn_habilitado ? 'right-0.5' : 'left-0.5'}`} />
                           </button>
                           {cur.a4_bn_habilitado && (
@@ -323,7 +323,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                       </td>
                       <td>
                         <div className="flex flex-col items-center gap-0.5">
-                          <button onClick={() => set('a4_color_habilitado', !cur.a4_color_habilitado)} className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${cur.a4_color_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
+                          <button onClick={() => set('a4_color_habilitado', !cur.a4_color_habilitado)} className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${cur.a4_color_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
                             <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${cur.a4_color_habilitado ? 'right-0.5' : 'left-0.5'}`} />
                           </button>
                           {cur.a4_color_habilitado && (
@@ -333,7 +333,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                       </td>
                       <td>
                         <div className="flex flex-col items-center gap-0.5">
-                          <button onClick={() => set('a5_bn_habilitado', !cur.a5_bn_habilitado)} className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${cur.a5_bn_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
+                          <button onClick={() => set('a5_bn_habilitado', !cur.a5_bn_habilitado)} className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${cur.a5_bn_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
                             <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${cur.a5_bn_habilitado ? 'right-0.5' : 'left-0.5'}`} />
                           </button>
                           {cur.a5_bn_habilitado && (
@@ -346,7 +346,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                       </td>
                       <td>
                         <div className="flex flex-col items-center gap-0.5">
-                          <button onClick={() => set('a5_color_habilitado', !cur.a5_color_habilitado)} className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${cur.a5_color_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
+                          <button onClick={() => set('a5_color_habilitado', !cur.a5_color_habilitado)} className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${cur.a5_color_habilitado ? 'bg-emerald-500' : 'bg-ink-200'}`}>
                             <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${cur.a5_color_habilitado ? 'right-0.5' : 'left-0.5'}`} />
                           </button>
                           {cur.a5_color_habilitado && (
@@ -358,7 +358,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                         <div className="flex flex-col items-center gap-0.5">
                           <button
                             onClick={() => set('encuadernacion', cur.encuadernacion === 'anillado' ? 'abrochado' : 'anillado')}
-                            className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${cur.encuadernacion === 'anillado' ? 'bg-blue-500' : 'bg-emerald-500'}`}
+                            className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${cur.encuadernacion === 'anillado' ? 'bg-blue-500' : 'bg-emerald-500'}`}
                             title={cur.encuadernacion === 'anillado' ? 'Anillado' : 'Abrochado'}
                           >
                             <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${cur.encuadernacion === 'anillado' ? 'right-0.5' : 'left-0.5'}`} />
@@ -389,7 +389,7 @@ export function AdminCatalogo({ books, setBooks, config }) {
                         </label>
                       </td>
                       <td className="text-center">
-                        <button onClick={() => set('activo', cur.activo !== false ? false : true)} className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${cur.activo !== false ? 'bg-emerald-500' : 'bg-ink-200'}`}>
+                        <button onClick={() => set('activo', cur.activo !== false ? false : true)} className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${cur.activo !== false ? 'bg-emerald-500' : 'bg-ink-200'}`}>
                           <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${cur.activo !== false ? 'right-0.5' : 'left-0.5'}`} />
                         </button>
                         <span className="text-[10px] block mt-0.5 text-ink-400">{cur.activo !== false ? 'Activo' : 'Inactivo'}</span>

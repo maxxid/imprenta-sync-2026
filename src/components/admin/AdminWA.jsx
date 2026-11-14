@@ -266,7 +266,7 @@ export function AdminWA({ orders, setOrders, config }) {
               >Omitir ({seleccion.size})</button>
             </>
           )}
-          <span className="ml-auto text-[11px] text-ink-400">
+          <span className="hidden sm:inline ml-auto text-[11px] text-ink-400">
             ↑↓ moverse · Shift+↑↓ o Shift+clic = rango · Omitir marca la fila como resuelta y la saca de los pendientes (deshacible).
           </span>
         </div>
@@ -297,11 +297,11 @@ export function AdminWA({ orders, setOrders, config }) {
                           if (e.key === 'ArrowDown') { e.preventDefault(); moverFoco(order.id, 1, e.shiftKey); }
                           else if (e.key === 'ArrowUp') { e.preventDefault(); moverFoco(order.id, -1, e.shiftKey); }
                         }}
-                        className="w-4 h-4 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer"
+                        className="w-5 h-5 rounded border-ink-300 text-brand-DEFAULT focus:ring-2 focus:ring-brand-DEFAULT cursor-pointer"
                         title="Seleccionar · ↑↓ para moverte · Shift+↑↓ o Shift+clic = rango"
                         aria-label={`Seleccionar ${order.nombre || order.id}`}
                       />
-                      <span className="font-700 text-sm text-ink-800">{order.nombre || 'Sin nombre'}</span>
+                      <span className="font-700 text-sm text-ink-800 max-w-full truncate">{order.nombre || 'Sin nombre'}</span>
                       <span className="text-[11px] font-mono text-ink-400">{order.id}</span>
                       {order._pend
                         ? <span className="badge bg-warn-muted text-warn-DEFAULT text-[10px]">Pendiente</span>
@@ -312,12 +312,12 @@ export function AdminWA({ orders, setOrders, config }) {
                       {order.fecha || 'sin fecha'}{tieneHora(order.horario_entrega) ? ` · ${order.horario_entrega} hs` : ' · a coordinar'}
                       {order.lugar_entrega ? ` · ${order.lugar_entrega}` : ''}
                     </div>
-                    <div className="text-[11px] text-ink-400 mt-0.5 truncate max-w-[420px]">
+                    <div className="text-[11px] text-ink-400 mt-0.5 truncate max-w-full sm:max-w-[420px]">
                       {order.libro}
                       {Number(order.saldo_pendiente) > 0 ? ` · debe ${fmt(order.saldo_pendiente)}` : ''}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto flex-wrap">
                     <a
                       href={waLink(order.whatsapp, mensajeActual)}
                       target="_blank"

@@ -679,3 +679,21 @@ input[type=number] {
 .switch-sm span:before { content: ""; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .2s; }
 .switch-sm input:checked + span { background: var(--brand, #0066FF); }
 .switch-sm input:checked + span:before { transform: translateX(16px); }
+
+/* ── Móvil: ajustes globales (aditivos, no afectan desktop) ─────────────
+   - input 16px evita el zoom automático de iOS al enfocar.
+   - overflow-x: clip corta desbordes horizontales sin romper position: sticky
+     (a diferencia de `hidden`, que crea un scroll container).
+   - tabla/timeline compactos para que entren en ~375px. */
+html, body { max-width: 100%; }
+body { overflow-x: clip; }
+img { max-width: 100%; }
+
+@media (max-width: 640px) {
+  .input-field { font-size: 16px; }
+  .table-shell th, .table-shell td { padding: 9px 10px; }
+  .timeline-step { min-width: 56px; }
+  .timeline-label { font-size: 8px; }
+  .btn-ghost { min-height: 40px; }
+  .resize-handle { display: none; }
+}

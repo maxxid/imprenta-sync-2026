@@ -113,10 +113,10 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
             </select>
           </div>
         </div>
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
           {selectedCareer && <span className="badge bg-brand-muted text-brand-dark whitespace-nowrap">{selectedCareer.direccion_entrega}</span>}
           {materias.slice(0, 8).map(materia => (
-            <button key={materia} onClick={() => setMateria(materia)} className={`badge whitespace-nowrap transition-colors ${materiaSel === materia ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-500 hover:bg-brand-muted hover:text-brand-dark'}`}>
+            <button key={materia} onClick={() => setMateria(materia)} className={`badge py-1.5 whitespace-nowrap transition-colors ${materiaSel === materia ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-500 hover:bg-brand-muted hover:text-brand-dark'}`}>
               {materia}
             </button>
           ))}
@@ -131,7 +131,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
             <div className="font-700 text-sm text-ink-800">¿Tu material no está en el catálogo?</div>
             <div className="text-xs text-ink-400 mt-0.5">Subí tu PDF propio, elegí formato y lo sumamos al carrito como cualquier libro.</div>
           </div>
-          <button className="btn-secondary text-xs px-3 py-2" onClick={() => {
+          <button className="btn-secondary text-xs px-3 py-2.5 flex-shrink-0" onClick={() => {
             const paginas = 80;
             const pph = 2;
             onSelectLibro({
@@ -147,7 +147,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
         </div>
       </div>
 
-      <div className="text-xs font-700 uppercase tracking-widest text-ink-400 mb-3">
+      <div className="text-xs font-700 uppercase tracking-widest text-ink-400 mb-3 truncate">
         {selectedCareer ? careerLabel(selectedCareer) : 'Todas las carreras'} · {filtered.length} resultados · {carrito.length} en pedido
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -162,8 +162,8 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
               <div className="grid grid-cols-[88px_1fr] gap-4 items-start">
                 <Cover src={book.imagen_url} alt={book.titulo} portada={book.portada} />
                 <div>
-                  <span className="badge bg-ink-100 text-ink-500 mb-2">{book.carrera}</span>
-                  <div className="font-700 text-sm text-ink-900 leading-tight mb-1">{book.titulo}</div>
+                  <span className="badge bg-ink-100 text-ink-500 mb-2 max-w-full truncate">{book.carrera}</span>
+                  <div className="font-700 text-sm text-ink-900 leading-tight mb-1 line-clamp-2">{book.titulo}</div>
                   <div className="text-xs text-ink-400 mb-1">{book.materia}</div>
                   <div className="text-xs text-ink-400 mb-3">{book.autor}</div>
                   <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -173,7 +173,7 @@ function HomeScreen({ books, config, carrito, onSelectLibro, catalogFilters, set
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-800 text-lg text-ink-900">Desde {fmt(minPrice)}</span>
-                    <span className="text-xs font-700 text-brand-DEFAULT">Ver detalle</span>
+                    <span className="hidden sm:inline text-xs font-700 text-brand-DEFAULT">Ver detalle</span>
                   </div>
                 </div>
               </div>
@@ -279,7 +279,9 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
       <div className="card p-6">
         <div className="grid gap-5 grid-cols-1 md:grid-cols-[240px_1fr]">
           <div className="space-y-3 w-full">
-            <Cover src={workingBook.imagen_url} alt={workingBook.titulo} portada={workingBook.portada} />
+            <div className="max-w-[180px] mx-auto md:max-w-none w-full">
+              <Cover src={workingBook.imagen_url} alt={workingBook.titulo} portada={workingBook.portada} />
+            </div>
             {workingBook.pdf_url && (
               <button
                 onClick={() => setShowPdfModal(true)}
@@ -346,7 +348,7 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
 
             <div className="mb-4">
               <label className="text-xs font-700 text-ink-500 uppercase tracking-wide block mb-1.5">Opción de impresión</label>
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                 {combos.map(c => (
                   <button key={c.key} onClick={() => setSelectedCombo(c.key)} className={`radio-tile ${selectedCombo === c.key ? 'active' : ''}`}>
                     <div className="font-700 text-sm">{c.label}</div>
@@ -512,8 +514,8 @@ function FichaScreen({ book, config, pedidos, carrito, onAgregar, onVolver }) {
             )}
 
             {toast && (
-              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
-                <div className="slide-up bg-ink-900 dark:bg-white text-white dark:text-black rounded-xl px-5 py-3 text-sm font-700 shadow-2xl flex items-center gap-2">
+              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 pointer-events-none w-[calc(100%-2rem)] max-w-sm">
+                <div className="slide-up bg-ink-900 dark:bg-white text-white dark:text-black rounded-xl px-5 py-3 text-sm font-700 shadow-2xl flex items-center justify-center gap-2 text-center">
                   {toast.msg}
                 </div>
               </div>
@@ -785,22 +787,22 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                 {pedidoConfirmado.excede_capacidad ? (
                   <>
                     <div className="text-xs font-700 text-ink-400 uppercase tracking-wide mb-1">Retiros (pedido dividido)</div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-ink-500">Parte 1</span>
-                      <span className="font-700 text-right ml-4">{pedidoConfirmado.ventana_retiro} <span className="text-ink-400">({pedidoConfirmado.hojas_primera_entrega} hojas)</span></span>
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span className="text-ink-500 flex-shrink-0">Parte 1</span>
+                      <span className="font-700 text-right ml-4 break-words min-w-0">{pedidoConfirmado.ventana_retiro} <span className="text-ink-400">({pedidoConfirmado.hojas_primera_entrega} hojas)</span></span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-ink-500">Parte 2</span>
-                      <span className="font-700 text-right ml-4">{new Date(`${pedidoConfirmado.segunda_entrega_fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} <span className="text-ink-400">({pedidoConfirmado.hojas_segunda_entrega} hojas)</span></span>
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span className="text-ink-500 flex-shrink-0">Parte 2</span>
+                      <span className="font-700 text-right ml-4 break-words min-w-0">{new Date(`${pedidoConfirmado.segunda_entrega_fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} <span className="text-ink-400">({pedidoConfirmado.hojas_segunda_entrega} hojas)</span></span>
                     </div>
                   </>
                 ) : (
-                  <div className="flex justify-between text-sm"><span className="text-ink-500">Retiro</span><span className="font-700 text-right ml-4">{pedidoConfirmado.ventana_retiro}</span></div>
+                  <div className="flex justify-between gap-3 text-sm"><span className="text-ink-500 flex-shrink-0">Retiro</span><span className="font-700 text-right ml-4 break-words min-w-0">{pedidoConfirmado.ventana_retiro}</span></div>
                 )}
-                <div className="flex justify-between text-sm"><span className="text-ink-500">Lugar</span><span className="font-700 text-right ml-4">{pedidoConfirmado.lugar_entrega}</span></div>
+                <div className="flex justify-between gap-3 text-sm"><span className="text-ink-500 flex-shrink-0">Lugar</span><span className="font-700 text-right ml-4 break-words min-w-0">{pedidoConfirmado.lugar_entrega}</span></div>
               </div>
               <div className="border-t border-ink-100 pt-2">
-                <div className="flex justify-between text-xs"><span className="text-ink-400">{pedidoConfirmado.metodo_pago === 'transferencia' ? 'Ref. Transferencia' : 'Ref. Talo'}</span><span className="font-700 text-ink-500">{pedidoConfirmado.talo_ref}</span></div>
+                <div className="flex justify-between gap-3 text-xs"><span className="text-ink-400 flex-shrink-0">{pedidoConfirmado.metodo_pago === 'transferencia' ? 'Ref. Transferencia' : 'Ref. Talo'}</span><span className="font-700 text-ink-500 truncate">{pedidoConfirmado.talo_ref}</span></div>
               </div>
             </div>
           </div>
@@ -811,10 +813,10 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
 
       {step !== 4 && (
         <>
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-6 min-w-0">
             {[['Datos', 1], [needsSlot ? 'Turno' : 'Retiro', 2], ['Pago', 3]].map(([label, index], position) => (
               <React.Fragment key={label}>
-                <div className={`flex items-center gap-1.5 text-xs font-700 ${step >= index ? 'text-brand-DEFAULT' : 'text-ink-300'}`}>
+                <div className={`flex items-center gap-1.5 text-[10px] sm:text-xs font-700 whitespace-nowrap ${step >= index ? 'text-brand-DEFAULT' : 'text-ink-300'}`}>
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-800 ${step >= index ? 'bg-brand-DEFAULT text-white' : 'bg-ink-100 text-ink-400'}`}>{step > index ? '✓' : index}</div>
                   {label}
                 </div>
@@ -827,19 +829,19 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
             <div className="text-xs font-700 text-ink-400 uppercase tracking-wide mb-3">Tu pedido</div>
             <div className="space-y-3">
               {carrito.map(item => (
-                <div key={item.id} className={`grid grid-cols-[56px_1fr_auto] gap-3 items-center rounded-xl p-2 transition-all ${item.express ? 'bg-accent-muted/50 border border-accent/20' : ''}`}>
+                <div key={item.id} className={`grid grid-cols-[48px_1fr_auto] gap-3 items-center rounded-xl p-2 transition-all ${item.express ? 'bg-accent-muted/50 border border-accent/20' : ''}`}>
                   <Cover src={item.imagen_url} alt={item.titulo} portada={item.portada} />
                   <div className="min-w-0">
                     <div className="text-sm font-700 text-ink-900 truncate">{item.titulo}</div>
                     <div className="text-xs text-ink-400">{item.formato} · {item.hojas} hojas · {item.tipo === 'anillado' ? 'Anillado' : 'Abrochado'}{item.express ? ' · Express' : ''}</div>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <span className={`font-700 text-sm ${item.express ? 'text-accent' : ''}`}>
+                  <div className="flex flex-col items-end gap-1.5 max-w-[42%] min-w-0">
+                    <span className={`font-700 text-sm text-right ${item.express ? 'text-accent' : ''}`}>
                       {fmt(item.precio)}
                       {item.express && <span className="text-xs text-accent/70 ml-1">incl. express</span>}
                     </span>
                     <button
-                      className="text-xs font-700 text-danger hover:underline"
+                      className="text-xs font-700 text-danger hover:underline min-h-[36px] inline-flex items-center"
                       onClick={() => setCarrito(current => current.filter(cartItem => cartItem.id !== item.id))}
                     >
                       Eliminar
@@ -938,8 +940,8 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                 <div className="space-y-3">
                   {slots.map(slot => (
                     <button key={`${slot.fecha}-${slot.turno}-${slot.horario}`} disabled={!slot.disponible} onClick={() => slot.disponible && setSlotSel(slot)} className={`turn-card w-full text-left ${slotSel?.fecha === slot.fecha && slotSel?.turno === slot.turno && slotSel?.horario === slot.horario ? 'selected' : ''} ${!slot.disponible ? 'disabled' : ''}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
                           <div className="font-700 text-sm text-ink-800">{fechaLabel(slot.fecha, slot.dOffset)} · {slot.label}</div>
                           <div className="text-xs text-ink-500 mt-0.5">{slot.horario} · {deliveryPlaceFor(form.modalidad, activeCareer, config)}</div>
                         </div>
@@ -958,7 +960,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
               {(pagosConfig.talo_activo !== false && pagosConfig.transferencia_activa === true) && (
                 <div className="card p-4 mb-5">
                   <div className="text-xs font-700 text-ink-400 uppercase tracking-wide mb-3">Metodo de pago</div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button onClick={() => setMetodoPago('talo')} className={`radio-tile ${metodoPago === 'talo' ? 'active' : ''}`}>
                       <div className="font-700 text-sm">Talo</div>
                       <div className="text-xs text-ink-400 mt-1">Pago online instantaneo</div>
@@ -1010,7 +1012,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                           <div className="text-[10px] text-ink-400 uppercase tracking-wide">Alias</div>
                           <div className="font-700 text-ink-900 text-sm truncate">{pagosConfig.datos_bancarios.alias}</div>
                         </div>
-                        <button onClick={() => copyToClipboard(pagosConfig.datos_bancarios.alias, () => { setCopiedField('alias'); setTimeout(() => setCopiedField(null), 1500); })} className="text-[11px] font-700 text-emerald-600 hover:text-emerald-700 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 transition-colors flex-shrink-0">{copiedField === 'alias' ? 'Copiado!' : 'Copiar'}</button>
+                        <button onClick={() => copyToClipboard(pagosConfig.datos_bancarios.alias, () => { setCopiedField('alias'); setTimeout(() => setCopiedField(null), 1500); })} className="text-[11px] font-700 text-emerald-600 hover:text-emerald-700 px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 transition-colors flex-shrink-0">{copiedField === 'alias' ? 'Copiado!' : 'Copiar'}</button>
                       </div>
                     )}
                     {pagosConfig.datos_bancarios?.cbu && (
@@ -1020,15 +1022,15 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                           <div className="text-[10px] text-ink-400 uppercase tracking-wide">CBU/CVU</div>
                           <div className="font-700 text-ink-900 text-sm truncate">{pagosConfig.datos_bancarios.cbu}</div>
                         </div>
-                        <button onClick={() => copyToClipboard(pagosConfig.datos_bancarios.cbu, () => { setCopiedField('cbu'); setTimeout(() => setCopiedField(null), 1500); })} className="text-[11px] font-700 text-emerald-600 hover:text-emerald-700 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 transition-colors flex-shrink-0">{copiedField === 'cbu' ? 'Copiado!' : 'Copiar'}</button>
+                        <button onClick={() => copyToClipboard(pagosConfig.datos_bancarios.cbu, () => { setCopiedField('cbu'); setTimeout(() => setCopiedField(null), 1500); })} className="text-[11px] font-700 text-emerald-600 hover:text-emerald-700 px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 transition-colors flex-shrink-0">{copiedField === 'cbu' ? 'Copiado!' : 'Copiar'}</button>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {pagosConfig.datos_bancarios?.titular && (
-                        <div className="bg-ink-50 rounded-lg p-2.5 border border-ink-100"><div className="text-[10px] text-ink-400 uppercase tracking-wide">Titular</div><div className="font-600 text-ink-900 text-sm">{pagosConfig.datos_bancarios.titular}</div></div>
+                        <div className="bg-ink-50 rounded-lg p-2.5 border border-ink-100"><div className="text-[10px] text-ink-400 uppercase tracking-wide">Titular</div><div className="font-600 text-ink-900 text-sm break-words">{pagosConfig.datos_bancarios.titular}</div></div>
                       )}
                       {pagosConfig.datos_bancarios?.banco && (
-                        <div className="bg-ink-50 rounded-lg p-2.5 border border-ink-100"><div className="text-[10px] text-ink-400 uppercase tracking-wide">Banco</div><div className="font-600 text-ink-900 text-sm">{pagosConfig.datos_bancarios.banco}</div></div>
+                        <div className="bg-ink-50 rounded-lg p-2.5 border border-ink-100"><div className="text-[10px] text-ink-400 uppercase tracking-wide">Banco</div><div className="font-600 text-ink-900 text-sm break-words">{pagosConfig.datos_bancarios.banco}</div></div>
                       )}
                     </div>
                     {pagosConfig.datos_bancarios?.notas && (
@@ -1093,7 +1095,7 @@ function CheckoutScreen({ carrito, pedidos, setPedidos, config, onVolver, onSucc
                   </button>
                   {showTransferConfirm && (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-                      <div className="bg-surface rounded-2xl shadow-2xl max-w-sm w-full p-6 slide-up border border-ink-100">
+                      <div className="bg-surface rounded-2xl shadow-2xl max-w-sm w-full p-6 slide-up border border-ink-100 max-h-[90dvh] overflow-y-auto">
                         <div className="text-center mb-5">
                           <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-3">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -1215,8 +1217,8 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
       <button onClick={onVolver} className="flex items-center gap-2 text-sm text-ink-400 hover:text-ink-700 mb-5 font-700">← Volver</button>
 
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 slide-up">
-          <div className="bg-ink-900 dark:bg-black text-white rounded-xl px-5 py-3 text-sm font-700 shadow-xl flex items-center gap-2">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 slide-up w-[calc(100%-2rem)] max-w-sm">
+          <div className="bg-ink-900 dark:bg-black text-white rounded-xl px-5 py-3 text-sm font-700 shadow-xl flex items-center justify-center gap-2 text-center">
             <Icon.Check /> {toast}
           </div>
         </div>
@@ -1226,8 +1228,8 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
         <div className="text-xs font-semibold uppercase tracking-widest text-ink-300 mb-1">Segui tu pedido</div>
         <h1 className="text-2xl font-black mb-1">Donde estan tus apuntes?</h1>
         <p className="text-ink-300 text-sm mb-5">Ingresá tu número de celular y te mostramos el estado.</p>
-        <div className="flex gap-2">
-          <div className="flex flex-1">
+        <div className="flex gap-2 min-w-0">
+          <div className="flex flex-1 min-w-0">
             <span className="border border-r-0 border-ink-600 bg-ink-800 rounded-l-xl px-3 flex items-center text-sm text-ink-400 font-700">+54 9</span>
             <input
               className="input-field rounded-l-none bg-ink-800 border-ink-600 text-white placeholder-ink-400"
@@ -1237,7 +1239,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <button className="btn-primary flex-shrink-0" onClick={handleSearch} disabled={normalizePhone(phone).length < 8 || searching}>
+          <button className="btn-primary flex-shrink-0 text-xs sm:text-sm whitespace-nowrap px-3 sm:px-5" onClick={handleSearch} disabled={normalizePhone(phone).length < 8 || searching}>
             <Icon.Search /> {searching ? 'Buscando…' : 'Buscar'}
           </button>
         </div>
@@ -1358,13 +1360,13 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
               <div className="flex justify-between"><span className="text-ink-500">Formato</span><span className="font-600">{selectedOrder.formato}</span></div>
               {selectedOrder.excede_capacidad ? (
                 <>
-                  <div className="flex justify-between"><span className="text-ink-500">Retiro 1° parte</span><span className="font-600 text-right ml-4">{selectedOrder.ventana_retiro} <span className="text-ink-400">({selectedOrder.hojas_primera_entrega} hojas)</span></span></div>
-                  <div className="flex justify-between"><span className="text-ink-500">Retiro 2° parte</span><span className="font-600 text-right ml-4">{new Date(`${selectedOrder.segunda_entrega_fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} <span className="text-ink-400">({selectedOrder.hojas_segunda_entrega} hojas)</span></span></div>
+                  <div className="flex justify-between gap-3"><span className="text-ink-500 flex-shrink-0">Retiro 1° parte</span><span className="font-600 text-right ml-4 break-words min-w-0">{selectedOrder.ventana_retiro} <span className="text-ink-400">({selectedOrder.hojas_primera_entrega} hojas)</span></span></div>
+                  <div className="flex justify-between gap-3"><span className="text-ink-500 flex-shrink-0">Retiro 2° parte</span><span className="font-600 text-right ml-4 break-words min-w-0">{new Date(`${selectedOrder.segunda_entrega_fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} <span className="text-ink-400">({selectedOrder.hojas_segunda_entrega} hojas)</span></span></div>
                 </>
               ) : (
-                <div className="flex justify-between"><span className="text-ink-500">Retiro</span><span className="font-600 text-right ml-4">{selectedOrder.ventana_retiro}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-ink-500 flex-shrink-0">Retiro</span><span className="font-600 text-right ml-4 break-words min-w-0">{selectedOrder.ventana_retiro}</span></div>
               )}
-              <div className="flex justify-between"><span className="text-ink-500">Lugar</span><span className="font-600 text-right ml-4">{selectedOrder.lugar_entrega}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-ink-500 flex-shrink-0">Lugar</span><span className="font-600 text-right ml-4 break-words min-w-0">{selectedOrder.lugar_entrega}</span></div>
               <div className="flex justify-between"><span className="text-ink-500">Total</span><span className="font-800">{fmt(selectedOrder.total)}</span></div>
               {selectedOrder.metodo_pago === 'transferencia' ? (
                 <div className="flex justify-between"><span className="text-ink-500">Pago</span><span className={`font-700 ${selectedOrder.estado === 'Pendiente de pago' ? 'text-blue-600' : 'text-ok-DEFAULT'}`}>{selectedOrder.estado === 'Pendiente de pago' ? 'Pendiente de confirmacion' : 'Transferencia confirmada'}</span></div>
@@ -1375,7 +1377,7 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
                   )}
                 </>
               )}
-              <div className="flex justify-between"><span className="text-ink-500">{selectedOrder.metodo_pago === 'transferencia' ? 'Ref. Transferencia' : 'Ref. Talo'}</span><span className="font-600">{selectedOrder.talo_ref}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-ink-500 flex-shrink-0">{selectedOrder.metodo_pago === 'transferencia' ? 'Ref. Transferencia' : 'Ref. Talo'}</span><span className="font-600 truncate">{selectedOrder.talo_ref}</span></div>
             </div>
           </div>
 
@@ -1404,8 +1406,8 @@ function OrderTracker({ orders, setOrders, books, config, onVolver }) {
               <div className="space-y-2 mb-4">
                 {slots.map(slot => (
                   <button key={`${slot.fecha}-${slot.turno}-${slot.horario}`} disabled={!slot.disponible} onClick={() => slot.disponible && setRescheduleSlot(slot)} className={`turn-card w-full text-left ${rescheduleSlot?.fecha === slot.fecha && rescheduleSlot?.turno === slot.turno && rescheduleSlot?.horario === slot.horario ? 'selected' : ''} ${!slot.disponible ? 'disabled' : ''}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="min-w-0">
                         <div className="font-700 text-sm text-ink-800">{fechaLabel(slot.fecha, slot.dOffset)} · {slot.label}</div>
                         <div className="text-xs text-ink-500 mt-0.5">{slot.horario}</div>
                       </div>

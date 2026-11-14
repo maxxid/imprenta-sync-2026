@@ -331,3 +331,18 @@ Misma UX que en el tab WhatsApp, adaptada a la grilla de Pedidos. **Cada fila = 
 - **Smoke: 226 checks** (sección 25: split en filas, normalización, título propio vs. del libro, detección de imagen propia y SVG escapado).
 
 **Pendiente del usuario:** correr `migration_portada.sql` en Supabase (`hjtbwnsxgellbtfariog`) **antes** de guardar libros desde la web nueva (sin esa columna el upsert falla; el alert lo dice).
+
+### Responsive móvil (2026-11-13)
+
+**Pedido:** que toda la app funcione desde el navegador del celular (~375px) **sin perjudicar desktop**.
+
+- **Regla de oro:** todos los cambios son **aditivos** con prefijos `sm:`/`md:`/`lg:` o `@media (max-width:640px)`. El layout de desktop (≥1280px) no cambia.
+- **`src/index.css` (base global):** `body { overflow-x: clip }` (corta desbordes **sin** romper `position: sticky`), `img { max-width:100% }`, y en ≤640px: `.input-field { font-size:16px }` (**evita el zoom automático de iOS**), padding compacto de `.table-shell`, `.timeline-step` 56px, `.btn-ghost` min-h 40px y `.resize-handle` oculto.
+- **`App.jsx`:** `min-h-dvh` en vez de `min-h-screen`; `main` admin `px-3 sm:px-6 lg:px-8`; nombre del shop con `truncate`; targets táctiles del nav; drawer con scroll bloqueado y `w-72 max-w-[85vw]`; **bottom nav** con labels cortos (`short` en `navItems`), `text-[10px]` y `env(safe-area-inset-bottom)`.
+- **Tabs del panel (`AdminPanel.jsx`):** strip con **scroll horizontal** y solo iconos bajo `md` (label `hidden md:inline`, `aria-label`/`title`); "Cerrar sesión" no se desborda.
+- **Tablas:** `min-w` explícito + scroll interno en `.table-shell` → `AdminPedidos` 920px, `AdminCatalogo` 760px (1100 en bulk), `GlobalAdminDashboard` 720px. En móvil la página no scrollea lateralmente.
+- **Config (`AdminConfig.jsx`):** barra sticky de guardado con `flex-wrap` y botones `flex-1`; fila de feriados wrap; agenda con hit-areas táctiles (puntos de 28px y hora `72px`); grids de espirales/calculadora colapsan a 2–3 columnas.
+- **Nuevo pedido:** fecha/hora a 1 columna en móvil; filas de ítem y compositor PDF full-width; hint de teclado `hidden sm:block`.
+- **Tienda:** options de impresión y medios de pago a 1 columna; carrito `48px`; stepper compacto; toasts `max-w`; modal de transferencia con `max-h-[90dvh] overflow-y-auto`; portada de ficha limitada a 180px; valores largos con `break-words`/`truncate`; tarjetas de turno con `flex-wrap`.
+- **Global admin / BookForm / Parser WA:** header apilado, modales con scroll vertical, vista previa del libro oculta bajo `xl`, anchos fijos de labels responsive (`w-[120px] sm:w-[…]`).
+- Validado con `npm run lint` (0 errores, 9 warnings de hooks), `npm run build` y `npm run smoke`.

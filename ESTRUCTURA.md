@@ -163,18 +163,18 @@ por props desde `AdminPanel`. `Store.jsx` y `AdminPanel.jsx` **no comparten esta
 | [`scripts/mapa-estructura.mjs`](./scripts/mapa-estructura.mjs) | 178 | — | — |
 | [`scripts/smoke-variantes.mjs`](./scripts/smoke-variantes.mjs) | 519 | `lib/constants.js` · `lib/utils.js` | — |
 | [`scripts/test-msgs-reales.mjs`](./scripts/test-msgs-reales.mjs) | 33 | `lib/utils.js` | — |
-| [`App.jsx`](./src/App.jsx) | 516 | `comp/AdminLogin.jsx` · `comp/Icons.jsx` · `comp/Store.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` · `lib/utils.js` · `comp/AdminPanel.jsx (lazy)` · `comp/admin/GlobalAdminDashboard.jsx (lazy)` · `comp/admin/PasswordSetup.jsx (lazy)` | `main.jsx` |
+| [`App.jsx`](./src/App.jsx) | 527 | `comp/AdminLogin.jsx` · `comp/Icons.jsx` · `comp/Store.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` · `lib/utils.js` · `comp/AdminPanel.jsx (lazy)` · `comp/admin/GlobalAdminDashboard.jsx (lazy)` · `comp/admin/PasswordSetup.jsx (lazy)` | `main.jsx` |
 | [`comp/AdminLogin.jsx`](./src/components/AdminLogin.jsx) | 191 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` | `App.jsx` |
 | [`comp/AdminPanel.jsx`](./src/components/AdminPanel.jsx) | 53 | `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminDashboard.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/AdminWA.jsx` · `comp/Icons.jsx` | `App.jsx` (lazy) |
 | [`comp/BookFormPanel.jsx`](./src/components/BookFormPanel.jsx) | 286 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/utils.js` | `comp/admin/AdminCatalogo.jsx` |
 | [`comp/Icons.jsx`](./src/components/Icons.jsx) | 30 | — | `App.jsx` · `comp/AdminLogin.jsx` · `comp/AdminPanel.jsx` · `comp/BookFormPanel.jsx` · `comp/Store.jsx` · `comp/admin/AdminCatalogo.jsx` · `comp/admin/AdminConfig.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidoNuevo.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/GlobalAdminDashboard.jsx` · `comp/admin/PasswordSetup.jsx` |
-| [`comp/Store.jsx`](./src/components/Store.jsx) | 1554 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `App.jsx` |
+| [`comp/Store.jsx`](./src/components/Store.jsx) | 1556 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `App.jsx` |
 | [`comp/UI.jsx`](./src/components/UI.jsx) | 53 | `lib/constants.js` · `lib/utils.js` | `App.jsx` · `comp/AdminLogin.jsx` · `comp/BookFormPanel.jsx` · `comp/Store.jsx` · `comp/admin/AdminParserWA.jsx` · `comp/admin/AdminPedidos.jsx` · `comp/admin/GlobalAdminDashboard.jsx` · `comp/admin/PasswordSetup.jsx` |
 | [`comp/admin/AdminCatalogo.jsx`](./src/components/admin/AdminCatalogo.jsx) | 503 | `comp/BookFormPanel.jsx` · `comp/Icons.jsx` · `lib/shop.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
-| [`comp/admin/AdminConfig.jsx`](./src/components/admin/AdminConfig.jsx) | 696 | `comp/Icons.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
+| [`comp/admin/AdminConfig.jsx`](./src/components/admin/AdminConfig.jsx) | 700 | `comp/Icons.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminDashboard.jsx`](./src/components/admin/AdminDashboard.jsx) | 221 | `lib/constants.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminParserWA.jsx`](./src/components/admin/AdminParserWA.jsx) | 619 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
-| [`comp/admin/AdminPedidoNuevo.jsx`](./src/components/admin/AdminPedidoNuevo.jsx) | 626 | `comp/Icons.jsx` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
+| [`comp/admin/AdminPedidoNuevo.jsx`](./src/components/admin/AdminPedidoNuevo.jsx) | 628 | `comp/Icons.jsx` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminPedidos.jsx`](./src/components/admin/AdminPedidos.jsx) | 1057 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/constants.js` · `lib/shop.js` · `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/AdminWA.jsx`](./src/components/admin/AdminWA.jsx) | 360 | `lib/supabase.js` · `lib/utils.js` | `comp/AdminPanel.jsx` |
 | [`comp/admin/GlobalAdminDashboard.jsx`](./src/components/admin/GlobalAdminDashboard.jsx) | 308 | `comp/Icons.jsx` · `comp/UI.jsx` · `lib/supabase.js` | `App.jsx` (lazy) |
@@ -353,7 +353,7 @@ Ir directo a la definición: `archivo#Línea`.
 - `Icon` — [`comp/Icons.jsx`](./src/components/Icons.jsx#L1)
 
 **[`comp/Store.jsx`](./src/components/Store.jsx)** · 1 exports
-- `Store` — [`comp/Store.jsx`](./src/components/Store.jsx#L1487)
+- `Store` — [`comp/Store.jsx`](./src/components/Store.jsx#L1489)
 
 **[`comp/admin/AdminCatalogo.jsx`](./src/components/admin/AdminCatalogo.jsx)** · 1 exports
 - `AdminCatalogo` — [`comp/admin/AdminCatalogo.jsx`](./src/components/admin/AdminCatalogo.jsx#L12)

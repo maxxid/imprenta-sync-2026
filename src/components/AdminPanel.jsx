@@ -20,7 +20,7 @@ export function AdminPanel({ orders, setOrders, books, setBooks, config, setConf
   return (
     <div>
       <div className="flex items-center gap-2 mb-6 flex-wrap">
-        <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 flex-shrink-0">
+        <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 min-w-0 flex-1 md:flex-none overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: <Icon.Home /> },
             { id: 'catalogo', label: 'Catálogo', icon: <Icon.Book /> },
@@ -30,13 +30,13 @@ export function AdminPanel({ orders, setOrders, books, setBooks, config, setConf
             { id: 'whatsapp', label: 'Avisos WA', icon: <Icon.Message /> },
             { id: 'config', label: 'Config', icon: <Icon.Settings /> }
           ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-700 transition-colors ${tab === t.id ? 'bg-brand-DEFAULT text-white shadow-md' : 'text-ink-500 hover:text-ink-700 hover:bg-surface-hover'}`}>
-              {t.icon} {t.label}
+            <button key={t.id} onClick={() => setTab(t.id)} aria-label={t.label} title={t.label} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-700 transition-colors whitespace-nowrap flex-shrink-0 ${tab === t.id ? 'bg-brand-DEFAULT text-white shadow-md' : 'text-ink-500 hover:text-ink-700 hover:bg-surface-hover'}`}>
+              {t.icon} <span className="hidden md:inline">{t.label}</span>
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <button onClick={onLogout} className="text-sm text-ink-400 hover:text-danger transition-colors font-600">Cerrar sesión</button>
+          <button onClick={onLogout} className="text-xs sm:text-sm whitespace-nowrap text-ink-400 hover:text-danger transition-colors font-600">Cerrar sesión</button>
         </div>
       </div>
 

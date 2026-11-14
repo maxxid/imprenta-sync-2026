@@ -118,14 +118,14 @@ export function GlobalAdminDashboard({ config, onLogout }) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between mb-8">
         <div>
           <h1 className="text-2xl font-black text-ink-900 dark:text-white">Panel Global</h1>
           <p className="text-sm text-ink-400">
             {shops.length} fotocopiadoras · {totalActiveOrders} pedidos activos
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button className="btn-primary text-sm px-4 py-2" onClick={() => { setCreateError(''); setCreateSuccess(null); setShowCreateModal(true); }}>
             + Nueva fotocopiadora
           </button>
@@ -136,7 +136,7 @@ export function GlobalAdminDashboard({ config, onLogout }) {
       </div>
 
       <div className="table-shell">
-        <table>
+        <table className="min-w-[720px]">
           <thead>
             <tr>
               <th>Fotocopiadora</th>
@@ -209,10 +209,10 @@ export function GlobalAdminDashboard({ config, onLogout }) {
       {showCreateModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-          <div className="relative z-10 bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md border border-border" onClick={e => e.stopPropagation()}>
+          <div className="relative z-10 bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md border border-border max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <div className="font-800 text-ink-900 text-lg">Nueva fotocopiadora</div>
-              <button onClick={() => setShowCreateModal(false)} className="text-ink-400 hover:text-ink-700"><Icon.X /></button>
+              <button onClick={() => setShowCreateModal(false)} className="text-ink-400 hover:text-ink-700 p-2 -mr-2"><Icon.X /></button>
             </div>
             <div className="space-y-4">
               <div>
@@ -247,13 +247,13 @@ export function GlobalAdminDashboard({ config, onLogout }) {
       {adminsShop && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={() => setAdminsShop(null)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-          <div className="relative z-10 bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md border border-border" onClick={e => e.stopPropagation()}>
+          <div className="relative z-10 bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md border border-border max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="font-800 text-ink-900 text-lg">Administradores</div>
                 <div className="text-xs text-ink-400">{adminsShop.name}</div>
               </div>
-              <button onClick={() => setAdminsShop(null)} className="text-ink-400 hover:text-ink-700"><Icon.X /></button>
+              <button onClick={() => setAdminsShop(null)} className="text-ink-400 hover:text-ink-700 p-2 -mr-2"><Icon.X /></button>
             </div>
             <div className="space-y-3">
               <div>

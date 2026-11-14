@@ -42,7 +42,7 @@ export function PasswordSetup({ config, onDone }) {
   }
 
   return (
-    <div className="fade-in max-w-md mx-auto pt-10 px-4">
+    <div className="fade-in max-w-md mx-auto pt-10 px-0 sm:px-4">
       <div className="card p-6">
         <div className="w-12 h-12 rounded-2xl bg-ink-900 dark:bg-white text-white dark:text-black flex items-center justify-center mb-4"><Icon.User /></div>
         <h2 className="text-2xl font-800 text-ink-900 mb-1">Completá tu perfil</h2>
